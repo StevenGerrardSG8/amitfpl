@@ -1,4 +1,5 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
+import { fixtureChips } from './ui.js';
 
 const COLUMNS = [
   { key: 'web_name', label: 'Player', numeric: false },
@@ -54,18 +55,6 @@ function filtered() {
     return 0;
   });
   return list;
-}
-
-function fixtureChips(teamId, count = 3) {
-  const fx = (state.upcomingByTeam[teamId] || []).slice(0, count);
-  if (!fx.length) return '<span class="fdr-chip fdr-blank">—</span>';
-  return fx
-    .map((f) => {
-      const opp = state.teamsById[f.opponent].short_name;
-      const ha = f.isHome ? 'H' : 'A';
-      return `<span class="fdr-chip fdr-${f.difficulty}" title="GW${f.event}">${opp} (${ha})</span>`;
-    })
-    .join(' ');
 }
 
 function render(root) {

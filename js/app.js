@@ -1,6 +1,10 @@
 import { readCache, fetchFresh, fetchMeta } from './api.js';
 import { initState, state } from './state.js';
 import { renderPlayers } from './players.js';
+import { renderScout } from './scout.js';
+import { renderMarket } from './market.js';
+import { renderStatus } from './status.js';
+import { renderCompare } from './compare.js';
 import { renderFixtures } from './fixtures.js';
 import { renderSetPieces } from './setpieces.js';
 import { renderMyTeam } from './myteam.js';
@@ -11,6 +15,10 @@ const REFRESH_AFTER_MS = 2 * 60 * 1000;
 
 const views = {
   players: { el: document.getElementById('view-players'), render: renderPlayers, done: false },
+  scout: { el: document.getElementById('view-scout'), render: renderScout, done: false },
+  market: { el: document.getElementById('view-market'), render: renderMarket, done: false },
+  status: { el: document.getElementById('view-status'), render: renderStatus, done: false },
+  compare: { el: document.getElementById('view-compare'), render: renderCompare, done: false },
   fixtures: { el: document.getElementById('view-fixtures'), render: renderFixtures, done: false },
   setpieces: { el: document.getElementById('view-setpieces'), render: renderSetPieces, done: false },
   myteam: { el: document.getElementById('view-myteam'), render: renderMyTeam, done: false },

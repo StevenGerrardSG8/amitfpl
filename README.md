@@ -35,6 +35,10 @@ python3 scripts/fetch_data.py
 - `js/api.js` — data access: snapshots first, live API fallback, SWR cache
 - `js/state.js` — shared derived data (teams, players, upcoming fixtures)
 - `js/players.js` — sortable/filterable player dashboard (xP, price, ownership, xG/xA)
+- `js/scout.js` — captaincy shortlist, differentials finder, best value (pts/£M)
+- `js/market.js` — price changes and transfer momentum
+- `js/status.js` — injuries & doubts (official flags + news), suspension watch
+- `js/compare.js` — 2–3 players side by side with best-value highlighting
 - `js/fixtures.js` — fixture difficulty (FDR) planner grid
 - `js/setpieces.js` — penalty / free-kick / corner takers per team
 - `js/myteam.js` — your team via Team ID
