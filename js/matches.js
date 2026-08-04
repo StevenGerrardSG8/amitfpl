@@ -38,9 +38,9 @@ function matchRow(f) {
   const status = f.finished ? 'FT' : f.started ? 'LIVE' : ko;
   const events = played
     ? [
-        eventLine('goals_scored', f, 'Goals', '⚽'),
-        eventLine('assists', f, 'Assists', '🅰️'),
-        eventLine('bonus', f, 'Bonus', '⭐'),
+        eventLine('goals_scored', f, 'Goals', ''),
+        eventLine('assists', f, 'Assists', ''),
+        eventLine('bonus', f, 'Bonus', ''),
       ].join('')
     : '';
   return `<div class="mt-match">

@@ -394,8 +394,8 @@ function chipAdvice(model) {
 function assistantPanel(model, gw) {
   if (view.baseSquad.length < 15) {
     return `<div class="assistant-card">
-      <div class="assistant-head">🤖 Assistant</div>
-      <div class="note" style="padding:0">Your squad has ${view.baseSquad.length}/15 players - hit <strong>⚡ Auto-build squad</strong> and I'll take it from there.</div>
+      <div class="assistant-head">Assistant</div>
+      <div class="note" style="padding:0">Your squad has ${view.baseSquad.length}/15 players - hit <strong>Auto-build squad</strong> and I'll take it from there.</div>
     </div>`;
   }
   const name = (id) => `<span class="clickable" data-pid="${id}">${inlinePhoto(state.playersById[id])} ${escapeHtml(state.playersById[id].web_name)}</span>`;
@@ -405,7 +405,7 @@ function assistantPanel(model, gw) {
   const upgrades = upgradeSuggestions(model, gw);
   for (const { outId, inId, gain } of upgrades) {
     items.push(`<div class="as-item">
-      <span>🔁 <strong>${name(inId)}</strong> in for <strong>${name(outId)}</strong>
+      <span><strong>${name(inId)}</strong> in for <strong>${name(outId)}</strong>
       <span class="hi">+${gain.toFixed(1)} xP</span>
       <span class="muted">${isFirst ? 'base squad change' : `as a GW${gw} transfer`} · ${fmtPrice(state.playersById[inId].now_cost)}</span></span>
       <button class="as-apply" data-act="transfer" data-out="${outId}" data-in="${inId}">Apply</button>
@@ -427,7 +427,7 @@ function assistantPanel(model, gw) {
     const top = [...view.starters].sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0];
     if (top !== view.captain) {
       items.push(`<div class="as-item">
-        <span>©️ Best armband for GW${gw}: <strong>${name(top)}</strong></span>
+        <span>Best armband for GW${gw}: <strong>${name(top)}</strong></span>
         <button class="as-apply" data-act="captain" data-id="${top}">Set captain</button>
       </div>`);
     }
@@ -436,19 +436,19 @@ function assistantPanel(model, gw) {
   const { tc, bb } = chipAdvice(model);
   if (tc && view.chips[tc.e] !== 'TC') {
     items.push(`<div class="as-item">
-      <span>🎯 Best Triple Captain window: <strong>GW${tc.e}</strong> <span class="muted">captain projects ${tc.v.toFixed(1)} → ×3</span></span>
+      <span>Best Triple Captain window: <strong>GW${tc.e}</strong> <span class="muted">captain projects ${tc.v.toFixed(1)} → ×3</span></span>
       <button class="as-apply" data-act="chip" data-gw="${tc.e}" data-chip="TC">Plan TC</button>
     </div>`);
   }
   if (bb && view.chips[bb.e] !== 'BB') {
     items.push(`<div class="as-item">
-      <span>💪 Best Bench Boost window: <strong>GW${bb.e}</strong> <span class="muted">bench projects +${bb.v.toFixed(1)}</span></span>
+      <span>Best Bench Boost window: <strong>GW${bb.e}</strong> <span class="muted">bench projects +${bb.v.toFixed(1)}</span></span>
       <button class="as-apply" data-act="chip" data-gw="${bb.e}" data-chip="BB">Plan BB</button>
     </div>`);
   }
 
   return `<div class="assistant-card">
-    <div class="assistant-head">🤖 Assistant <span class="muted" style="font-weight:500">· amitfpl xP model · ${view.horizon}-GW plan incl. transfer hits</span></div>
+    <div class="assistant-head">Assistant <span class="muted" style="font-weight:500">· amitfpl xP model · ${view.horizon}-GW plan incl. transfer hits</span></div>
     ${items.join('')}
   </div>`;
 }
@@ -463,19 +463,19 @@ function openSheet(model, root, id, gw) {
   const rerender = () => { save(); renderPlanner(root); };
   const actions = [];
   if (isFirst && isStarter && view.captain !== id) {
-    actions.push(['©️ Make captain', () => { view.captain = id; rerender(); }]);
+    actions.push(['Make captain', () => { view.captain = id; rerender(); }]);
   }
   if (isFirst) {
     actions.push(['⇄ Swap with bench/pitch', () => { view.swapId = id; rerender(); }]);
     actions.push(['✕ Remove from squad', () => { removePlayer(id); rerender(); }]);
   } else {
-    actions.push([`➡ Transfer out in GW${gw}`, () => {
+    actions.push([`Transfer out in GW${gw}`, () => {
       view.pending = { type: 'out', id };
       view.filterPos = String(posOf(id));
       rerender();
     }]);
   }
-  actions.push(['👤 Player profile', () => openDrawer(id)]);
+  actions.push(['Player profile', () => openDrawer(id)]);
 
   const sheet = document.createElement('div');
   sheet.className = 'sheet-overlay';
@@ -578,7 +578,7 @@ function buildModeHtml(model, gw) {
   }).join('');
   return `
     <div class="build-hint">
-      <span>Pick your 15 - tap an empty spot to filter the list, or let <strong>⚡ Auto-build</strong> do it.</span>
+      <span>Pick your 15 - tap an empty spot to filter the list, or let <strong>Auto-build</strong> do it.</span>
       <span class="muted">${view.baseSquad.length}/15 picked · max 3 per club</span>
     </div>
     <div class="pitch pitch-build">${rows}</div>`;
@@ -735,7 +735,7 @@ function sideList(model, gw) {
 
 export async function renderPlanner(root) {
   if (!root.dataset.booted) {
-    root.innerHTML = '<div class="loading"><div class="spinner"></div><p>Crunching predictions…</p></div>';
+    root.innerHTML = '<div class="skel-page"><div class="skel skel-row"></div><div class="skel skel-block" style="height:420px"></div></div>';
   }
   load();
   await loadBaseline();
@@ -772,16 +772,16 @@ export async function renderPlanner(root) {
         <select id="pl-horizon">
           ${[3, 5, 8].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${n} GWs</option>`).join('')}
         </select>
-        <button class="btn" id="pl-build">${view.baseSquad.length ? '⚡ Re-optimize' : '⚡ Auto-build squad'}</button>
-        <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">🤖 Assistant</button>
+        <button class="btn" id="pl-build">${view.baseSquad.length ? 'Re-optimize' : 'Auto-build squad'}</button>
+        <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">Assistant</button>
         <span class="spacer"></span>
         <span class="result-count">
           ${squad.length}/15 · <strong>${fmtPrice(totalCost)}</strong> · Bank
           <strong class="${itb < 0 ? 'lo' : ''}">${fmtPrice(itb)}</strong> ·
           Plan xP <strong>${horizonTotal.toFixed(0)}</strong>${totalHits ? ` <span class="lo">(-${totalHits} hits)</span>` : ''}
         </span>
-        <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="Copy a link that opens this exact plan on any device">🔗 Share</button>
-        <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>📋 Copy</button>
+        <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="Copy a link that opens this exact plan on any device">Share</button>
+        <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>Copy</button>
         <button class="link-btn" id="pl-clear" ${view.baseSquad.length ? '' : 'disabled'}>Clear</button>
       </div>
       <div class="toolbar" style="border-bottom:none;padding-top:10px">
@@ -860,8 +860,8 @@ export async function renderPlanner(root) {
     const url = `${location.origin}${location.pathname}#plan=${encodePlan()}`;
     try {
       await navigator.clipboard.writeText(url);
-      e.target.textContent = '✓ Link copied';
-      setTimeout(() => { e.target.textContent = '🔗 Share'; }, 1800);
+      e.target.textContent = 'Link copied';
+      setTimeout(() => { e.target.textContent = 'Share'; }, 1800);
     } catch { /* clipboard unavailable */ }
   });
 
@@ -877,8 +877,8 @@ export async function renderPlanner(root) {
     const text = `amitfpl plan · GW${gw} squad · ${fmtPrice(totalCost)}\nXI:\n${lineup.starters.map(label).join('\n')}\nBench:\n${bench.map(label).join('\n')}${moves ? `\nTransfers:\n${moves}` : ''}`;
     try {
       await navigator.clipboard.writeText(text);
-      e.target.textContent = '✓ Copied';
-      setTimeout(() => { e.target.textContent = '📋 Copy'; }, 1500);
+      e.target.textContent = 'Copied';
+      setTimeout(() => { e.target.textContent = 'Copy'; }, 1500);
     } catch { /* clipboard unavailable */ }
   });
 

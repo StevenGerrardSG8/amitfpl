@@ -59,11 +59,19 @@ function renderDeadline() {
   if (!ev) return;
   const chip = document.getElementById('deadline-chip');
   const dl = new Date(ev.deadline_time);
-  const days = Math.max(0, Math.round((dl - Date.now()) / 86400000));
+  const left = dl - Date.now();
+  let count;
+  if (left <= 0) count = 'locked';
+  else {
+    const d = Math.floor(left / 86400000);
+    const h = Math.floor((left % 86400000) / 3600000);
+    const m = Math.floor((left % 3600000) / 60000);
+    count = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
   document.getElementById('deadline-gw').textContent = `${ev.name} deadline`;
   document.getElementById('deadline-time').textContent =
     dl.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) +
-    (days > 0 ? ` · in ${days}d` : ' · today');
+    ` · in ${count}`;
   chip.hidden = false;
 }
 
@@ -204,8 +212,11 @@ async function main() {
   // Shared plan links (#plan=...) land straight in the planner.
   showTab(initial.startsWith('plan=') ? 'planner' : views[initial] ? initial : 'home');
 
-  // Keep the "updated Xm ago" label honest.
-  setInterval(() => { if (!refreshing) renderUpdatedChip(); }, 30000);
+  // Keep the "updated Xm ago" label and the deadline countdown honest.
+  setInterval(() => {
+    if (!refreshing) renderUpdatedChip();
+    renderDeadline();
+  }, 30000);
 
   // The planner's markup differs across the mobile breakpoint - refresh
   // it when the viewport crosses over (rotation, window resize).

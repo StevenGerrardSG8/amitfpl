@@ -76,7 +76,7 @@ async function trendSection(id) {
   }
   if (!price.length) return '';
   return `
-    <div class="section-title" style="padding-left:0">📉 Trends <span class="muted" style="font-weight:500">· daily since Aug 2026</span></div>
+    <div class="section-title" style="padding-left:0">Trends <span class="muted" style="font-weight:500">· daily since Aug 2026</span></div>
     <div class="trend-grid">
       <div><div class="k-label">Price</div>${sparkline(price, (v) => '£' + v.toFixed(1))}</div>
       <div><div class="k-label">Ownership</div>${sparkline(own, (v) => v.toFixed(1) + '%')}</div>
@@ -181,8 +181,8 @@ export async function openDrawer(id) {
           </div>
           ${st ? `<div class="drawer-news ${st.cls}">${escapeHtml(st.label)}</div>` : ''}
           <div class="drawer-actions">
-            <button class="chip-btn ${isWatched(id) ? 'on' : ''}" id="dw-watch">${isWatched(id) ? '⭐ Watching' : '☆ Watch'}</button>
-            <button class="chip-btn" id="dw-compare">⚖ Compare</button>
+            <button class="chip-btn ${isWatched(id) ? 'on' : ''}" id="dw-watch">${isWatched(id) ? 'Watching' : '☆ Watch'}</button>
+            <button class="chip-btn" id="dw-compare">Compare</button>
           </div>
         </div>
       </div>
@@ -201,7 +201,7 @@ export async function openDrawer(id) {
   overlay.querySelector('#dw-watch').addEventListener('click', (e) => {
     toggleWatch(id);
     e.target.classList.toggle('on', isWatched(id));
-    e.target.textContent = isWatched(id) ? '⭐ Watching' : '☆ Watch';
+    e.target.textContent = isWatched(id) ? 'Watching' : '☆ Watch';
   });
   overlay.querySelector('#dw-compare').addEventListener('click', () => {
     let slots;
@@ -224,7 +224,7 @@ export async function openDrawer(id) {
   const sections = [];
   sections.push(await trendSection(id));
   sections.push(`
-    <div class="section-title" style="padding-left:0">📅 Upcoming - model forecast</div>
+    <div class="section-title" style="padding-left:0">Upcoming - model forecast</div>
     <div class="table-wrap"><table class="data">
       <thead><tr><th class="no-sort">GW</th><th class="no-sort">Fixture</th><th class="num no-sort">xP</th></tr></thead>
       <tbody>${upcomingRows(model, p)}</tbody>
@@ -232,7 +232,7 @@ export async function openDrawer(id) {
 
   if (summary?.history?.length) {
     sections.push(`
-      <div class="section-title" style="padding-left:0">📈 This season - last ${Math.min(10, summary.history.length)} GWs</div>
+      <div class="section-title" style="padding-left:0">This season - last ${Math.min(10, summary.history.length)} GWs</div>
       <div class="table-wrap"><table class="data">
         <thead><tr><th class="no-sort">GW</th><th class="no-sort">Opp</th><th class="num no-sort">Pts</th>
         <th class="num no-sort">Min</th><th class="num no-sort">G</th><th class="num no-sort">A</th>
@@ -243,7 +243,7 @@ export async function openDrawer(id) {
 
   if (summary?.history_past?.length) {
     sections.push(`
-      <div class="section-title" style="padding-left:0">🗂️ Past seasons</div>
+      <div class="section-title" style="padding-left:0">Past seasons</div>
       <div class="table-wrap"><table class="data">
         <thead><tr><th class="no-sort">Season</th><th class="num no-sort">Pts</th><th class="num no-sort">Min</th>
         <th class="num no-sort">G</th><th class="num no-sort">A</th><th class="num no-sort">CS</th>

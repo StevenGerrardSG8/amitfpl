@@ -148,6 +148,18 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Skeleton loading blocks - calmer than a spinner for content views */
+.skel {
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--accent-soft) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: skel 1.2s ease-in-out infinite;
+}
+@keyframes skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.skel-page { display: flex; flex-direction: column; gap: 12px; }
+.skel-row { height: 52px; }
+.skel-block { height: 180px; }
+
 .error-box {
   background: #fdecea;
   border: 1px solid #f5c6c0;
@@ -193,6 +205,27 @@ body {
 .toolbar input:focus, .toolbar select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 
 .toolbar .spacer { flex: 1; }
+
+/* Segmented control */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.seg-btn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+.seg-btn.on { background: var(--accent); color: #fff; }
 .result-count { font-size: 12px; color: var(--text-faint); }
 
 /* ---------- Tables ---------- */
@@ -1244,8 +1277,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .section-title {
   padding: 14px 16px 0;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex: none;
 }
 .note { padding: 10px 16px 16px; color: var(--text-soft); font-size: 13px; }
 

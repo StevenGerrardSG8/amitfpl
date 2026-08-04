@@ -42,7 +42,12 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <span class="brand-mark">⚽</span>
+        <svg class="brand-mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="var(--accent)"/>
+          <rect x="4" y="6" width="24" height="20" rx="2" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.6"/>
+          <line x1="16" y1="6" x2="16" y2="26" stroke="rgba(255,255,255,0.85)" stroke-width="1.6"/>
+          <circle cx="16" cy="16" r="4.2" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.6"/>
+        </svg>
         <span class="brand-name">amit<strong>fpl</strong></span>
         <span class="brand-sub">FPL Toolkit</span>
       </div>
@@ -129,7 +134,7 @@
   </div>
 
   <footer class="footer">
-    <span>Data: official Fantasy Premier League API · auto-refreshes in the background · personal tool</span>
+    <span>amitfpl v2 · data: official Fantasy Premier League API + ClubElo · refreshes every 30 min</span>
   </footer>
 
   <script>

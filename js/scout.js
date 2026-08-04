@@ -87,7 +87,7 @@ export async function renderScout(root) {
 
   root.innerHTML = `
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">🎯 Scoring chances - most likely to find the net in GW${nextGw}</div>
+      <div class="section-title">Scoring chances - most likely to find the net in GW${nextGw}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th class="num no-sort">#</th><th class="no-sort">Player</th>
@@ -98,7 +98,7 @@ export async function renderScout(root) {
       </div>
     </div>
     <div class="card">
-      <div class="section-title">⭐ Captaincy planner - best armband pick per gameweek (amitfpl model v2 · Elo-powered)</div>
+      <div class="section-title">Captaincy planner - best armband pick per gameweek (amitfpl model v2 · Elo-powered)</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>
@@ -112,7 +112,7 @@ export async function renderScout(root) {
 
     <div class="card" style="margin-top:16px">
       <div class="toolbar">
-        <span class="section-title" style="padding:0">💎 Differentials - high xP, low ownership</span>
+        <span class="section-title" style="padding:0">Differentials - high xP, low ownership</span>
         <span class="spacer"></span>
         <label>Owned by less than</label>
         <select id="sc-diff">
@@ -128,7 +128,7 @@ export async function renderScout(root) {
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🧮 Best value - points per £1M</div>
+      <div class="section-title">Best value - points per £1M</div>
       <div class="note" style="padding-top:2px">Based on total points (last season's, until this season gets going).</div>
       <div class="table-wrap">
         <table class="data">

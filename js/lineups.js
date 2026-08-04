@@ -112,7 +112,7 @@ function teamCard(team, squad) {
 }
 
 export async function renderLineups(root) {
-  root.innerHTML = '<div class="loading"><div class="spinner"></div><p>Projecting lineups…</p></div>';
+  root.innerHTML = '<div class="skel-page"><div class="skel skel-block"></div><div class="skel skel-block"></div><div class="skel skel-block"></div></div>';
   await loadBaseline();
   const byTeam = {};
   for (const p of state.bootstrap.elements) (byTeam[p.team] = byTeam[p.team] || []).push(p);

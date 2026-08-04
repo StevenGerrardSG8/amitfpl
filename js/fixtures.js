@@ -25,7 +25,7 @@ function forecastCard() {
   return `
     <div class="card" style="margin-bottom:16px">
       <div class="toolbar">
-        <span class="section-title" style="padding:0">⚽ Goals &amp; clean sheet forecast</span>
+        <span class="section-title" style="padding:0">Goals &amp; clean sheet forecast</span>
         <select id="fx-fc-gw">
           ${gws.map((e) => `<option value="${e}" ${e === gw ? 'selected' : ''}>GW${e}</option>`).join('')}
         </select>
@@ -76,7 +76,7 @@ function blanksDoublesCard() {
   }
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🗓️ Blanks &amp; doubles - chip planning radar</div>
+      <div class="section-title">Blanks &amp; doubles - chip planning radar</div>
       <div class="table-wrap" style="max-height:40vh;overflow-y:auto">
         <table class="data">
           <thead><tr><th class="no-sort">GW</th><th class="no-sort">Double gameweek</th><th class="no-sort">Blank gameweek</th></tr></thead>
@@ -116,7 +116,7 @@ function swingsCard() {
   </tr>`;
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🔀 Fixture swings - when to buy in / sell out</div>
+      <div class="section-title">Fixture swings - when to buy in / sell out</div>
       <div class="swing-grid">
         <div>
           <div class="note" style="padding:8px 16px 0"><strong class="hi">↗ Gets easier</strong> after the next 3 GWs - buy their assets early</div>
@@ -171,7 +171,7 @@ function rotationCard() {
     .join('');
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🔄 Rotation pairs - always play the easier fixture (next 8 GWs)</div>
+      <div class="section-title">Rotation pairs - always play the easier fixture (next 8 GWs)</div>
       <div class="note" style="padding-top:2px">Best duos for budget goalkeepers and defenders: pick one of each, start whoever has the friendlier match.</div>
       <div class="table-wrap">
         <table class="data">

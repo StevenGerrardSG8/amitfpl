@@ -113,18 +113,18 @@ function render(root) {
     <div class="card">
       <div class="toolbar">
         <input type="search" id="pl-search" placeholder="Search player…" value="${escapeHtml(view.search)}" />
-        <select id="pl-pos">
-          <option value="all">All positions</option>
-          ${state.bootstrap.element_types.map((et) => `<option value="${et.id}" ${view.position == et.id ? 'selected' : ''}>${et.plural_name}</option>`).join('')}
-        </select>
+        <div class="seg" id="pl-pos">
+          <button class="seg-btn ${view.position === 'all' ? 'on' : ''}" data-v="all">All</button>
+          ${state.bootstrap.element_types.map((et) => `<button class="seg-btn ${view.position == et.id ? 'on' : ''}" data-v="${et.id}">${et.plural_name_short}</button>`).join('')}
+        </div>
         <select id="pl-team">
           <option value="all">All teams</option>
           ${teamOptions}
         </select>
         <input type="number" id="pl-price" placeholder="Max £" step="0.5" min="3.5" max="16" style="width:90px" value="${view.maxPrice}" />
-        <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> 🆕 New signings</label>
+        <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> New signings</label>
         <span class="spacer"></span>
-        <button class="link-btn" id="pl-csv" title="Download the current filtered list as CSV">⬇ CSV</button>
+        <button class="link-btn" id="pl-csv" title="Download the current filtered list as CSV">Export CSV</button>
         <span class="result-count">${list.length} players${list.length > view.limit ? ` · showing top ${view.limit}` : ''}</span>
       </div>
       <div class="table-wrap" style="max-height: 70vh; overflow-y: auto;">
@@ -141,7 +141,9 @@ function render(root) {
     view.limit = 100;
     renderPreservingFocus(root, '#pl-search');
   });
-  root.querySelector('#pl-pos').addEventListener('change', (e) => { view.position = e.target.value; render(root); });
+  root.querySelectorAll('#pl-pos .seg-btn').forEach((b) =>
+    b.addEventListener('click', () => { view.position = b.dataset.v; render(root); })
+  );
   root.querySelector('#pl-team').addEventListener('change', (e) => { view.team = e.target.value; render(root); });
   root.querySelector('#pl-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; render(root); });
   root.querySelector('#pl-new').addEventListener('change', (e) => { view.newOnly = e.target.checked; render(root); });

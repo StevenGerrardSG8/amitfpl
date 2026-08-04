@@ -25,7 +25,7 @@ function fixtureCards() {
   }).join('');
   return `
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">🗓️ ${escapeHtml(nxt.name)} fixtures - your local time</div>
+      <div class="section-title">${escapeHtml(nxt.name)} fixtures - your local time</div>
       <div class="fx-grid">${cards}</div>
     </div>`;
 }
@@ -43,7 +43,7 @@ function widget(title, rowsHtml, gotoTab, gotoLabel) {
 const mini = (rows) => `<table class="data">${rows}</table>`;
 
 export async function renderHome(root) {
-  root.innerHTML = '<div class="loading"><div class="spinner"></div><p>Building your dashboard…</p></div>';
+  root.innerHTML = '<div class="skel-page"><div class="skel skel-block"></div><div class="skel skel-block"></div></div>';
   await loadBaseline();
   const model = buildModel(5);
   const gw = model.gws[0];
@@ -88,16 +88,16 @@ export async function renderHome(root) {
         <td class="num">${fmtPrice(p.now_cost)}</td>
         <td class="num"><span class="pp-xp" style="margin:0">${model.xp(p.id, gw).toFixed(1)}</span></td>
       </tr>`).join(''))
-    : '<div class="note">Star players from their profile (open any player, tap ☆ Watch) and they\'ll show up here.</div>';
+    : '<div class="note">Star players from their profile (open any player, tap Watch) and they\'ll show up here.</div>';
 
   root.innerHTML = `
     ${fixtureCards()}
     <div class="widget-grid">
-      ${widget('⚽ Expected goals - GW' + gw, goalsRows, 'fixtures', 'Full forecast')}
-      ${widget('🛡️ Clean sheet chances', csRows, 'fixtures', 'Full forecast')}
-      ${widget('⭐ Captain picks', capRows, 'scout', 'Scout')}
-      ${widget('🎯 Likely scorers', scorerRows, 'scout', 'Scout')}
-      ${widget('👁️ My watchlist', watchRows, 'players', 'Players')}
+      ${widget('Expected goals - GW' + gw, goalsRows, 'fixtures', 'Full forecast')}
+      ${widget('Clean sheet chances', csRows, 'fixtures', 'Full forecast')}
+      ${widget('Captain picks', capRows, 'scout', 'Scout')}
+      ${widget('Likely scorers', scorerRows, 'scout', 'Scout')}
+      ${widget('My watchlist', watchRows, 'players', 'Players')}
     </div>`;
 
   root.querySelectorAll('[data-goto]').forEach((b) =>
