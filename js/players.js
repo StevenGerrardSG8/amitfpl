@@ -80,7 +80,7 @@ function render(root) {
         : '';
       const ep = num(p.ep_next);
       return `<tr>
-        <td><div class="player-flex">
+        <td><div class="player-flex clickable" data-pid="${p.id}" title="Player profile">
           ${playerPhoto(p, 'row-photo')}
           <div class="player-cell">
             <span class="player-name">${escapeHtml(p.web_name)}${flag}${spBadges(p)}</span>

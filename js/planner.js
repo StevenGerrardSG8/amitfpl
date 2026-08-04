@@ -462,8 +462,8 @@ function sideList(model) {
     const blocked = posFull || clubFull;
     const reason = posFull ? 'Position quota full' : clubFull ? 'Max 3 per club' : 'Add to squad';
     return `<div class="side-row">
-      ${playerPhoto(p, 'row-photo')}
-      <div class="side-info">
+      <span class="clickable" data-pid="${p.id}" title="Player profile">${playerPhoto(p, 'row-photo')}</span>
+      <div class="side-info clickable" data-pid="${p.id}">
         <span class="player-name">${escapeHtml(p.web_name)}</span>
         <span class="player-meta">${state.positionsById[p.element_type].singular_name_short} · ${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
       </div>

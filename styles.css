@@ -786,6 +786,60 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   text-overflow: ellipsis;
 }
 
+/* ---------- Player drawer ---------- */
+.clickable { cursor: pointer; }
+.clickable:hover .player-name { color: var(--accent); }
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 26, 0.55);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}
+.drawer {
+  width: min(560px, 96vw);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.25);
+  padding: 20px 22px 40px;
+  position: relative;
+  animation: drawer-in 0.18s ease-out;
+}
+@keyframes drawer-in { from { transform: translateX(40px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.drawer-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font: inherit;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.drawer-head { display: flex; gap: 14px; align-items: center; }
+.drawer-photo {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #e3e7f1;
+  object-fit: cover;
+  object-position: top;
+  border: 2px solid var(--border);
+  flex: none;
+}
+[data-theme="dark"] .drawer-photo { background: #26304a; }
+.drawer-name { font-size: 20px; letter-spacing: -0.3px; }
+.drawer-meta { color: var(--text-soft); font-size: 13px; margin-top: 2px; }
+.drawer-news { font-size: 12px; margin-top: 4px; font-weight: 600; }
+.drawer .summary-grid { grid-template-columns: repeat(3, 1fr); }
+
 /* ---------- Team forecast ---------- */
 .xg-pill {
   display: inline-block;

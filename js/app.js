@@ -9,6 +9,7 @@ import { renderCompare } from './compare.js';
 import { renderFixtures } from './fixtures.js';
 import { renderSetPieces } from './setpieces.js';
 import { renderMyTeam } from './myteam.js';
+import { initDrawer } from './drawer.js';
 
 const CORE = ['bootstrap', 'fixtures'];
 // Refresh in the background whenever the cached copy is older than this.
@@ -144,6 +145,7 @@ async function main() {
   loading.hidden = true;
   renderDeadline();
   renderUpdatedChip();
+  initDrawer();
 
   document.getElementById('tabs').addEventListener('click', (e) => {
     const tab = e.target.closest('.tab');

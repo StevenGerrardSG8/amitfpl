@@ -37,7 +37,7 @@ export function playerCell(p) {
   const flag = st
     ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>`
     : '';
-  return `<div class="player-flex">
+  return `<div class="player-flex clickable" data-pid="${p.id}" title="Player profile">
     ${playerPhoto(p, 'row-photo')}
     <div class="player-cell">
       <span class="player-name">${escapeHtml(p.web_name)}${flag}</span>
