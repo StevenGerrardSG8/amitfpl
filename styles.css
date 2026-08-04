@@ -309,6 +309,46 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .cmp-input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 .cmp-table td, .cmp-table th { white-space: normal; }
 
+/* ---------- Planner ---------- */
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.plan-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  font-size: 13px;
+}
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.plan-head strong { font-size: 14px; }
+.plan-line { margin: 4px 0; line-height: 1.7; }
+.plan-pos {
+  display: inline-block;
+  width: 42px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.plan-bench {
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+  margin-top: 8px;
+  color: var(--text-soft);
+}
+
 /* ---------- Set pieces ---------- */
 .sp-primary { font-weight: 700; }
 .sp-alt { color: var(--text-faint); font-size: 12px; }

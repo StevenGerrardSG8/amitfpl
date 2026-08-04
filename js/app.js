@@ -1,6 +1,7 @@
 import { readCache, fetchFresh, fetchMeta } from './api.js';
 import { initState, state } from './state.js';
 import { renderPlayers } from './players.js';
+import { renderPlanner } from './planner.js';
 import { renderScout } from './scout.js';
 import { renderMarket } from './market.js';
 import { renderStatus } from './status.js';
@@ -15,6 +16,7 @@ const REFRESH_AFTER_MS = 2 * 60 * 1000;
 
 const views = {
   players: { el: document.getElementById('view-players'), render: renderPlayers, done: false },
+  planner: { el: document.getElementById('view-planner'), render: renderPlanner, done: false },
   scout: { el: document.getElementById('view-scout'), render: renderScout, done: false },
   market: { el: document.getElementById('view-market'), render: renderMarket, done: false },
   status: { el: document.getElementById('view-status'), render: renderStatus, done: false },

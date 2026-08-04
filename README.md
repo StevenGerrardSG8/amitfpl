@@ -35,6 +35,10 @@ python3 scripts/fetch_data.py
 - `js/api.js` — data access: snapshots first, live API fallback, SWR cache
 - `js/state.js` — shared derived data (teams, players, upcoming fixtures)
 - `js/players.js` — sortable/filterable player dashboard (xP, price, ownership, xG/xA)
+- `js/model.js` — amitfpl xP model v1: per-player per-GW predictions from frozen
+  baseline rates (`data/baseline.json`) + fixture difficulty + availability
+- `js/planner.js` — squad planner: auto-builds an optimal £100M squad
+  (hill-climbing optimizer) and picks the best XI, formation and captain per GW
 - `js/scout.js` — captaincy shortlist, differentials finder, best value (pts/£M)
 - `js/market.js` — price changes and transfer momentum
 - `js/status.js` — injuries & doubts (official flags + news), suspension watch
@@ -48,6 +52,10 @@ python3 scripts/fetch_data.py
 
 ## Roadmap
 
-- Phase 2: optimal transfer solver + multi-gameweek planner
+- Phase 2 (rest): transfer solver for an existing team (suggest 1-2 swaps/GW)
 - Phase 3: live in-match points + mini-league comparisons
 - Phase 4: predicted lineups + goal-scoring odds (external sources)
+- Model v2: calibrate with per-GW history from
+  [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League)
+  once 2026/27 gameweek data starts flowing; re-check the API's team
+  strength ratings (all zeros pre-season — model falls back to FDR)
