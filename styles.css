@@ -1380,3 +1380,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .fx-grid { padding: 10px 12px 12px; }
   .chips-bar, .transfers-bar { padding: 8px 12px; }
 }
+
+/* Doubtful starter chip on lineup cards */
+.lu-doubt-dot {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  background: #b06f00;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+}

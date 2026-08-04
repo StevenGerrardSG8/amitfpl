@@ -55,9 +55,13 @@ function predictXI(squad) {
 }
 
 function playerChip(p) {
+  const doubt = p.status === 'd'
+    ? `<span class="lu-doubt-dot" title="${escapeHtml(p.news || 'Doubtful')}">${p.chance_of_playing_next_round ?? 75}%</span>`
+    : '';
   return `<div class="lu-p clickable" data-pid="${p.id}">
     <div class="lu-photo-wrap">
       ${playerPhoto(p, 'lu-photo')}
+      ${doubt}
       <span class="lu-own">${p.selected_by_percent}%</span>
     </div>
     <div class="lu-name">${escapeHtml(p.web_name)}</div>
