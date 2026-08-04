@@ -504,15 +504,39 @@ function emptySlot(pos) {
   </div>`;
 }
 
+// FPL-style squad picker: all 15 slots on the pitch by position,
+// filling up as you add players. Shown until the squad is complete.
+function buildModeHtml(model, gw) {
+  const rows = [1, 2, 3, 4].map((pos) => {
+    const ids = view.baseSquad.filter((id) => posOf(id) === pos);
+    const cards = ids.map((id) => {
+      const p = state.playersById[id];
+      return `<div class="pp-card pc-card" data-id="${id}">
+        <div class="pp-photo-wrap clickable" data-pid="${id}">
+          ${playerPhoto(p, 'pp-photo')}
+          <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
+          <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
+        </div>
+        <div class="pp-name clickable" data-pid="${id}">${escapeHtml(p.web_name)}</div>
+        <span class="pp-xp">${model.horizonTotal(id).toFixed(1)}</span>
+        <div class="pc-actions"><button class="pc-btn pc-remove" data-id="${id}" title="Remove">✕</button></div>
+      </div>`;
+    });
+    for (let i = ids.length; i < QUOTA[pos]; i++) cards.push(emptySlot(pos));
+    return `<div class="pitch-row" data-pos="${pos}">${cards.join('')}</div>`;
+  }).join('');
+  return `
+    <div class="build-hint">
+      <span>Pick your 15 - tap an empty spot to filter the list, or let <strong>⚡ Auto-build</strong> do it.</span>
+      <span class="muted">${view.baseSquad.length}/15 picked · max 3 per club</span>
+    </div>
+    <div class="pitch pitch-build">${rows}</div>`;
+}
+
 function pitchHtml(model, gw) {
   const isFirst = gw === firstGw(model);
-  if (!view.baseSquad.length) {
-    return `<div class="myteam-setup" style="padding:32px 24px">
-      <h2>Let's build a squad ⚽</h2>
-      <p>Hit <strong>⚡ Auto-build squad</strong> above for an optimal £100M team in one click -
-      or start from scratch by picking players from the list${innerWidth < 900 ? ' below' : ' on the right'}.</p>
-      <p class="muted">2 GK · 5 DEF · 5 MID · 3 FWD · max 3 per club. Your squad saves on this device.</p>
-    </div>`;
+  if (isFirst && view.baseSquad.length < 15) {
+    return buildModeHtml(model, gw);
   }
   const lineup = lineupFor(model, gw);
   const gwIns = new Set((view.transfers[gw] || []).map((t) => t.in));

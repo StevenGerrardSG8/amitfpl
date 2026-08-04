@@ -536,6 +536,18 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-right: 4px;
 }
 
+.build-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  padding: 2px 4px 10px;
+}
+.pitch-build .pitch-row { min-height: 118px; align-items: flex-start; }
+.pitch-build .slot-empty .slot-circle { background: rgba(255,255,255,0.08); }
+
 .gw-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .gw-chip {
   font: inherit;
