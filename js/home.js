@@ -1,0 +1,97 @@
+// Home dashboard: the at-a-glance landing view — next gameweek's
+// fixtures with kickoff times, plus quick summaries that deep-link
+// into the full tools.
+import { state, fmtPrice, num, escapeHtml } from './state.js';
+import { teamBadge, playerCell } from './ui.js';
+import { loadBaseline, buildModel, teamForecast } from './model.js';
+
+function fixtureCards() {
+  const nxt = state.nextEvent;
+  if (!nxt) return '';
+  const fx = state.fixtures
+    .filter((f) => f.event === nxt.id && f.kickoff_time)
+    .sort((a, b) => a.kickoff_time.localeCompare(b.kickoff_time));
+  const cards = fx.map((f) => {
+    const h = state.teamsById[f.team_h];
+    const a = state.teamsById[f.team_a];
+    const ko = new Date(f.kickoff_time);
+    const when = ko.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return `<div class="fx-card">
+      <div class="fx-team">${teamBadge(h.id)}<span>${escapeHtml(h.short_name)}</span></div>
+      <div class="fx-mid"><span class="fx-vs">vs</span><span class="fx-time">${when}</span></div>
+      <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(a.short_name)}</span></div>
+    </div>`;
+  }).join('');
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title">🗓️ ${escapeHtml(nxt.name)} fixtures — your local time</div>
+      <div class="fx-grid">${cards}</div>
+    </div>`;
+}
+
+function widget(title, rowsHtml, gotoTab, gotoLabel) {
+  return `<div class="card widget">
+    <div class="widget-head">
+      <span class="section-title" style="padding:0">${title}</span>
+      <button class="link-btn" data-goto="${gotoTab}">${gotoLabel} →</button>
+    </div>
+    ${rowsHtml}
+  </div>`;
+}
+
+const mini = (rows) => `<table class="data">${rows}</table>`;
+
+export async function renderHome(root) {
+  root.innerHTML = '<div class="loading"><div class="spinner"></div><p>Building your dashboard…</p></div>';
+  await loadBaseline();
+  const model = buildModel(5);
+  const gw = model.gws[0];
+  const forecast = teamForecast(gw);
+
+  const goalsRows = mini(forecast.slice(0, 4).map(({ team, opp, isHome, xg }) => `<tr>
+      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.short_name)}</td>
+      <td class="muted">vs ${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
+      <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
+    </tr>`).join(''));
+
+  const csRows = mini([...forecast].sort((a, b) => b.cs - a.cs).slice(0, 4).map(({ team, opp, isHome, cs }) => `<tr>
+      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.short_name)}</td>
+      <td class="muted">vs ${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
+      <td class="num"><span class="cs-pill ${cs >= 0.4 ? 'cs-hi' : ''}">${Math.round(cs * 100)}%</span></td>
+    </tr>`).join(''));
+
+  const captains = state.bootstrap.elements
+    .filter((p) => p.status === 'a')
+    .map((p) => ({ p, xp: model.xp(p.id, gw) }))
+    .sort((a, b) => b.xp - a.xp)
+    .slice(0, 4);
+  const capRows = mini(captains.map(({ p, xp }) => `<tr>
+      <td>${playerCell(p)}</td>
+      <td class="num"><span class="pp-xp" style="margin:0">${xp.toFixed(1)}</span></td>
+    </tr>`).join(''));
+
+  const scorers = state.bootstrap.elements
+    .filter((p) => p.status === 'a')
+    .map((p) => ({ p, prob: model.goalChance(p.id, gw) }))
+    .sort((a, b) => b.prob - a.prob)
+    .slice(0, 4);
+  const scorerRows = mini(scorers.map(({ p, prob }) => `<tr>
+      <td>${playerCell(p)}</td>
+      <td class="num"><span class="cs-pill cs-hi">${Math.round(prob * 100)}%</span></td>
+    </tr>`).join(''));
+
+  root.innerHTML = `
+    ${fixtureCards()}
+    <div class="widget-grid">
+      ${widget('⚽ Expected goals — GW' + gw, goalsRows, 'fixtures', 'Full forecast')}
+      ${widget('🛡️ Clean sheet chances', csRows, 'fixtures', 'Full forecast')}
+      ${widget('⭐ Captain picks', capRows, 'scout', 'Scout')}
+      ${widget('🎯 Likely scorers', scorerRows, 'scout', 'Scout')}
+    </div>`;
+
+  root.querySelectorAll('[data-goto]').forEach((b) =>
+    b.addEventListener('click', () => {
+      document.querySelector(`.tab[data-tab="${b.dataset.goto}"]`)?.click();
+    })
+  );
+}

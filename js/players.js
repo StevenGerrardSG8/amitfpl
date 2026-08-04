@@ -13,6 +13,7 @@ const COLUMNS = [
   { key: 'expected_goals', label: 'xG', numeric: true },
   { key: 'expected_assists', label: 'xA', numeric: true },
   { key: 'expected_goal_involvements', label: 'xGI', numeric: true },
+  { key: 'defensive_contribution', label: 'DC', numeric: true, title: 'Defensive contribution points (tackles, blocks, interceptions, clearances)' },
   { key: 'minutes', label: 'Min', numeric: true },
   { key: 'fixtures', label: 'Next 3', numeric: false, noSort: true },
 ];
@@ -97,6 +98,7 @@ function render(root) {
         <td class="num">${p.expected_goals}</td>
         <td class="num">${p.expected_assists}</td>
         <td class="num">${p.expected_goal_involvements}</td>
+        <td class="num">${p.defensive_contribution}</td>
         <td class="num">${p.minutes}</td>
         <td><div class="fdr-cell" style="flex-direction:row">${fixtureChips(p.team)}</div></td>
       </tr>`;

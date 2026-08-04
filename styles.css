@@ -900,6 +900,43 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .drawer-news { font-size: 12px; margin-top: 4px; font-weight: 600; }
 .drawer .summary-grid { grid-template-columns: repeat(3, 1fr); }
 
+/* ---------- Home dashboard ---------- */
+.fx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+.fx-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fafbfe;
+}
+[data-theme="dark"] .fx-card { background: #1a2135; }
+.fx-team { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.fx-team .team-badge { width: 22px; height: 22px; }
+.fx-mid { display: flex; flex-direction: column; align-items: center; }
+.fx-vs { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; }
+.fx-time { font-size: 11px; color: var(--text-soft); white-space: nowrap; }
+
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+.widget-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 4px;
+}
+.widget table.data td { padding: 6px 12px; }
+
 /* ---------- Team forecast ---------- */
 .xg-pill {
   display: inline-block;

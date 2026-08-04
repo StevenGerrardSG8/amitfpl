@@ -1,5 +1,6 @@
 import { readCache, fetchFresh, fetchMeta } from './api.js';
 import { initState, state } from './state.js';
+import { renderHome } from './home.js';
 import { renderPlayers } from './players.js';
 import { renderPlanner } from './planner.js';
 import { renderScout } from './scout.js';
@@ -16,6 +17,7 @@ const CORE = ['bootstrap', 'fixtures'];
 const REFRESH_AFTER_MS = 2 * 60 * 1000;
 
 const views = {
+  home: { el: document.getElementById('view-home'), render: renderHome, done: false },
   players: { el: document.getElementById('view-players'), render: renderPlayers, done: false },
   planner: { el: document.getElementById('view-planner'), render: renderPlanner, done: false },
   scout: { el: document.getElementById('view-scout'), render: renderScout, done: false },
@@ -167,7 +169,7 @@ async function main() {
   });
 
   const initial = location.hash.slice(1);
-  showTab(views[initial] ? initial : 'players');
+  showTab(views[initial] ? initial : 'home');
 
   // Keep the "updated Xm ago" label honest.
   setInterval(() => { if (!refreshing) renderUpdatedChip(); }, 30000);

@@ -151,7 +151,36 @@ export function buildModel(horizon) {
 
   const horizonTotal = (playerId) => gws.reduce((s, e) => s + xp(playerId, e), 0);
 
-  return { xp, gws, horizonTotal };
+  // Probability the player scores at least one goal in the GW (Poisson
+  // on his expected goals across that GW's fixtures).
+  function goalChance(playerId, eventId) {
+    const p = state.playersById[playerId];
+    if (!p) return 0;
+    const b = baselineById?.[playerId] || null;
+    const ref = b?.minutes ? b : p;
+    const avail = availability(p);
+    const fixtures = fixturesByTeam[p.team]?.[eventId] || [];
+    if (!fixtures.length || !avail || !ref.minutes) return 0;
+    const starts = ref.starts || 0;
+    const startRate = Math.min(1, starts / 38);
+    const minsPerStart = starts > 0 ? Math.min(90, ref.minutes / starts) : 0;
+    const minFactor = (startRate * minsPerStart * avail) / 90;
+    const xg90 = per90(b, p, 'expected_goals');
+    const team = state.teamsById[p.team];
+    let xg = 0;
+    for (const f of fixtures) {
+      const opp = state.teamsById[f.opponent];
+      const ourXG = teamXG(team, opp, f.isHome);
+      const homeNudge = f.isHome ? 1.07 : 0.93;
+      const attackScale = ourXG != null
+        ? ourXG / AVG_TEAM_XG
+        : (FDR_ATTACK_SCALE[f.difficulty] ?? 1) * homeNudge;
+      xg += xg90 * minFactor * attackScale;
+    }
+    return 1 - Math.exp(-xg);
+  }
+
+  return { xp, gws, horizonTotal, goalChance };
 }
 
 // Per-fixture team forecast for one gameweek: expected goals scored and
