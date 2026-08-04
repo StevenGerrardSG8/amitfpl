@@ -52,6 +52,7 @@ function showTab(name) {
     v.done = true;
   }
   if (location.hash !== `#${name}`) history.replaceState(null, '', `#${name}`);
+  try { localStorage.setItem('amitfpl:lastTab', name); } catch { /* private mode */ }
 }
 
 function renderDeadline() {
@@ -209,8 +210,14 @@ async function main() {
   });
 
   const initial = location.hash.slice(1);
-  // Shared plan links (#plan=...) land straight in the planner.
-  showTab(initial.startsWith('plan=') ? 'planner' : views[initial] ? initial : 'home');
+  let lastTab = null;
+  try { lastTab = localStorage.getItem('amitfpl:lastTab'); } catch { /* private mode */ }
+  // Shared plan links (#plan=...) land straight in the planner; otherwise
+  // the hash wins, then the tab you were on last visit.
+  showTab(initial.startsWith('plan=') ? 'planner'
+    : views[initial] ? initial
+    : views[lastTab] ? lastTab
+    : 'home');
 
   // Keep the "updated Xm ago" label and the deadline countdown honest.
   setInterval(() => {

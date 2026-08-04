@@ -50,7 +50,8 @@ function filtered() {
     if (view.maxPrice && p.now_cost / 10 > +view.maxPrice) return false;
     if (view.newOnly && !isNewSigning(p)) return false;
     if (q) {
-      const hay = `${p.first_name} ${p.second_name} ${p.web_name}`.toLowerCase();
+      const team = state.teamsById[p.team];
+      const hay = `${p.first_name} ${p.second_name} ${p.web_name} ${team.name} ${team.short_name}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
