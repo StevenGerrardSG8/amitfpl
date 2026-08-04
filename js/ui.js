@@ -74,6 +74,9 @@ export const isNewSigning = (p) =>
 // watchdog also catches requests that hang without firing onerror.
 export function playerPhoto(p, cls = 'pp-photo') {
   const shirt = `${p.team_code}${p.element_type === 1 ? '_1' : ''}`;
-  return `<img class="${cls}" loading="lazy" alt="" data-shirt="${shirt}" data-init="${escapeHtml((p.web_name || '?')[0].toUpperCase())}"
-    src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png" />`;
+  // The wrapper zoom-crops the official head-and-shoulders portrait so
+  // only the face shows - no kit/shoulders.
+  return `<span class="face-wrap ${cls}"><img class="face-img" loading="lazy" alt=""
+    data-shirt="${shirt}" data-init="${escapeHtml((p.web_name || '?')[0].toUpperCase())}"
+    src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png" /></span>`;
 }

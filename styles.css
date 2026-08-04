@@ -781,6 +781,34 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .shirt-img { object-fit: contain !important; padding: 6px; box-sizing: border-box; }
 
+/* Face-only crop: the wrapper is the circle (sized by its class, e.g.
+   .row-photo/.pp-photo), the portrait inside is zoomed so only the
+   face shows - no kit or shoulders. */
+.face-wrap {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+.face-wrap .face-img {
+  position: absolute;
+  width: 150%;
+  height: auto;
+  left: 50%;
+  top: -5%;
+  transform: translateX(-50%);
+}
+/* Initials fallback is already a clean circle - show it as-is. */
+.face-wrap .face-img[data-f="2"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  transform: none;
+}
+
 /* ---------- Badges & photo extras ---------- */
 .team-badge {
   width: 18px;
