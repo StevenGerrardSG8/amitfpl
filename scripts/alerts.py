@@ -19,7 +19,8 @@ from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT, "config.local.json")
-STATE_PATH = os.path.join(ROOT, "data", ".alerts-state.json")
+PUBLIC_CONFIG_PATH = os.path.join(ROOT, "config.json")
+STATE_PATH = os.path.join(ROOT, "data", "alerts-state.json")
 BOOTSTRAP_PATH = os.path.join(ROOT, "data", "bootstrap.json")
 
 
@@ -29,6 +30,18 @@ def load_json(path, default=None):
             return json.load(f)
     except Exception:
         return default
+
+
+def load_config():
+    """Credentials from env (GitHub Actions secrets) or config.local.json;
+    the watchlist lives in the public config.json."""
+    local = load_json(CONFIG_PATH, {}) or {}
+    public = load_json(PUBLIC_CONFIG_PATH, {}) or {}
+    return {
+        "telegram_token": os.environ.get("TELEGRAM_TOKEN") or local.get("telegram_token"),
+        "telegram_chat_id": os.environ.get("TELEGRAM_CHAT_ID") or local.get("telegram_chat_id"),
+        "watchlist": public.get("watchlist") or local.get("watchlist") or [],
+    }
 
 
 def send(config, text):
@@ -104,8 +117,8 @@ def check(config):
 
 
 def main():
-    config = load_json(CONFIG_PATH)
-    if not config or not config.get("telegram_token"):
+    config = load_config()
+    if not config.get("telegram_token"):
         # Alerts not configured — that's fine, stay quiet.
         return
     if "--test" in sys.argv:

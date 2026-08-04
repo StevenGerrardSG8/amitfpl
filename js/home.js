@@ -4,6 +4,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { teamBadge, playerCell } from './ui.js';
 import { loadBaseline, buildModel, teamForecast } from './model.js';
+import { watchlist } from './drawer.js';
 
 function fixtureCards() {
   const nxt = state.nextEvent;
@@ -80,6 +81,15 @@ export async function renderHome(root) {
       <td class="num"><span class="cs-pill cs-hi">${Math.round(prob * 100)}%</span></td>
     </tr>`).join(''));
 
+  const watched = watchlist().map((id) => state.playersById[id]).filter(Boolean);
+  const watchRows = watched.length
+    ? mini(watched.slice(0, 6).map((p) => `<tr>
+        <td>${playerCell(p)}</td>
+        <td class="num">${fmtPrice(p.now_cost)}</td>
+        <td class="num"><span class="pp-xp" style="margin:0">${model.xp(p.id, gw).toFixed(1)}</span></td>
+      </tr>`).join(''))
+    : '<div class="note">Star players from their profile (open any player, tap ☆ Watch) and they\'ll show up here.</div>';
+
   root.innerHTML = `
     ${fixtureCards()}
     <div class="widget-grid">
@@ -87,6 +97,7 @@ export async function renderHome(root) {
       ${widget('🛡️ Clean sheet chances', csRows, 'fixtures', 'Full forecast')}
       ${widget('⭐ Captain picks', capRows, 'scout', 'Scout')}
       ${widget('🎯 Likely scorers', scorerRows, 'scout', 'Scout')}
+      ${widget('👁️ My watchlist', watchRows, 'players', 'Players')}
     </div>`;
 
   root.querySelectorAll('[data-goto]').forEach((b) =>

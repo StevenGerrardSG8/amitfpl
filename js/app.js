@@ -170,6 +170,15 @@ async function main() {
   });
   document.getElementById('refresh-btn').addEventListener('click', () => refresh(true));
 
+  // Help modal
+  const helpOverlay = document.getElementById('help-overlay');
+  document.getElementById('help-btn').addEventListener('click', () => {
+    helpOverlay.hidden = !helpOverlay.hidden;
+  });
+  helpOverlay.addEventListener('click', (e) => {
+    if (e.target === helpOverlay || e.target.closest('.drawer-close')) helpOverlay.hidden = true;
+  });
+
   const themeBtn = document.getElementById('theme-btn');
   const syncThemeIcon = () => {
     themeBtn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
@@ -184,7 +193,8 @@ async function main() {
   });
 
   const initial = location.hash.slice(1);
-  showTab(views[initial] ? initial : 'home');
+  // Shared plan links (#plan=...) land straight in the planner.
+  showTab(initial.startsWith('plan=') ? 'planner' : views[initial] ? initial : 'home');
 
   // Keep the "updated Xm ago" label honest.
   setInterval(() => { if (!refreshing) renderUpdatedChip(); }, 30000);

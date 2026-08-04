@@ -41,7 +41,39 @@ let sideScroll = 0;
 
 /* ---------------- persistence ---------------- */
 
+// Cross-device plan sharing: the whole plan travels in the URL hash.
+const encodePlan = () => {
+  const payload = JSON.stringify({
+    h: view.horizon, s: view.baseSquad, x: view.starters,
+    c: view.captain, ch: view.chips, t: view.transfers,
+  });
+  return btoa(unescape(encodeURIComponent(payload))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+function importPlanFromHash() {
+  const m = location.hash.match(/^#plan=([A-Za-z0-9_-]+)/);
+  if (!m) return false;
+  try {
+    const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    const d = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    Object.assign(view, {
+      horizon: d.h || 5,
+      baseSquad: (d.s || []).filter((id) => state.playersById[id]),
+      starters: (d.x || []).filter((id) => state.playersById[id]),
+      captain: d.c || null,
+      chips: d.ch || {},
+      transfers: d.t || {},
+    });
+    save();
+    history.replaceState(null, '', '#planner');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function load() {
+  if (importPlanFromHash()) return;
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved) {
@@ -672,6 +704,7 @@ export async function renderPlanner(root) {
           <strong class="${itb < 0 ? 'lo' : ''}">${fmtPrice(itb)}</strong> ·
           Plan xP <strong>${horizonTotal.toFixed(0)}</strong>${totalHits ? ` <span class="lo">(-${totalHits} hits)</span>` : ''}
         </span>
+        <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="Copy a link that opens this exact plan on any device">🔗 Share</button>
         <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>📋 Copy</button>
         <button class="link-btn" id="pl-clear" ${view.baseSquad.length ? '' : 'disabled'}>Clear</button>
       </div>
@@ -746,6 +779,15 @@ export async function renderPlanner(root) {
       rerender();
     })
   );
+
+  root.querySelector('#pl-share')?.addEventListener('click', async (e) => {
+    const url = `${location.origin}${location.pathname}#plan=${encodePlan()}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      e.target.textContent = '✓ Link copied';
+      setTimeout(() => { e.target.textContent = '🔗 Share'; }, 1800);
+    } catch { /* clipboard unavailable */ }
+  });
 
   root.querySelector('#pl-copy')?.addEventListener('click', async (e) => {
     const label = (id) => {

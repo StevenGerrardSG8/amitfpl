@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Personal Fantasy Premier League toolkit: expected points model, squad planner with transfer simulation, predicted lineups, fixtures and live match data." />
   <title>amitfpl - FPL Toolkit</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="manifest" href="manifest.json" />
@@ -51,6 +52,7 @@
           <button id="refresh-btn" title="Refresh data now" aria-label="Refresh data">⟳</button>
         </div>
         <button id="theme-btn" class="theme-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+        <button id="help-btn" class="theme-btn" title="Help &amp; glossary" aria-label="Help">?</button>
         <div class="deadline-chip" id="deadline-chip" hidden>
           <span class="deadline-label" id="deadline-gw"></span>
           <span class="deadline-time" id="deadline-time"></span>
@@ -93,6 +95,38 @@
     <section id="view-setpieces" class="view" hidden></section>
     <section id="view-myteam" class="view" hidden></section>
   </main>
+
+  <div id="help-overlay" class="drawer-overlay" hidden>
+    <div class="drawer" role="dialog" aria-label="Help">
+      <button class="drawer-close" title="Close">✕</button>
+      <h2 style="margin:4px 0 12px">How to use amitfpl</h2>
+      <div class="help-list">
+        <p><strong>Home</strong> - the at-a-glance dashboard: next fixtures and quick picks.</p>
+        <p><strong>Players</strong> - every player, sortable and filterable. Click a player anywhere for the full profile.</p>
+        <p><strong>Planner</strong> - build a squad, drag players between pitch and bench, pick captain and chips, and plan transfers for future gameweeks (free transfers bank up, extra moves cost -4). 🔗 Share moves your plan between devices.</p>
+        <p><strong>Scout</strong> - captain picks per gameweek, likely scorers, differentials, and best value.</p>
+        <p><strong>Market</strong> - price changes and transfer momentum.</p>
+        <p><strong>Status</strong> - injuries, doubts, and suspension risk.</p>
+        <p><strong>Compare</strong> - 2-3 players side by side.</p>
+        <p><strong>Fixtures</strong> - difficulty planner, goal &amp; clean sheet forecast, rotation pairs, blanks &amp; doubles.</p>
+        <p><strong>Lineups</strong> - our projected starting XI for every club.</p>
+        <p><strong>Matches</strong> - every gameweek's games; scores and point events fill in live.</p>
+        <p><strong>Set Pieces</strong> - penalty, free-kick and corner takers.</p>
+        <p><strong>My Team</strong> - connect your real FPL squad with your Team ID.</p>
+      </div>
+      <h2 style="margin:18px 0 12px">Glossary</h2>
+      <div class="help-list">
+        <p><strong>xP</strong> - expected points (our model's forecast).</p>
+        <p><strong>xG / xA</strong> - expected goals / assists, quality of chances involved in.</p>
+        <p><strong>xGI</strong> - expected goal involvements (xG + xA).</p>
+        <p><strong>DC</strong> - defensive contribution points (tackles, blocks, interceptions, clearances).</p>
+        <p><strong>FDR</strong> - fixture difficulty rating, 1 (easiest) to 5 (hardest).</p>
+        <p><strong>Sel %</strong> - how many FPL managers own the player.</p>
+        <p><strong>FT</strong> - free transfers available (bank up to 5; extra moves cost -4 points).</p>
+        <p><strong>TC / BB / WC / FH</strong> - Triple Captain, Bench Boost, Wildcard, Free Hit chips.</p>
+      </div>
+    </div>
+  </div>
 
   <footer class="footer">
     <span>Data: official Fantasy Premier League API · auto-refreshes in the background · personal tool</span>

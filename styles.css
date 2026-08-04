@@ -978,6 +978,30 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .widget table.data td { padding: 6px 12px; }
 
+/* ---------- Drawer extras: actions, trends ---------- */
+.drawer-actions { display: flex; gap: 8px; margin-top: 8px; }
+.trend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 4px 0 8px;
+}
+.k-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+.spark { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.spark-val { font-weight: 800; font-variant-numeric: tabular-nums; }
+.spark-range { font-size: 11px; }
+
+/* ---------- Help ---------- */
+.help-list p { margin: 6px 0; font-size: 13px; color: var(--text-soft); }
+.help-list strong { color: var(--text); }
+
 /* ---------- Team forecast ---------- */
 .xg-pill {
   display: inline-block;

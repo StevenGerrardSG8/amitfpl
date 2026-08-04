@@ -55,7 +55,8 @@ def run_alerts():
 def refresh_loop():
     while True:
         refresh_snapshots()
-        run_alerts()
+        # Alerts now run from the GitHub Action (cloud, 24/7) - not here,
+        # to avoid double-sending. scripts/alerts.py still works manually.
         time.sleep(REFRESH_EVERY_S)
 
 

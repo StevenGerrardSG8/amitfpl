@@ -124,6 +124,7 @@ function render(root) {
         <input type="number" id="pl-price" placeholder="Max £" step="0.5" min="3.5" max="16" style="width:90px" value="${view.maxPrice}" />
         <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> 🆕 New signings</label>
         <span class="spacer"></span>
+        <button class="link-btn" id="pl-csv" title="Download the current filtered list as CSV">⬇ CSV</button>
         <span class="result-count">${list.length} players${list.length > view.limit ? ` · showing top ${view.limit}` : ''}</span>
       </div>
       <div class="table-wrap" style="max-height: 70vh; overflow-y: auto;">
@@ -145,6 +146,28 @@ function render(root) {
   root.querySelector('#pl-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; render(root); });
   root.querySelector('#pl-new').addEventListener('change', (e) => { view.newOnly = e.target.checked; render(root); });
   root.querySelector('#pl-more')?.addEventListener('click', () => { view.limit += 100; render(root); });
+
+  root.querySelector('#pl-csv').addEventListener('click', () => {
+    const cols = ['web_name', 'position', 'team', 'now_cost', 'selected_by_percent', 'ep_next', 'form',
+      'total_points', 'points_per_game', 'expected_goals', 'expected_assists',
+      'expected_goal_involvements', 'defensive_contribution', 'minutes'];
+    const header = 'name,pos,team,price,sel%,xp_next,form,pts,ppg,xg,xa,xgi,dc,min';
+    const lines = filtered().map((p) => [
+      `"${p.web_name.replace(/"/g, '""')}"`,
+      state.positionsById[p.element_type].singular_name_short,
+      state.teamsById[p.team].short_name,
+      (p.now_cost / 10).toFixed(1),
+      p.selected_by_percent, p.ep_next, p.form, p.total_points, p.points_per_game,
+      p.expected_goals, p.expected_assists, p.expected_goal_involvements,
+      p.defensive_contribution, p.minutes,
+    ].join(','));
+    const blob = new Blob([header + '\n' + lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'amitfpl-players.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
 
   root.querySelectorAll('thead th[data-key]').forEach((th) => {
     const key = th.dataset.key;

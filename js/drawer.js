@@ -10,15 +10,77 @@ const summaryCache = new Map();
 
 async function fetchSummary(id) {
   if (summaryCache.has(id)) return summaryCache.get(id);
-  try {
-    const res = await fetch(`/api/fpl/element-summary/${id}/`);
-    if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    summaryCache.set(id, data);
-    return data;
-  } catch {
-    return null; // hosted without a proxy - drawer degrades gracefully
+  // Live proxy first (local dev), then the Action's snapshot (hosted,
+  // covers the ~150 most relevant players).
+  for (const url of [`/api/fpl/element-summary/${id}/`, `data/summaries/${id}.json`]) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      summaryCache.set(id, data);
+      return data;
+    } catch { /* try next source */ }
   }
+  return null;
+}
+
+let trendsCache;
+async function fetchTrends() {
+  if (trendsCache !== undefined) return trendsCache;
+  try {
+    const res = await fetch('data/trends.json');
+    trendsCache = res.ok ? await res.json() : null;
+  } catch {
+    trendsCache = null;
+  }
+  return trendsCache;
+}
+
+// Tiny single-series sparkline: 2px accent line, no axes, values as
+// muted text. Handles a single sample (history starts accumulating
+// the day the tracker went live).
+function sparkline(points, fmt) {
+  if (!points.length) return '<span class="muted">no data yet</span>';
+  const w = 150;
+  const h = 34;
+  const pad = 3;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const span = max - min || 1;
+  const x = (i) => points.length === 1 ? w / 2 : pad + (i * (w - 2 * pad)) / (points.length - 1);
+  const y = (v) => h - pad - ((v - min) / span) * (h - 2 * pad);
+  const path = points.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const last = points[points.length - 1];
+  return `<div class="spark">
+    <svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">
+      ${points.length > 1 ? `<polyline points="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+      <circle cx="${x(points.length - 1)}" cy="${y(last)}" r="3" fill="var(--accent)"/>
+    </svg>
+    <span class="spark-val">${fmt(last)}</span>
+    ${points.length > 1 ? `<span class="muted spark-range">${fmt(min)} – ${fmt(max)}</span>` : '<span class="muted spark-range">tracking since today</span>'}
+  </div>`;
+}
+
+async function trendSection(id) {
+  const trends = await fetchTrends();
+  if (!trends) return '';
+  const days = Object.keys(trends).sort();
+  const price = [];
+  const own = [];
+  for (const d of days) {
+    const row = trends[d]?.[String(id)];
+    if (row) {
+      price.push(row[0] / 10);
+      own.push(parseFloat(row[1]) || 0);
+    }
+  }
+  if (!price.length) return '';
+  return `
+    <div class="section-title" style="padding-left:0">📉 Trends <span class="muted" style="font-weight:500">· daily since Aug 2026</span></div>
+    <div class="trend-grid">
+      <div><div class="k-label">Price</div>${sparkline(price, (v) => '£' + v.toFixed(1))}</div>
+      <div><div class="k-label">Ownership</div>${sparkline(own, (v) => v.toFixed(1) + '%')}</div>
+    </div>`;
 }
 
 function close() {
@@ -26,6 +88,18 @@ function close() {
     overlay.hidden = true;
     overlay.innerHTML = '';
   }
+}
+
+/* ---- watchlist (local, per device) ---- */
+const WATCH_KEY = 'amitfpl:watchlist';
+export function watchlist() {
+  try { return JSON.parse(localStorage.getItem(WATCH_KEY)) || []; } catch { return []; }
+}
+const isWatched = (id) => watchlist().includes(id);
+function toggleWatch(id) {
+  const list = watchlist();
+  const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+  localStorage.setItem(WATCH_KEY, JSON.stringify(next));
 }
 
 function statTile(k, v) {
@@ -106,6 +180,10 @@ export async function openDrawer(id) {
             · ${fmtPrice(p.now_cost)} · owned ${p.selected_by_percent}%
           </div>
           ${st ? `<div class="drawer-news ${st.cls}">${escapeHtml(st.label)}</div>` : ''}
+          <div class="drawer-actions">
+            <button class="chip-btn ${isWatched(id) ? 'on' : ''}" id="dw-watch">${isWatched(id) ? '⭐ Watching' : '☆ Watch'}</button>
+            <button class="chip-btn" id="dw-compare">⚖ Compare</button>
+          </div>
         </div>
       </div>
       <div class="summary-grid" style="padding:12px 0">
@@ -120,6 +198,22 @@ export async function openDrawer(id) {
     </div>`;
 
   overlay.querySelector('.drawer-close').addEventListener('click', close);
+  overlay.querySelector('#dw-watch').addEventListener('click', (e) => {
+    toggleWatch(id);
+    e.target.classList.toggle('on', isWatched(id));
+    e.target.textContent = isWatched(id) ? '⭐ Watching' : '☆ Watch';
+  });
+  overlay.querySelector('#dw-compare').addEventListener('click', () => {
+    let slots;
+    try { slots = JSON.parse(localStorage.getItem('amitfpl:compare')) || []; } catch { slots = []; }
+    if (!slots.includes(id)) {
+      const free = [0, 1, 2].find((i) => !slots[i]);
+      slots[free ?? 2] = id;
+      localStorage.setItem('amitfpl:compare', JSON.stringify(slots));
+    }
+    close();
+    document.querySelector('.tab[data-tab="compare"]')?.click();
+  });
 
   await loadBaseline();
   const model = buildModel(5);
@@ -128,6 +222,7 @@ export async function openDrawer(id) {
   if (!body) return; // drawer closed meanwhile
 
   const sections = [];
+  sections.push(await trendSection(id));
   sections.push(`
     <div class="section-title" style="padding-left:0">📅 Upcoming - model forecast</div>
     <div class="table-wrap"><table class="data">
