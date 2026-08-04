@@ -1,6 +1,10 @@
 import { getEntry, getPicks, fetchTeamSnapshot, fetchConfig } from './api.js';
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, fixtureDifficulty } from './ui.js';
+import { loadBaseline, buildModel } from './model.js';
+
+let model = null;
+const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
 
 const STORAGE_KEY = 'amitfpl:teamId';
 
@@ -65,7 +69,7 @@ function pickRow(pick) {
     </div></td>
     <td><span class="pos-badge pos-${pos}">${pos}</span></td>
     <td class="num">${fmtPrice(p.now_cost)}</td>
-    <td class="num">${num(p.ep_next).toFixed(1)}</td>
+    <td class="num">${modelXp(p).toFixed(1)}</td>
     <td class="num">${p.form}</td>
     <td class="num">${p.event_points}</td>
     <td><div class="fdr-cell" style="flex-direction:row">${fx}</div></td>
@@ -73,6 +77,10 @@ function pickRow(pick) {
 }
 
 export async function renderMyTeam(root) {
+  if (!model) {
+    await loadBaseline();
+    model = buildModel(1);
+  }
   let teamId = getTeamId();
   if (!teamId) {
     // Fall back to the id configured in config.json (used by the
@@ -139,7 +147,7 @@ export async function renderMyTeam(root) {
         <table class="data">
           <thead><tr>
             <th class="no-sort">Player</th><th class="no-sort">Pos</th>
-            <th class="num no-sort">Price</th><th class="num no-sort" title="FPL expected points, next GW">xP Next</th>
+            <th class="num no-sort">Price</th><th class="num no-sort" title="amitfpl model - expected points next GW">xP Next</th>
             <th class="num no-sort">Form</th><th class="num no-sort">GW Pts</th><th class="no-sort">Next 3</th>
           </tr></thead>
           <tbody>

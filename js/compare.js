@@ -1,6 +1,10 @@
 // Compare tab: 2–3 players side by side.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, playerPhoto, teamBadge } from './ui.js';
+import { loadBaseline, buildModel } from './model.js';
+
+let model = null;
+const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
 
 const STORAGE_KEY = 'amitfpl:compare';
 const SLOTS = 3;
@@ -10,7 +14,7 @@ const METRICS = [
   { label: 'Position', fn: (p) => state.positionsById[p.element_type].singular_name_short },
   { label: 'Price', fn: (p) => fmtPrice(p.now_cost) },
   { label: 'Selected by', fn: (p) => `${p.selected_by_percent}%` },
-  { label: 'xP next GW', fn: (p) => num(p.ep_next).toFixed(1), best: (p) => num(p.ep_next) },
+  { label: 'xP next GW', fn: (p) => modelXp(p).toFixed(1), best: (p) => modelXp(p) },
   { label: 'Form', fn: (p) => p.form, best: (p) => num(p.form) },
   { label: 'Total points', fn: (p) => p.total_points, best: (p) => p.total_points },
   { label: 'Points per game', fn: (p) => p.points_per_game, best: (p) => num(p.points_per_game) },
@@ -51,7 +55,11 @@ function findPlayer(text) {
   );
 }
 
-export function renderCompare(root) {
+export async function renderCompare(root) {
+  if (!model) {
+    await loadBaseline();
+    model = buildModel(1);
+  }
   const ids = load();
   const players = ids.map((id) => state.playersById[id] || null);
   const chosen = players.filter(Boolean);
