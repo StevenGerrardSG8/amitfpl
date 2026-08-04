@@ -23,7 +23,17 @@ function fixtureCards() {
       <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(a.short_name)}</span></div>
     </div>`;
   }).join('');
+  const dl = new Date(nxt.deadline_time);
+  const left = dl - Date.now();
+  const d = Math.floor(left / 86400000);
+  const h = Math.floor((left % 86400000) / 3600000);
   return `
+    <div class="hero-strip">
+      <span class="hero-gw">${escapeHtml(nxt.name)}</span>
+      <span>${fx.length} fixtures</span>
+      <span>deadline ${dl.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="hero-count">${left > 0 ? `${d}d ${h}h to go` : 'locked'}</span>
+    </div>
     <div class="card" style="margin-bottom:16px">
       <div class="section-title">${escapeHtml(nxt.name)} fixtures - your local time</div>
       <div class="fx-grid">${cards}</div>
