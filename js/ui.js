@@ -1,6 +1,20 @@
 // Small shared rendering helpers used across tabs.
 import { state, statusInfo, escapeHtml } from './state.js';
 
+// Fixture difficulty 1-5. When ClubElo ratings are loaded the buckets
+// come from the opponent's venue-adjusted Elo (sharper than the flat
+// FDR, which lumps all promoted sides together); FDR is the fallback.
+export function fixtureDifficulty(f) {
+  const oppElo = state.elo?.[f.opponent];
+  if (!oppElo) return f.difficulty;
+  const adj = oppElo + (f.isHome ? -60 : 60); // opponent is away when we're home
+  if (adj >= 1960) return 5;
+  if (adj >= 1880) return 4;
+  if (adj >= 1795) return 3;
+  if (adj >= 1700) return 2;
+  return 1;
+}
+
 export function fixtureChips(teamId, count = 3) {
   const fx = (state.upcomingByTeam[teamId] || []).slice(0, count);
   if (!fx.length) return '<span class="fdr-chip fdr-blank">-</span>';
@@ -8,7 +22,7 @@ export function fixtureChips(teamId, count = 3) {
     .map((f) => {
       const opp = state.teamsById[f.opponent].short_name;
       const ha = f.isHome ? 'H' : 'A';
-      return `<span class="fdr-chip fdr-${f.difficulty}" title="GW${f.event}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${ha})</span>`;
+      return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}" title="GW${f.event}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${ha})</span>`;
     })
     .join(' ');
 }

@@ -218,6 +218,16 @@ async function main() {
     renderDeadline();
   }, 30000);
 
+  // Offline awareness: a slim banner while disconnected (cached data
+  // keeps working thanks to the service worker).
+  const offlineBar = document.createElement('div');
+  offlineBar.className = 'offline-bar';
+  offlineBar.textContent = 'Offline - showing saved data';
+  offlineBar.hidden = navigator.onLine;
+  document.querySelector('.topbar').appendChild(offlineBar);
+  addEventListener('online', () => { offlineBar.hidden = true; refresh(); });
+  addEventListener('offline', () => { offlineBar.hidden = false; });
+
   // The planner's markup differs across the mobile breakpoint - refresh
   // it when the viewport crosses over (rotation, window resize).
   matchMedia('(max-width: 640px)').addEventListener('change', () => {

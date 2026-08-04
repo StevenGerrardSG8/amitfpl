@@ -116,7 +116,17 @@ export async function renderLineups(root) {
   await loadBaseline();
   const byTeam = {};
   for (const p of state.bootstrap.elements) (byTeam[p.team] = byTeam[p.team] || []).push(p);
-  const cards = state.bootstrap.teams.map((t) => teamCard(t, byTeam[t.id] || [])).join('');
+  // Cards in kickoff order - the games you need first come first.
+  const nextKo = (t) => {
+    const nf = (state.upcomingByTeam[t.id] || [])[0];
+    if (!nf) return '9999';
+    const raw = state.fixtures.find(
+      (f) => f.event === nf.event && (nf.isHome ? f.team_h === t.id : f.team_a === t.id)
+    );
+    return raw?.kickoff_time || '9999';
+  };
+  const teams = [...state.bootstrap.teams].sort((a, b) => nextKo(a).localeCompare(nextKo(b)));
+  const cards = teams.map((t) => teamCard(t, byTeam[t.id] || [])).join('');
   root.innerHTML = `
     <div class="note" style="padding:0 4px 12px">
       amitfpl projection - from last season's starts, squad pricing and availability flags.

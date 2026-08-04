@@ -2,7 +2,7 @@
 // to open a full profile - key stats, upcoming fixtures with model xP,
 // this season's gameweek log, and past-season history.
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
-import { playerPhoto, teamBadge, spBadges } from './ui.js';
+import { playerPhoto, teamBadge, spBadges, fixtureDifficulty } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 
 let overlay = null;
@@ -111,7 +111,7 @@ function upcomingRows(model, p) {
     .map((e) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e);
       const opp = fx.length
-        ? fx.map((f) => `<span class="fdr-chip fdr-${f.difficulty}">${teamBadge(f.opponent, 'chip-badge')}${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})</span>`).join(' ')
+        ? fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})</span>`).join(' ')
         : '<span class="fdr-chip fdr-blank">blank</span>';
       const xp = model.xp(p.id, e);
       return `<tr>

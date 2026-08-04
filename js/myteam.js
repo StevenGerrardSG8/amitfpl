@@ -1,6 +1,6 @@
 import { getEntry, getPicks, fetchTeamSnapshot, fetchConfig } from './api.js';
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
-import { playerPhoto, teamBadge } from './ui.js';
+import { playerPhoto, teamBadge, fixtureDifficulty } from './ui.js';
 
 const STORAGE_KEY = 'amitfpl:teamId';
 
@@ -53,7 +53,7 @@ function pickRow(pick) {
       ? '<span class="captain-badge vice" title="Vice captain">V</span>'
       : '';
   const fx = (state.upcomingByTeam[p.team] || []).slice(0, 3)
-    .map((f) => `<span class="fdr-chip fdr-${f.difficulty}">${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})</span>`)
+    .map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})</span>`)
     .join(' ') || '-';
   return `<tr>
     <td><div class="player-flex">

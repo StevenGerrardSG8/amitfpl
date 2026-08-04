@@ -1,5 +1,5 @@
 import { state, escapeHtml } from './state.js';
-import { teamBadge } from './ui.js';
+import { teamBadge, fixtureDifficulty } from './ui.js';
 import { teamForecast } from './model.js';
 
 const view = { horizon: 6, sortByEase: true, forecastGw: null };
@@ -91,7 +91,7 @@ function swingsCard() {
   const scored = state.bootstrap.teams.map((t) => {
     const byGw = {};
     for (const f of state.upcomingByTeam[t.id] || []) {
-      (byGw[f.event] = byGw[f.event] || []).push(f.difficulty);
+      (byGw[f.event] = byGw[f.event] || []).push(fixtureDifficulty(f));
     }
     const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
     const avg = (a, b) => {
@@ -145,7 +145,7 @@ function rotationCard() {
   for (const t of teams) {
     diffAt[t.id] = {};
     for (const f of state.upcomingByTeam[t.id] || []) {
-      diffAt[t.id][f.event] = Math.min(diffAt[t.id][f.event] ?? 9, f.difficulty);
+      diffAt[t.id][f.event] = Math.min(diffAt[t.id][f.event] ?? 9, fixtureDifficulty(f));
     }
   }
   const pairs = [];
@@ -197,7 +197,7 @@ export function renderFixtures(root) {
     let sum = 0;
     let count = 0;
     for (const e of gws) {
-      for (const f of byGw[e] || []) { sum += f.difficulty; count++; }
+      for (const f of byGw[e] || []) { sum += fixtureDifficulty(f); count++; }
       if (!(byGw[e] || []).length) { sum += 5; count++; } // blank GW ≈ hardest
     }
     return { team: t, byGw, avg: sum / count };
@@ -217,7 +217,7 @@ export function renderFixtures(root) {
           const chips = fx
             .map((f) => {
               const opp = state.teamsById[f.opponent].short_name;
-              return `<span class="fdr-chip fdr-${f.difficulty}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${f.isHome ? 'H' : 'A'})</span>`;
+              return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${f.isHome ? 'H' : 'A'})</span>`;
             })
             .join('');
           return `<td><div class="fdr-cell">${chips}</div></td>`;

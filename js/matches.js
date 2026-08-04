@@ -71,7 +71,9 @@ export function renderMatches(root) {
     <div class="card">
       <div class="toolbar">
         <label>Gameweek</label>
+        <button class="link-btn" id="mt-prev" ${gw <= 1 ? 'disabled' : ''}>‹</button>
         <select id="mt-gw">${gwOptions}</select>
+        <button class="link-btn" id="mt-next" ${gw >= 38 ? 'disabled' : ''}>›</button>
         <span class="spacer"></span>
         <span class="result-count">Scores and FPL events (goals, assists, bonus) appear as games are played - data refreshes every 30 min.</span>
       </div>
@@ -84,4 +86,6 @@ export function renderMatches(root) {
     view.gw = +e.target.value;
     renderMatches(root);
   });
+  root.querySelector('#mt-prev')?.addEventListener('click', () => { view.gw = gw - 1; renderMatches(root); });
+  root.querySelector('#mt-next')?.addEventListener('click', () => { view.gw = gw + 1; renderMatches(root); });
 }
