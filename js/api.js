@@ -13,9 +13,9 @@ const SOURCES = {
 
 async function tryFetch(url) {
   // Hard timeout so a hung request surfaces as an error instead of an
-  // endless spinner.
+  // endless spinner. Generous: first load on slow cellular pulls ~300KB.
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 15000);
+  const timer = setTimeout(() => ctl.abort(), 45000);
   try {
     const res = await fetch(url, { cache: 'no-cache', signal: ctl.signal });
     if (!res.ok) {

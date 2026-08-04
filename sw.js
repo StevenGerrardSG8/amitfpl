@@ -2,13 +2,19 @@
 // Strategy: network-first for everything, falling back to cache when
 // offline. This keeps the app installable and usable offline WITHOUT
 // ever serving stale code when online.
-const CACHE = 'amitfpl-v1';
+const CACHE = 'amitfpl-v2';
 const CORE = [
   './',
   'index.html',
   'styles.css',
   'manifest.json',
   'icon.svg',
+  'js/app.js', 'js/api.js', 'js/state.js', 'js/ui.js', 'js/model.js',
+  'js/players.js', 'js/planner.js', 'js/scout.js', 'js/market.js',
+  'js/status.js', 'js/compare.js', 'js/fixtures.js', 'js/lineups.js',
+  'js/matches.js', 'js/setpieces.js', 'js/myteam.js', 'js/home.js',
+  'js/drawer.js',
+  'data/bootstrap.json', 'data/fixtures.json', 'data/faces.json', 'data/meta.json',
 ];
 
 self.addEventListener('install', (e) => {
