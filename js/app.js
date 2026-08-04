@@ -112,6 +112,7 @@ async function refresh() {
 }
 
 async function main() {
+  window.__appStarted = true; // disarms the stuck-spinner guard in index.html
   const loading = document.getElementById('loading');
   const errorBox = document.getElementById('error');
 

@@ -12,13 +12,21 @@ const SOURCES = {
 };
 
 async function tryFetch(url) {
-  const res = await fetch(url, { cache: 'no-cache' });
-  if (!res.ok) {
-    const err = new Error(`${res.status} for ${url}`);
-    err.status = res.status;
-    throw err;
+  // Hard timeout so a hung request surfaces as an error instead of an
+  // endless spinner.
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const res = await fetch(url, { cache: 'no-cache', signal: ctl.signal });
+    if (!res.ok) {
+      const err = new Error(`${res.status} for ${url}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 const cacheKey = (name) => `amitfpl:v2:${name}`;
