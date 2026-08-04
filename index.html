@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>amitfpl — FPL Toolkit</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">⚽</span>
+        <span class="brand-name">amit<strong>fpl</strong></span>
+        <span class="brand-sub">FPL Toolkit</span>
+      </div>
+      <div class="chips">
+        <div class="updated-chip" id="updated-chip" hidden>
+          <span id="updated-text"></span>
+          <button id="refresh-btn" title="Refresh data now" aria-label="Refresh data">⟳</button>
+        </div>
+        <div class="deadline-chip" id="deadline-chip" hidden>
+          <span class="deadline-label" id="deadline-gw"></span>
+          <span class="deadline-time" id="deadline-time"></span>
+        </div>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="players">Players</button>
+      <button class="tab" data-tab="fixtures">Fixtures</button>
+      <button class="tab" data-tab="setpieces">Set Pieces</button>
+      <button class="tab" data-tab="myteam">My Team</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading FPL data…</p>
+    </div>
+    <div id="error" class="error-box" hidden></div>
+
+    <section id="view-players" class="view" hidden></section>
+    <section id="view-fixtures" class="view" hidden></section>
+    <section id="view-setpieces" class="view" hidden></section>
+    <section id="view-myteam" class="view" hidden></section>
+  </main>
+
+  <footer class="footer">
+    <span>Data: official Fantasy Premier League API · auto-refreshes in the background · personal tool</span>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
