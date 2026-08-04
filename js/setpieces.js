@@ -13,7 +13,7 @@ function takerCell(list) {
   const alt = rest.length
     ? `<div class="sp-alt">then ${rest.slice(0, 2).map((p) => escapeHtml(p.web_name)).join(', ')}</div>`
     : '';
-  return `<div><span class="sp-primary">${inlinePhoto(first)} ${escapeHtml(first.web_name)}</span>${alt}</div>`;
+  return `<div><span class="sp-primary clickable" data-pid="${first.id}">${inlinePhoto(first)} ${escapeHtml(first.web_name)}</span>${alt}</div>`;
 }
 
 export function renderSetPieces(root) {

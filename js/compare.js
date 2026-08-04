@@ -69,7 +69,7 @@ export function renderCompare(root) {
   let table = '';
   if (chosen.length >= 2) {
     const head = chosen
-      .map((p) => `<th class="num cmp-head">
+      .map((p) => `<th class="num cmp-head clickable" data-pid="${p.id}">
         ${playerPhoto(p, 'cmp-photo')}<br>
         ${escapeHtml(p.web_name)}<br>
         <span class="muted" style="font-weight:500">${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name}</span>

@@ -362,7 +362,7 @@ function assistantPanel(model, gw) {
       <div class="note" style="padding:0">Your squad has ${view.baseSquad.length}/15 players — hit <strong>⚡ Auto-build squad</strong> and I'll take it from there.</div>
     </div>`;
   }
-  const name = (id) => `${inlinePhoto(state.playersById[id])} ${escapeHtml(state.playersById[id].web_name)}`;
+  const name = (id) => `<span class="clickable" data-pid="${id}">${inlinePhoto(state.playersById[id])} ${escapeHtml(state.playersById[id].web_name)}</span>`;
   const isFirst = gw === firstGw(model);
   const items = [];
 
@@ -445,16 +445,20 @@ function playerCard(model, id, gw, isStarter, opts) {
     : `<div class="pc-actions">
         <button class="pc-btn pc-out" data-id="${id}" title="Transfer out in GW${gw}">OUT</button>
       </div>`;
+  // When no swap/transfer is in progress, clicking the photo or name
+  // opens the player profile drawer.
+  const calm = !view.swapId && !view.pending;
+  const pid = calm ? `class="clickable" data-pid="${id}"` : '';
   return `<div class="pp-card pc-card ${isSwapSource ? 'swap-source' : ''} ${swapTarget || transferTarget ? 'swap-target' : ''}"
        ${opts.editable ? 'draggable="true"' : ''} data-id="${id}" data-starter="${isStarter ? 1 : 0}">
-    <div class="pp-photo-wrap">
+    <div class="pp-photo-wrap" ${calm ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}">
       ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
       ${opts.captain === id && isStarter ? '<span class="pp-cap" title="Captain">C</span>' : ''}
       ${isIn ? '<span class="pp-in" title="Transferred in this GW">IN</span>' : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
-    <div class="pp-name">${escapeHtml(p.web_name)}</div>
+    <div class="pp-name" ${pid}>${escapeHtml(p.web_name)}</div>
     ${isStarter ? `<div class="pp-fix">${opp || 'no fixture'}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${buttons}

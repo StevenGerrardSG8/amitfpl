@@ -45,7 +45,7 @@ export async function renderScout(root) {
           const opp = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e)
             .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
             .join(', ');
-          return `<td>${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}
+          return `<td><span class="clickable" data-pid="${p.id}">${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}</span>
             <span class="muted">${xp.toFixed(1)} · ${opp || '—'}</span></td>`;
         })
         .join('');
