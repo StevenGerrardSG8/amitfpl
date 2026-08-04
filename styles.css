@@ -798,6 +798,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   top: -5%;
   transform: translateX(-50%);
 }
+/* Proper face images (already face-cropped) fill the circle as-is. */
+.face-wrap .face-img.ff {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  transform: none;
+  object-fit: cover;
+  object-position: top;
+}
+
 /* Initials fallback is already a clean circle - show it as-is. */
 .face-wrap .face-img[data-f="2"] {
   position: absolute;

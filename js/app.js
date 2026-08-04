@@ -100,6 +100,16 @@ async function fetchCore() {
   const meta = await fetchMeta();
   const [bootstrap, fixtures] = await Promise.all(CORE.map((n) => fetchFresh(n, meta)));
   initState(bootstrap, fixtures);
+  await loadFaces();
+}
+
+// Face-image map (FotMob ids) - optional, photos fall back without it.
+async function loadFaces() {
+  if (Object.keys(state.faces).length) return;
+  try {
+    const res = await fetch('data/faces.json');
+    if (res.ok) state.faces = await res.json();
+  } catch { /* fine - portrait crop fallback */ }
 }
 
 async function refresh(manual = false) {
@@ -136,6 +146,7 @@ async function main() {
   if (haveCache) {
     // Instant render from cache, however old it is.
     initState(cached[0].d, cached[1].d);
+    await loadFaces();
   } else {
     // First visit ever on this device - nothing to show yet.
     try {

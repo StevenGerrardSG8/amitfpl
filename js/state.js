@@ -7,6 +7,7 @@ export const state = {
   positionsById: {},
   nextEvent: null,
   currentEvent: null,
+  faces: {}, // fpl player id -> FotMob face-image id (data/faces.json)
   // team id -> [{event, opponent, isHome, difficulty}] for upcoming fixtures
   upcomingByTeam: {},
 };
