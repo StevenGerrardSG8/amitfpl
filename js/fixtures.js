@@ -10,7 +10,20 @@ function forecastCard() {
   for (let e = fromEvent; e < fromEvent + 6 && e <= 38; e++) gws.push(e);
   const gw = view.forecastGw && gws.includes(view.forecastGw) ? view.forecastGw : gws[0];
 
-  const rows = teamForecast(gw)
+  const forecast = teamForecast(gw);
+  // Shootout watch: matches with the highest combined expected goals.
+  const xgByTeam = Object.fromEntries(forecast.map((r) => [r.team.id, r.xg]));
+  const shootouts = forecast
+    .filter((r) => r.isHome)
+    .map((r) => ({ ...r, total: r.xg + (xgByTeam[r.opp.id] || 0) }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 3)
+    .map((r) => `<span class="fdr-chip fdr-3" title="Combined expected goals">
+      ${teamBadge(r.team.id, 'chip-badge')}${r.team.short_name} - ${teamBadge(r.opp.id, 'chip-badge')}${r.opp.short_name}
+      <strong>${r.total.toFixed(1)}</strong></span>`)
+    .join(' ');
+
+  const rows = forecast
     .map(({ team, opp, isHome, xg, cs }) => {
       const csPct = Math.round(cs * 100);
       return `<tr>
@@ -32,6 +45,7 @@ function forecastCard() {
         <span class="spacer"></span>
         <span class="result-count">amitfpl model · sorted by expected goals</span>
       </div>
+      ${shootouts ? `<div class="toolbar" style="border-bottom:none;padding-top:0"><span class="chips-label">Shootout watch</span> ${shootouts}</div>` : ''}
       <div class="table-wrap" style="max-height:50vh;overflow-y:auto">
         <table class="data">
           <thead><tr>

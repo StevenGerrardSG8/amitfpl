@@ -72,6 +72,27 @@ export async function renderScout(root) {
     .map((p) => ({ p, prob: model.goalChance(p.id, nextGw) }))
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 10);
+  const creators = [...els]
+    .filter(available)
+    .map((p) => ({ p, prob: model.assistChance(p.id, nextGw) }))
+    .sort((a, b) => b.prob - a.prob)
+    .slice(0, 10);
+  const creatorRows = creators
+    .map(({ p, prob }, i) => {
+      const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
+        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
+        .join(', ');
+      const pct = Math.round(prob * 100);
+      return `<tr>
+        <td class="num" style="font-weight:800">${i + 1}</td>
+        <td>${playerCell(p)}</td>
+        <td class="num">${fmtPrice(p.now_cost)}</td>
+        <td>${fx || '-'}</td>
+        <td class="num"><span class="cs-pill ${pct >= 35 ? 'cs-hi' : ''}">${pct}%</span></td>
+      </tr>`;
+    })
+    .join('');
+
   const scorerRows = scorers
     .map(({ p, prob }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
@@ -97,6 +118,17 @@ export async function renderScout(root) {
           <th class="num no-sort">Price</th><th class="no-sort">Fixture</th>
           <th class="num no-sort" title="Chance of scoring at least once">To score</th></tr></thead>
           <tbody>${scorerRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title">Creators - most likely to assist in GW${nextGw}</div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="num no-sort">#</th><th class="no-sort">Player</th>
+          <th class="num no-sort">Price</th><th class="no-sort">Fixture</th>
+          <th class="num no-sort" title="Chance of at least one assist">To assist</th></tr></thead>
+          <tbody>${creatorRows}</tbody>
         </table>
       </div>
     </div>

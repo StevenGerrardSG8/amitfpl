@@ -104,7 +104,8 @@ function teamCard(team, squad) {
 
   return `<div class="lu-card">
     <div class="lu-head">
-      <div class="lu-team">${teamBadge(team.id)} <strong>${escapeHtml(team.name)}</strong></div>
+      <div class="lu-team">${teamBadge(team.id)} <strong>${escapeHtml(team.name)}</strong>
+        ${state.elo?.[team.id] ? `<span class="muted" style="font-size:10px" title="ClubElo rating">${Math.round(state.elo[team.id])}</span>` : ''}</div>
       <span class="lu-formation">${pred.formation}</span>
     </div>
     <div class="lu-fx muted">${fxLine}</div>

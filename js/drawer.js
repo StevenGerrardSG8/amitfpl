@@ -193,6 +193,9 @@ export async function openDrawer(id) {
         ${statTile('xA', p.expected_assists)}
         ${statTile('Minutes', p.minutes)}
         ${statTile('Bonus', p.bonus)}
+        ${statTile('DefCon', p.defensive_contribution)}
+        ${statTile('Yellows', p.yellow_cards)}
+        ${statTile('Starts', p.starts)}
       </div>
       <div id="drawer-body"><div class="loading" style="padding:20px 0"><div class="spinner"></div></div></div>
     </div>`;
@@ -224,7 +227,8 @@ export async function openDrawer(id) {
   const sections = [];
   sections.push(await trendSection(id));
   sections.push(`
-    <div class="section-title" style="padding-left:0">Upcoming - model forecast</div>
+    <div class="section-title" style="padding-left:0">Upcoming - model forecast
+      <span class="muted" style="font-weight:600">· next ${model.gws.length}: ${model.gws.reduce((s, e) => s + model.xp(p.id, e), 0).toFixed(1)} xP</span></div>
     <div class="table-wrap"><table class="data">
       <thead><tr><th class="no-sort">GW</th><th class="no-sort">Fixture</th><th class="num no-sort">xP</th></tr></thead>
       <tbody>${upcomingRows(model, p)}</tbody>
