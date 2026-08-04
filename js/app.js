@@ -170,6 +170,42 @@ async function main() {
   // Keep the "updated Xm ago" label honest.
   setInterval(() => { if (!refreshing) renderUpdatedChip(); }, 30000);
 
+  // Photo watchdog: ~190 players have no headshot on the PL CDN yet
+  // (new signings pre-season), and some requests hang without firing
+  // onerror. Tiered fallback: headshot → team kit → initials circle
+  // (inline SVG, can never fail). Runs on visible images only so lazy
+  // loading isn't mistaken for a hang.
+  const initialsUri = (ch) =>
+    'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="20" fill="#6473a8"/>
+        <text x="20" y="27" font-size="18" font-family="sans-serif" font-weight="700" fill="#fff" text-anchor="middle">${ch}</text>
+      </svg>`);
+  const inView = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.bottom > -200 && r.top < innerHeight + 200;
+  };
+  setInterval(() => {
+    const now = Date.now();
+    document.querySelectorAll('img[data-shirt]').forEach((img) => {
+      if (img.dataset.f === '2' || !inView(img)) return;
+      if (!img.dataset.t) { img.dataset.t = now; return; }
+      const failed = img.complete && img.naturalWidth === 0;
+      const hung = !img.complete && now - +img.dataset.t > 4000;
+      if (!failed && !hung) return;
+      if (!img.dataset.f) {
+        img.dataset.f = '1';
+        img.classList.add('shirt-img');
+        img.src = `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${img.dataset.shirt}-66.png`;
+      } else {
+        img.dataset.f = '2';
+        img.classList.remove('shirt-img');
+        img.src = initialsUri(img.dataset.init || '?');
+      }
+      img.dataset.t = now; // restart the hang timer for the new source
+    });
+  }, 1000);
+
   // Background revalidation: on load if stale, and whenever the tab
   // comes back into focus after sitting idle.
   const isStale = () => {

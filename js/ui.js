@@ -64,11 +64,11 @@ export function spBadges(p) {
 export const isNewSigning = (p) =>
   !!p.team_join_date && Date.now() - Date.parse(p.team_join_date) < 150 * 86400000;
 
-// Official player headshot. Players without a photo yet (youth/new
-// signings) fall back to their team's shirt; goalkeepers get the GK kit.
+// Official player headshot. Fallback handling lives in the photo
+// watchdog (app.js): headshot → team kit → initials circle. The
+// watchdog also catches requests that hang without firing onerror.
 export function playerPhoto(p, cls = 'pp-photo') {
   const shirt = `${p.team_code}${p.element_type === 1 ? '_1' : ''}`;
-  return `<img class="${cls}" loading="lazy" alt="" data-shirt="${shirt}"
-    src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png"
-    onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_'+this.dataset.shirt+'-66.png';this.classList.add('shirt-img');}else{this.style.opacity=0;}" />`;
+  return `<img class="${cls}" loading="lazy" alt="" data-shirt="${shirt}" data-init="${escapeHtml((p.web_name || '?')[0].toUpperCase())}"
+    src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png" />`;
 }
