@@ -257,6 +257,7 @@ export async function renderPlanner(root) {
         : `<div class="table-wrap" style="max-height:60vh;overflow-y:auto">${squadTable(model)}</div>
            <div class="toolbar" style="border-top:1px solid var(--border);border-bottom:none">
              <input type="text" list="plan-players" id="pl-add" placeholder="Add player…" style="flex:1;min-width:160px;font:inherit;padding:8px 10px;border:1px solid var(--border);border-radius:8px" />
+             <button class="link-btn" id="pl-copy">📋 Copy squad</button>
              <button class="link-btn" id="pl-clear">Clear squad</button>
            </div>`}
     </div>
@@ -297,6 +298,23 @@ export async function renderPlanner(root) {
       renderPlanner(root);
     })
   );
+
+  root.querySelector('#pl-copy')?.addEventListener('click', async (e) => {
+    const lines = [1, 2, 3, 4].flatMap((pos) =>
+      view.squad
+        .filter((id) => state.playersById[id].element_type === pos)
+        .map((id) => {
+          const p = state.playersById[id];
+          return `${state.positionsById[pos].singular_name_short}  ${p.web_name} (${state.teamsById[p.team].short_name}) ${fmtPrice(p.now_cost)}`;
+        })
+    );
+    const text = `amitfpl squad · ${fmtPrice(totalCost)} · ${view.horizon} GW plan\n${lines.join('\n')}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      e.target.textContent = '✓ Copied';
+      setTimeout(() => { e.target.textContent = '📋 Copy squad'; }, 1500);
+    } catch { /* clipboard unavailable */ }
+  });
 
   root.querySelector('#pl-clear')?.addEventListener('click', () => {
     view.squad = [];

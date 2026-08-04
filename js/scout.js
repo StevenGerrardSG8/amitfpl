@@ -1,6 +1,7 @@
 // Scout tab: captaincy shortlist, differentials, best value.
-import { state, fmtPrice, num } from './state.js';
+import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, posBadge, playerCell } from './ui.js';
+import { loadBaseline, buildModel } from './model.js';
 
 const view = { diffMax: 10 };
 
@@ -26,13 +27,31 @@ const HEAD = `<th class="no-sort">Player</th><th class="no-sort">Pos</th>
   <th class="num no-sort">Price</th><th class="num no-sort">Sel %</th>
   <th class="num no-sort" title="FPL expected points, next GW">xP</th>`;
 
-export function renderScout(root) {
+export async function renderScout(root) {
   const els = state.bootstrap.elements;
+  await loadBaseline();
+  const model = buildModel(5);
 
-  const captains = [...els]
-    .filter(available)
-    .sort((a, b) => num(b.ep_next) - num(a.ep_next))
-    .slice(0, 8);
+  // Best captain options per upcoming gameweek (model xP, doubled pick).
+  const capRows = model.gws
+    .map((e) => {
+      const top = els
+        .filter(available)
+        .map((p) => ({ p, xp: model.xp(p.id, e) }))
+        .sort((a, b) => b.xp - a.xp)
+        .slice(0, 3);
+      const cells = top
+        .map(({ p, xp }, i) => {
+          const opp = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e)
+            .map((f) => `${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
+            .join(', ');
+          return `<td>${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}
+            <span class="muted">${xp.toFixed(1)} · ${opp || '—'}</span></td>`;
+        })
+        .join('');
+      return `<tr><td class="team-cell">GW${e}</td>${cells}</tr>`;
+    })
+    .join('');
 
   const diffs = [...els]
     .filter((p) => available(p) && num(p.selected_by_percent) < view.diffMax)
@@ -46,11 +65,14 @@ export function renderScout(root) {
 
   root.innerHTML = `
     <div class="card">
-      <div class="section-title">⭐ Captaincy shortlist — highest expected points next GW</div>
+      <div class="section-title">⭐ Captaincy planner — best armband pick per gameweek (amitfpl model)</div>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr>${HEAD}<th class="num no-sort">Form</th><th class="no-sort">Next 3</th></tr></thead>
-          <tbody>${rowsHtml(captains, (p) => `<td class="num">${p.form}</td>`)}</tbody>
+          <thead><tr>
+            <th class="no-sort">GW</th><th class="no-sort">Top pick</th>
+            <th class="no-sort">Backup</th><th class="no-sort">Punt</th>
+          </tr></thead>
+          <tbody>${capRows}</tbody>
         </table>
       </div>
     </div>

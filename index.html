@@ -8,6 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    // Apply saved theme before first paint to avoid a flash.
+    try {
+      if (localStorage.getItem('amitfpl:theme') === 'dark') {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) { /* private mode */ }
+  </script>
   <link rel="stylesheet" href="styles.css" />
   <link rel="modulepreload" href="js/api.js" />
   <link rel="modulepreload" href="js/state.js" />
@@ -36,6 +44,7 @@
           <span id="updated-text"></span>
           <button id="refresh-btn" title="Refresh data now" aria-label="Refresh data">⟳</button>
         </div>
+        <button id="theme-btn" class="theme-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
         <div class="deadline-chip" id="deadline-chip" hidden>
           <span class="deadline-label" id="deadline-gw"></span>
           <span class="deadline-time" id="deadline-time"></span>

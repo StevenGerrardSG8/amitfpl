@@ -40,6 +40,19 @@ export function signed(n, digits = 1, suffix = '') {
 
 export const fmtCount = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : String(n));
 
+// Set-piece duty badges: first-choice penalty / free-kick / corner taker.
+export function spBadges(p) {
+  let out = '';
+  if (p.penalties_order === 1) out += '<span class="sp-tag" title="First-choice penalty taker">P</span>';
+  if (p.direct_freekicks_order === 1) out += '<span class="sp-tag" title="First-choice direct free kicks">FK</span>';
+  if (p.corners_and_indirect_freekicks_order === 1) out += '<span class="sp-tag" title="First-choice corners &amp; indirect FKs">C</span>';
+  return out;
+}
+
+// Joined the club recently (summer signing / winter window).
+export const isNewSigning = (p) =>
+  !!p.team_join_date && Date.now() - Date.parse(p.team_join_date) < 150 * 86400000;
+
 // Official player headshot (falls back to a blank circle on 404).
 export function playerPhoto(p, cls = 'pp-photo') {
   return `<img class="${cls}" loading="lazy" alt=""

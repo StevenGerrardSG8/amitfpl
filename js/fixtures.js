@@ -44,6 +44,143 @@ function forecastCard() {
     </div>`;
 }
 
+// GWs where teams have no fixture (blank) or two+ (double) — chip fuel.
+function blanksDoublesCard() {
+  const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
+  const counts = {};
+  for (const t of state.bootstrap.teams) {
+    counts[t.id] = {};
+    for (const f of state.upcomingByTeam[t.id] || []) {
+      counts[t.id][f.event] = (counts[t.id][f.event] || 0) + 1;
+    }
+  }
+  const rows = [];
+  for (let e = fromEvent; e <= 38; e++) {
+    const blanks = [];
+    const doubles = [];
+    for (const t of state.bootstrap.teams) {
+      const c = counts[t.id][e] || 0;
+      if (c === 0) blanks.push(t.short_name);
+      if (c >= 2) doubles.push(`${t.short_name} ×${c}`);
+    }
+    // A GW where nobody plays isn't scheduled yet — skip the noise.
+    if (blanks.length >= state.bootstrap.teams.length) continue;
+    if (blanks.length || doubles.length) {
+      rows.push(`<tr>
+        <td class="team-cell">GW${e}</td>
+        <td>${doubles.length ? doubles.map((d) => `<span class="fdr-chip fdr-1">${d}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
+        <td>${blanks.length ? blanks.map((b) => `<span class="fdr-chip fdr-blank">${b}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
+      </tr>`);
+    }
+  }
+  return `
+    <div class="card" style="margin-top:16px">
+      <div class="section-title">🗓️ Blanks &amp; doubles — chip planning radar</div>
+      <div class="table-wrap" style="max-height:40vh;overflow-y:auto">
+        <table class="data">
+          <thead><tr><th class="no-sort">GW</th><th class="no-sort">Double gameweek</th><th class="no-sort">Blank gameweek</th></tr></thead>
+          <tbody>${rows.join('') || '<tr><td colspan="3" class="note">None detected yet — blanks and doubles usually appear mid-season when cup games force postponements.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// Teams whose schedule flips difficulty after the next 3 GWs.
+function swingsCard() {
+  const scored = state.bootstrap.teams.map((t) => {
+    const byGw = {};
+    for (const f of state.upcomingByTeam[t.id] || []) {
+      (byGw[f.event] = byGw[f.event] || []).push(f.difficulty);
+    }
+    const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
+    const avg = (a, b) => {
+      let s = 0;
+      let n = 0;
+      for (let e = fromEvent + a; e < fromEvent + b && e <= 38; e++) {
+        const ds = byGw[e] || [5];
+        for (const d of ds) { s += d; n++; }
+      }
+      return n ? s / n : 5;
+    };
+    const early = avg(0, 3);
+    const later = avg(3, 8);
+    return { t, early, later, delta: later - early };
+  });
+  const easing = [...scored].sort((a, b) => a.delta - b.delta).slice(0, 5);
+  const toughening = [...scored].sort((a, b) => b.delta - a.delta).slice(0, 5);
+  const row = ({ t, early, later }) => `<tr>
+    <td class="team-cell">${escapeHtml(t.name)}</td>
+    <td class="num">${early.toFixed(2)}</td>
+    <td class="num">${later.toFixed(2)}</td>
+  </tr>`;
+  return `
+    <div class="card" style="margin-top:16px">
+      <div class="section-title">🔀 Fixture swings — when to buy in / sell out</div>
+      <div class="swing-grid">
+        <div>
+          <div class="note" style="padding:8px 16px 0"><strong class="hi">↗ Gets easier</strong> after the next 3 GWs — buy their assets early</div>
+          <div class="table-wrap"><table class="data">
+            <thead><tr><th class="no-sort">Team</th><th class="num no-sort">Next 3</th><th class="num no-sort">GW +4–8</th></tr></thead>
+            <tbody>${easing.map(row).join('')}</tbody>
+          </table></div>
+        </div>
+        <div>
+          <div class="note" style="padding:8px 16px 0"><strong class="lo">↘ Gets harder</strong> — enjoy them now, plan the exit</div>
+          <div class="table-wrap"><table class="data">
+            <thead><tr><th class="no-sort">Team</th><th class="num no-sort">Next 3</th><th class="num no-sort">GW +4–8</th></tr></thead>
+            <tbody>${toughening.map(row).join('')}</tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Two cheap teams that cover each other's hard fixtures — classic
+// budget GK/DEF rotation.
+function rotationCard() {
+  const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
+  const teams = state.bootstrap.teams;
+  const diffAt = {};
+  for (const t of teams) {
+    diffAt[t.id] = {};
+    for (const f of state.upcomingByTeam[t.id] || []) {
+      diffAt[t.id][f.event] = Math.min(diffAt[t.id][f.event] ?? 9, f.difficulty);
+    }
+  }
+  const pairs = [];
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      let s = 0;
+      let n = 0;
+      for (let e = fromEvent; e < fromEvent + 8 && e <= 38; e++) {
+        const a = diffAt[teams[i].id][e] ?? 5;
+        const b = diffAt[teams[j].id][e] ?? 5;
+        s += Math.min(a, b);
+        n++;
+      }
+      pairs.push({ a: teams[i], b: teams[j], score: s / n });
+    }
+  }
+  pairs.sort((x, y) => x.score - y.score);
+  const rows = pairs.slice(0, 8)
+    .map(({ a, b, score }) => `<tr>
+      <td class="team-cell">${escapeHtml(a.name)} + ${escapeHtml(b.name)}</td>
+      <td class="num"><span class="avg-pill">${score.toFixed(2)}</span></td>
+    </tr>`)
+    .join('');
+  return `
+    <div class="card" style="margin-top:16px">
+      <div class="section-title">🔄 Rotation pairs — always play the easier fixture (next 8 GWs)</div>
+      <div class="note" style="padding-top:2px">Best duos for budget goalkeepers and defenders: pick one of each, start whoever has the friendlier match.</div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="no-sort">Pair</th><th class="num no-sort" title="Average difficulty when always choosing the easier fixture">Avg best FDR</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 export function renderFixtures(root) {
   const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
   const maxEvent = Math.min(fromEvent + view.horizon - 1, 38);
@@ -121,7 +258,10 @@ export function renderFixtures(root) {
           <tbody>${body}</tbody>
         </table>
       </div>
-    </div>`;
+    </div>
+    ${swingsCard()}
+    ${rotationCard()}
+    ${blanksDoublesCard()}`;
 
   root.querySelector('#fx-fc-gw').addEventListener('change', (e) => {
     view.forecastGw = +e.target.value;

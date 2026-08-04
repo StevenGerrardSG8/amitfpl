@@ -1,5 +1,5 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
-import { fixtureChips } from './ui.js';
+import { fixtureChips, playerPhoto, spBadges, isNewSigning } from './ui.js';
 
 const COLUMNS = [
   { key: 'web_name', label: 'Player', numeric: false },
@@ -22,6 +22,7 @@ const view = {
   position: 'all',
   team: 'all',
   maxPrice: '',
+  newOnly: false,
   sortKey: 'ep_next',
   sortDir: 'desc',
   limit: 100,
@@ -40,6 +41,7 @@ function filtered() {
     if (view.position !== 'all' && p.element_type !== +view.position) return false;
     if (view.team !== 'all' && p.team !== +view.team) return false;
     if (view.maxPrice && p.now_cost / 10 > +view.maxPrice) return false;
+    if (view.newOnly && !isNewSigning(p)) return false;
     if (q) {
       const hay = `${p.first_name} ${p.second_name} ${p.web_name}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -78,9 +80,12 @@ function render(root) {
         : '';
       const ep = num(p.ep_next);
       return `<tr>
-        <td><div class="player-cell">
-          <span class="player-name">${escapeHtml(p.web_name)}${flag}</span>
-          <span class="player-meta">${team.short_name}</span>
+        <td><div class="player-flex">
+          ${playerPhoto(p, 'row-photo')}
+          <div class="player-cell">
+            <span class="player-name">${escapeHtml(p.web_name)}${flag}${spBadges(p)}</span>
+            <span class="player-meta">${team.short_name}${isNewSigning(p) ? ' <span class="new-tag">NEW</span>' : ''}</span>
+          </div>
         </div></td>
         <td><span class="pos-badge pos-${pos}">${pos}</span></td>
         <td class="num">${fmtPrice(p.now_cost)}</td>
@@ -115,6 +120,7 @@ function render(root) {
           ${teamOptions}
         </select>
         <input type="number" id="pl-price" placeholder="Max £" step="0.5" min="3.5" max="16" style="width:90px" value="${view.maxPrice}" />
+        <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> 🆕 New signings</label>
         <span class="spacer"></span>
         <span class="result-count">${list.length} players${list.length > view.limit ? ` · showing top ${view.limit}` : ''}</span>
       </div>
@@ -135,6 +141,7 @@ function render(root) {
   root.querySelector('#pl-pos').addEventListener('change', (e) => { view.position = e.target.value; render(root); });
   root.querySelector('#pl-team').addEventListener('change', (e) => { view.team = e.target.value; render(root); });
   root.querySelector('#pl-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; render(root); });
+  root.querySelector('#pl-new').addEventListener('change', (e) => { view.newOnly = e.target.checked; render(root); });
   root.querySelector('#pl-more')?.addEventListener('click', () => { view.limit += 100; render(root); });
 
   root.querySelectorAll('thead th[data-key]').forEach((th) => {

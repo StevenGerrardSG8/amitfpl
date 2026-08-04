@@ -151,6 +151,19 @@ async function main() {
   });
   document.getElementById('refresh-btn').addEventListener('click', () => refresh(true));
 
+  const themeBtn = document.getElementById('theme-btn');
+  const syncThemeIcon = () => {
+    themeBtn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+  };
+  syncThemeIcon();
+  themeBtn.addEventListener('click', () => {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    if (dark) delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = 'dark';
+    try { localStorage.setItem('amitfpl:theme', dark ? 'light' : 'dark'); } catch { /* private mode */ }
+    syncThemeIcon();
+  });
+
   const initial = location.hash.slice(1);
   showTab(views[initial] ? initial : 'players');
 
