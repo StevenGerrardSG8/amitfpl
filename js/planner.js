@@ -557,7 +557,7 @@ function emptySlot(pos) {
 // FPL-style squad picker: all 15 slots on the pitch by position,
 // filling up as you add players. Shown until the squad is complete.
 function buildModeHtml(model, gw) {
-  const rows = [1, 2, 3, 4].map((pos) => {
+  const rows = [4, 3, 2, 1].map((pos) => {
     const ids = view.baseSquad.filter((id) => posOf(id) === pos);
     const cards = ids.map((id) => {
       const p = state.playersById[id];
@@ -597,8 +597,8 @@ function pitchHtml(model, gw) {
   const squad = lineup.squad;
   const c = posCounts(starters);
   const XI_MIN = { 1: 1, 2: 3, 3: 2, 4: 1 };
-  // FPL pitch template order: GK top, then DEF, MID, FWD.
-  const rows = [1, 2, 3, 4].map((pos) => {
+  // Attack at the top, keeper at the bottom.
+  const rows = [4, 3, 2, 1].map((pos) => {
     const cards = starters.filter((id) => posOf(id) === pos)
       .sort((a, b) => model.xp(b, gw) - model.xp(a, gw))
       .map((id) => playerCard(model, id, gw, true, opts));
