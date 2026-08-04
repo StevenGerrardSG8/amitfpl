@@ -1,4 +1,4 @@
-import { state, escapeHtml } from './state.js';
+import { state, escapeHtml, statusInfo } from './state.js';
 import { teamBadge, inlinePhoto } from './ui.js';
 
 function takers(players, orderKey) {
@@ -13,7 +13,9 @@ function takerCell(list) {
   const alt = rest.length
     ? `<div class="sp-alt">then ${rest.slice(0, 2).map((p) => escapeHtml(p.web_name)).join(', ')}</div>`
     : '';
-  return `<div><span class="sp-primary clickable" data-pid="${first.id}">${inlinePhoto(first)} ${escapeHtml(first.web_name)}</span>${alt}</div>`;
+  const st = statusInfo(first);
+  const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
+  return `<div><span class="sp-primary clickable" data-pid="${first.id}">${inlinePhoto(first)} ${escapeHtml(first.web_name)}</span>${flag}${alt}</div>`;
 }
 
 export function renderSetPieces(root) {

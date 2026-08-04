@@ -906,6 +906,11 @@ export async function renderPlanner(root) {
   root.querySelector('#tr-cancel')?.addEventListener('click', () => { view.pending = null; rerender(); });
 
   // Side browser
+  root.querySelector('#sd-search').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      root.querySelector('.side-add:not([disabled])')?.click();
+    }
+  });
   root.querySelector('#sd-search').addEventListener('input', (e) => {
     view.search = e.target.value;
     sideScroll = 0;
