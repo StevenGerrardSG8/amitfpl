@@ -114,6 +114,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     threading.Thread(target=refresh_loop, daemon=True).start()
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    # Bind to all interfaces so phones/tablets on the same Wi-Fi can
+    # open the app at http://<this-mac's-ip>:8787
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"amitfpl dev server → http://localhost:{PORT} (data auto-refreshes every 30 min)")
     server.serve_forever()
