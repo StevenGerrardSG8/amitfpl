@@ -474,6 +474,14 @@ function emptySlot(pos) {
 
 function pitchHtml(model, gw) {
   const isFirst = gw === firstGw(model);
+  if (!view.baseSquad.length) {
+    return `<div class="myteam-setup" style="padding:32px 24px">
+      <h2>Let's build a squad ⚽</h2>
+      <p>Hit <strong>⚡ Auto-build squad</strong> above for an optimal £100M team in one click —
+      or start from scratch by picking players from the list${innerWidth < 900 ? ' below' : ' on the right'}.</p>
+      <p class="muted">2 GK · 5 DEF · 5 MID · 3 FWD · max 3 per club. Your squad saves on this device.</p>
+    </div>`;
+  }
   const lineup = lineupFor(model, gw);
   const gwIns = new Set((view.transfers[gw] || []).map((t) => t.in));
   const opts = { editable: isFirst, captain: lineup.captain, gwIns };

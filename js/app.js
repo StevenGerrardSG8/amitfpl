@@ -8,6 +8,7 @@ import { renderMarket } from './market.js';
 import { renderStatus } from './status.js';
 import { renderCompare } from './compare.js';
 import { renderFixtures } from './fixtures.js';
+import { renderLineups } from './lineups.js';
 import { renderSetPieces } from './setpieces.js';
 import { renderMyTeam } from './myteam.js';
 import { initDrawer } from './drawer.js';
@@ -25,6 +26,7 @@ const views = {
   status: { el: document.getElementById('view-status'), render: renderStatus, done: false },
   compare: { el: document.getElementById('view-compare'), render: renderCompare, done: false },
   fixtures: { el: document.getElementById('view-fixtures'), render: renderFixtures, done: false },
+  lineups: { el: document.getElementById('view-lineups'), render: renderLineups, done: false },
   setpieces: { el: document.getElementById('view-setpieces'), render: renderSetPieces, done: false },
   myteam: { el: document.getElementById('view-myteam'), render: renderMyTeam, done: false },
 };

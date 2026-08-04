@@ -17,6 +17,11 @@ const STRENGTH_EXP = 1.5; // amplifies strength ratios into goal expectation
 
 let baselineById = null;
 
+// Frozen pre-season stats for a player (null if unknown).
+export function baselinePlayer(id) {
+  return baselineById?.[id] || null;
+}
+
 export async function loadBaseline() {
   if (baselineById) return;
   baselineById = {};
@@ -138,8 +143,9 @@ export function buildModel(horizon) {
       }
 
       // Anchor the immediate GW to FPL's own projection (half-half) —
-      // it knows things our rates don't (press conferences, role changes).
-      if (eventId === gws[0] && num(p.ep_next) > 0) {
+      // but only once the season is running. Pre-season their ep_next
+      // is form-based noise (it ranked goalkeepers as captain picks).
+      if (state.currentEvent && eventId === gws[0] && num(p.ep_next) > 0) {
         total = 0.5 * total + 0.5 * num(p.ep_next) * fixtures.length;
       }
     }
