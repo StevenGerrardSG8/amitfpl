@@ -1,13 +1,13 @@
 // amitfpl xP model v1.
 //
 // Predicts expected FPL points per player per future gameweek from:
-//  - baseline per-90 rates (data/baseline.json — last season's stats,
+//  - baseline per-90 rates (data/baseline.json - last season's stats,
 //    frozen pre-season because the live API resets them at GW1)
 //  - current-season rates, blended in as minutes accumulate
 //  - fixture difficulty via the API's team strength ratings
 //  - availability flags (injuries/suspensions)
 //
-// It's deliberately simple and transparent — every number is explainable.
+// It's deliberately simple and transparent - every number is explainable.
 import { state, num } from './state.js';
 
 const GOAL_PTS = { 1: 10, 2: 6, 3: 5, 4: 4 };
@@ -102,7 +102,7 @@ export function buildModel(horizon) {
     let total = 0;
 
     if (!ref.minutes) {
-      // New signing with no history — lean on FPL's own estimate,
+      // New signing with no history - lean on FPL's own estimate,
       // scaled by fixture count (handles doubles/blanks).
       total = num(p.ep_next) * fixtures.length * avail;
     } else {
@@ -142,7 +142,7 @@ export function buildModel(horizon) {
         total += pts;
       }
 
-      // Anchor the immediate GW to FPL's own projection (half-half) —
+      // Anchor the immediate GW to FPL's own projection (half-half) -
       // but only once the season is running. Pre-season their ep_next
       // is form-based noise (it ranked goalkeepers as captain picks).
       if (state.currentEvent && eventId === gws[0] && num(p.ep_next) > 0) {

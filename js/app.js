@@ -9,6 +9,7 @@ import { renderStatus } from './status.js';
 import { renderCompare } from './compare.js';
 import { renderFixtures } from './fixtures.js';
 import { renderLineups } from './lineups.js';
+import { renderMatches } from './matches.js';
 import { renderSetPieces } from './setpieces.js';
 import { renderMyTeam } from './myteam.js';
 import { initDrawer } from './drawer.js';
@@ -27,6 +28,7 @@ const views = {
   compare: { el: document.getElementById('view-compare'), render: renderCompare, done: false },
   fixtures: { el: document.getElementById('view-fixtures'), render: renderFixtures, done: false },
   lineups: { el: document.getElementById('view-lineups'), render: renderLineups, done: false },
+  matches: { el: document.getElementById('view-matches'), render: renderMatches, done: false },
   setpieces: { el: document.getElementById('view-setpieces'), render: renderSetPieces, done: false },
   myteam: { el: document.getElementById('view-myteam'), render: renderMyTeam, done: false },
 };
@@ -135,7 +137,7 @@ async function main() {
     // Instant render from cache, however old it is.
     initState(cached[0].d, cached[1].d);
   } else {
-    // First visit ever on this device — nothing to show yet.
+    // First visit ever on this device - nothing to show yet.
     try {
       await fetchCore();
     } catch (e) {
@@ -178,9 +180,9 @@ async function main() {
 
   // Photo watchdog: ~190 players have no headshot on the PL CDN yet
   // (new signings pre-season), and some requests hang without firing
-  // onerror. Tiered fallback: headshot → team kit → initials circle
-  // (inline SVG, can never fail). Runs on visible images only so lazy
-  // loading isn't mistaken for a hang.
+  // onerror. Fallback goes straight to an initials circle (inline SVG,
+  // can never fail) - faces only, no kit/body images. Runs on visible
+  // images only so lazy loading isn't mistaken for a hang.
   const initialsUri = (ch) =>
     'data:image/svg+xml,' + encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
@@ -199,16 +201,9 @@ async function main() {
       const failed = img.complete && img.naturalWidth === 0;
       const hung = !img.complete && now - +img.dataset.t > 4000;
       if (!failed && !hung) return;
-      if (!img.dataset.f) {
-        img.dataset.f = '1';
-        img.classList.add('shirt-img');
-        img.src = `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${img.dataset.shirt}-66.png`;
-      } else {
-        img.dataset.f = '2';
-        img.classList.remove('shirt-img');
-        img.src = initialsUri(img.dataset.init || '?');
-      }
-      img.dataset.t = now; // restart the hang timer for the new source
+      img.dataset.f = '2';
+      img.classList.remove('shirt-img');
+      img.src = initialsUri(img.dataset.init || '?');
     });
   }, 1000);
 

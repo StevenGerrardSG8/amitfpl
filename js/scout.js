@@ -46,7 +46,7 @@ export async function renderScout(root) {
             .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
             .join(', ');
           return `<td><span class="clickable" data-pid="${p.id}">${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}</span>
-            <span class="muted">${xp.toFixed(1)} · ${opp || '—'}</span></td>`;
+            <span class="muted">${xp.toFixed(1)} · ${opp || '-'}</span></td>`;
         })
         .join('');
       return `<tr><td class="team-cell">GW${e}</td>${cells}</tr>`;
@@ -79,7 +79,7 @@ export async function renderScout(root) {
         <td class="num" style="font-weight:800">${i + 1}</td>
         <td>${playerCell(p)}</td>
         <td class="num">${fmtPrice(p.now_cost)}</td>
-        <td>${fx || '—'}</td>
+        <td>${fx || '-'}</td>
         <td class="num"><span class="cs-pill ${pct >= 45 ? 'cs-hi' : ''}">${pct}%</span></td>
       </tr>`;
     })
@@ -87,7 +87,7 @@ export async function renderScout(root) {
 
   root.innerHTML = `
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">🎯 Scoring chances — most likely to find the net in GW${nextGw}</div>
+      <div class="section-title">🎯 Scoring chances - most likely to find the net in GW${nextGw}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th class="num no-sort">#</th><th class="no-sort">Player</th>
@@ -98,7 +98,7 @@ export async function renderScout(root) {
       </div>
     </div>
     <div class="card">
-      <div class="section-title">⭐ Captaincy planner — best armband pick per gameweek (amitfpl model)</div>
+      <div class="section-title">⭐ Captaincy planner - best armband pick per gameweek (amitfpl model)</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>
@@ -112,7 +112,7 @@ export async function renderScout(root) {
 
     <div class="card" style="margin-top:16px">
       <div class="toolbar">
-        <span class="section-title" style="padding:0">💎 Differentials — high xP, low ownership</span>
+        <span class="section-title" style="padding:0">💎 Differentials - high xP, low ownership</span>
         <span class="spacer"></span>
         <label>Owned by less than</label>
         <select id="sc-diff">
@@ -128,7 +128,7 @@ export async function renderScout(root) {
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🧮 Best value — points per £1M</div>
+      <div class="section-title">🧮 Best value - points per £1M</div>
       <div class="note" style="padding-top:2px">Based on total points (last season's, until this season gets going).</div>
       <div class="table-wrap">
         <table class="data">

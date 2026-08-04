@@ -1,6 +1,6 @@
 // Data access. Primary source: static snapshots in data/*.json, kept
 // fresh by a GitHub Action every 30 min (works anywhere, no CORS).
-// Fallback: the live FPL API through a proxy at /api/fpl/* — available
+// Fallback: the live FPL API through a proxy at /api/fpl/* - available
 // locally via dev-server.py.
 //
 // Rendering is stale-while-revalidate: cached data (any age) renders
@@ -31,7 +31,7 @@ async function tryFetch(url) {
 
 const cacheKey = (name) => `amitfpl:v2:${name}`;
 
-// Returns {t, gen, d} or null. Never rejects — corrupt cache reads as a miss.
+// Returns {t, gen, d} or null. Never rejects - corrupt cache reads as a miss.
 // t = when we fetched; gen = when the snapshot was generated (if known).
 export function readCache(name) {
   try {
@@ -55,11 +55,11 @@ export async function fetchFresh(name, meta) {
   }
   try {
     localStorage.setItem(cacheKey(name), JSON.stringify({ t: Date.now(), gen, d: data }));
-  } catch { /* quota exceeded — serve uncached */ }
+  } catch { /* quota exceeded - serve uncached */ }
   return data;
 }
 
-// Snapshot metadata ({generated_at}) — null when snapshots don't exist.
+// Snapshot metadata ({generated_at}) - null when snapshots don't exist.
 export async function fetchMeta() {
   try {
     return await tryFetch('data/meta.json');
@@ -68,7 +68,7 @@ export async function fetchMeta() {
   }
 }
 
-// data/myteam.json — {entry, picks} for the team configured in
+// data/myteam.json - {entry, picks} for the team configured in
 // config.json, or null when not configured / file missing.
 export async function fetchTeamSnapshot() {
   try {

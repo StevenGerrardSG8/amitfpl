@@ -8,7 +8,7 @@ function takers(players, orderKey) {
 }
 
 function takerCell(list) {
-  if (!list.length) return '<span class="sp-alt">—</span>';
+  if (!list.length) return '<span class="sp-alt">-</span>';
   const [first, ...rest] = list;
   const alt = rest.length
     ? `<div class="sp-alt">then ${rest.slice(0, 2).map((p) => escapeHtml(p.web_name)).join(', ')}</div>`
@@ -37,7 +37,7 @@ export function renderSetPieces(root) {
   root.innerHTML = `
     <div class="card">
       <div class="toolbar">
-        <span class="result-count">Official FPL scout data — first-choice taker, then backups. Updates as the season goes.</span>
+        <span class="result-count">Official FPL scout data - first-choice taker, then backups. Updates as the season goes.</span>
       </div>
       <div class="table-wrap">
         <table class="data">

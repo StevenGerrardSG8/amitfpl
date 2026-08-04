@@ -119,7 +119,7 @@ export async function renderLineups(root) {
   const cards = state.bootstrap.teams.map((t) => teamCard(t, byTeam[t.id] || [])).join('');
   root.innerHTML = `
     <div class="note" style="padding:0 4px 12px">
-      amitfpl projection — from last season's starts, squad pricing and availability flags.
+      amitfpl projection - from last season's starts, squad pricing and availability flags.
       Chip on each player = FPL ownership. Expect this to sharpen as real minutes come in;
       it can't know preseason friendlies or press conferences (yet).
     </div>

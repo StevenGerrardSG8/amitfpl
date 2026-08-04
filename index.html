@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>amitfpl — FPL Toolkit</title>
+  <title>amitfpl - FPL Toolkit</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#4f46e5" />
@@ -67,6 +67,7 @@
       <button class="tab" data-tab="compare">Compare</button>
       <button class="tab" data-tab="fixtures">Fixtures</button>
       <button class="tab" data-tab="lineups">Lineups</button>
+      <button class="tab" data-tab="matches">Matches</button>
       <button class="tab" data-tab="setpieces">Set Pieces</button>
       <button class="tab" data-tab="myteam">My Team</button>
     </nav>
@@ -88,6 +89,7 @@
     <section id="view-compare" class="view" hidden></section>
     <section id="view-fixtures" class="view" hidden></section>
     <section id="view-lineups" class="view" hidden></section>
+    <section id="view-matches" class="view" hidden></section>
     <section id="view-setpieces" class="view" hidden></section>
     <section id="view-myteam" class="view" hidden></section>
   </main>
@@ -109,7 +111,7 @@
           '<div class="error-box" style="max-width:640px;margin:0 auto;text-align:left">' +
           (isFile
             ? '<strong>This page was opened as a file, so the browser blocks the app.</strong><br>' +
-              'Close this tab and double-click <b>Start amitfpl.command</b> (in the amitfpl folder or on the Desktop) — it opens the app properly.'
+              'Close this tab and double-click <b>Start amitfpl.command</b> (in the amitfpl folder or on the Desktop) - it opens the app properly.'
             : '<strong>The app is taking too long to start.</strong><br>' +
               'The local server may be down. Close this tab and double-click <b>Start amitfpl.command</b> to relaunch.') +
           '</div>';

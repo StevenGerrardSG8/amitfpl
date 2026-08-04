@@ -3,7 +3,7 @@ import { state, statusInfo, escapeHtml } from './state.js';
 
 export function fixtureChips(teamId, count = 3) {
   const fx = (state.upcomingByTeam[teamId] || []).slice(0, count);
-  if (!fx.length) return '<span class="fdr-chip fdr-blank">—</span>';
+  if (!fx.length) return '<span class="fdr-chip fdr-blank">-</span>';
   return fx
     .map((f) => {
       const opp = state.teamsById[f.opponent].short_name;

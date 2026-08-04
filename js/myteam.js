@@ -13,13 +13,13 @@ function renderSetup(root, message = '') {
     <div class="card myteam-setup">
       <h2>Connect your FPL team</h2>
       ${message ? `<div class="error-box">${escapeHtml(message)}</div>` : ''}
-      <p>All it takes is your <strong>Team ID</strong> — no password needed. To find it:</p>
+      <p>All it takes is your <strong>Team ID</strong> - no password needed. To find it:</p>
       <ol>
         <li>Log in at <strong>fantasy.premierleague.com</strong></li>
         <li>Go to the <strong>Points</strong> page</li>
-        <li>Look at the address bar: <code>…/entry/<strong>1234567</strong>/event/1</code> — that number is your Team ID</li>
+        <li>Look at the address bar: <code>…/entry/<strong>1234567</strong>/event/1</code> - that number is your Team ID</li>
       </ol>
-      <p class="note" style="padding:0">Season hasn't started yet? Create your squad on the official site first, then come back here after the GW1 deadline — your ID appears once the season kicks off.</p>
+      <p class="note" style="padding:0">Season hasn't started yet? Create your squad on the official site first, then come back here after the GW1 deadline - your ID appears once the season kicks off.</p>
       <div class="id-row">
         <input type="text" id="mt-id" inputmode="numeric" placeholder="e.g. 1234567" value="${escapeHtml(getTeamId())}" />
         <button class="btn" id="mt-save">Connect</button>
@@ -54,7 +54,7 @@ function pickRow(pick) {
       : '';
   const fx = (state.upcomingByTeam[p.team] || []).slice(0, 3)
     .map((f) => `<span class="fdr-chip fdr-${f.difficulty}">${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})</span>`)
-    .join(' ') || '—';
+    .join(' ') || '-';
   return `<tr>
     <td><div class="player-flex">
       ${playerPhoto(p, 'row-photo')}
@@ -107,7 +107,7 @@ export async function renderMyTeam(root) {
       } else {
         renderSetup(root,
           `Live team lookup isn't available on the hosted site. Set "teamId": ${teamId} in config.json ` +
-          `in the GitHub repo — the data refresher will pick it up within 30 minutes.`);
+          `in the GitHub repo - the data refresher will pick it up within 30 minutes.`);
       }
       return;
     }
@@ -121,12 +121,12 @@ export async function renderMyTeam(root) {
   }
 
   const stats = [
-    { k: 'Overall points', v: entry.summary_overall_points ?? '—' },
-    { k: 'Overall rank', v: entry.summary_overall_rank?.toLocaleString() ?? '—' },
-    { k: `GW${gw ?? '–'} points`, v: entry.summary_event_points ?? '—' },
-    { k: 'Team value', v: entry.last_deadline_value ? fmtPrice(entry.last_deadline_value) : '—' },
-    { k: 'In the bank', v: entry.last_deadline_bank != null ? fmtPrice(entry.last_deadline_bank) : '—' },
-    { k: 'Total transfers', v: entry.last_deadline_total_transfers ?? '—' },
+    { k: 'Overall points', v: entry.summary_overall_points ?? '-' },
+    { k: 'Overall rank', v: entry.summary_overall_rank?.toLocaleString() ?? '-' },
+    { k: `GW${gw ?? '–'} points`, v: entry.summary_event_points ?? '-' },
+    { k: 'Team value', v: entry.last_deadline_value ? fmtPrice(entry.last_deadline_value) : '-' },
+    { k: 'In the bank', v: entry.last_deadline_bank != null ? fmtPrice(entry.last_deadline_bank) : '-' },
+    { k: 'Total transfers', v: entry.last_deadline_total_transfers ?? '-' },
   ];
 
   let squadHtml = '';
@@ -134,7 +134,7 @@ export async function renderMyTeam(root) {
     const starters = picks.picks.filter((p) => p.position <= 11);
     const bench = picks.picks.filter((p) => p.position > 11);
     squadHtml = `
-      <div class="section-title">Squad — GW${gw}</div>
+      <div class="section-title">Squad - GW${gw}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>

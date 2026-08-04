@@ -1,4 +1,4 @@
-// Home dashboard: the at-a-glance landing view — next gameweek's
+// Home dashboard: the at-a-glance landing view - next gameweek's
 // fixtures with kickoff times, plus quick summaries that deep-link
 // into the full tools.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
@@ -24,7 +24,7 @@ function fixtureCards() {
   }).join('');
   return `
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">🗓️ ${escapeHtml(nxt.name)} fixtures — your local time</div>
+      <div class="section-title">🗓️ ${escapeHtml(nxt.name)} fixtures - your local time</div>
       <div class="fx-grid">${cards}</div>
     </div>`;
 }
@@ -83,7 +83,7 @@ export async function renderHome(root) {
   root.innerHTML = `
     ${fixtureCards()}
     <div class="widget-grid">
-      ${widget('⚽ Expected goals — GW' + gw, goalsRows, 'fixtures', 'Full forecast')}
+      ${widget('⚽ Expected goals - GW' + gw, goalsRows, 'fixtures', 'Full forecast')}
       ${widget('🛡️ Clean sheet chances', csRows, 'fixtures', 'Full forecast')}
       ${widget('⭐ Captain picks', capRows, 'scout', 'Scout')}
       ${widget('🎯 Likely scorers', scorerRows, 'scout', 'Scout')}

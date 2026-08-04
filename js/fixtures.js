@@ -45,7 +45,7 @@ function forecastCard() {
     </div>`;
 }
 
-// GWs where teams have no fixture (blank) or two+ (double) — chip fuel.
+// GWs where teams have no fixture (blank) or two+ (double) - chip fuel.
 function blanksDoublesCard() {
   const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
   const counts = {};
@@ -64,23 +64,23 @@ function blanksDoublesCard() {
       if (c === 0) blanks.push(t);
       if (c >= 2) doubles.push({ t, c });
     }
-    // A GW where nobody plays isn't scheduled yet — skip the noise.
+    // A GW where nobody plays isn't scheduled yet - skip the noise.
     if (blanks.length >= state.bootstrap.teams.length) continue;
     if (blanks.length || doubles.length) {
       rows.push(`<tr>
         <td class="team-cell">GW${e}</td>
-        <td>${doubles.length ? doubles.map(({ t, c }) => `<span class="fdr-chip fdr-1">${teamBadge(t.id, 'chip-badge')}${t.short_name} ×${c}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
-        <td>${blanks.length ? blanks.map((t) => `<span class="fdr-chip fdr-blank">${teamBadge(t.id, 'chip-badge')}${t.short_name}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
+        <td>${doubles.length ? doubles.map(({ t, c }) => `<span class="fdr-chip fdr-1">${teamBadge(t.id, 'chip-badge')}${t.short_name} ×${c}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
+        <td>${blanks.length ? blanks.map((t) => `<span class="fdr-chip fdr-blank">${teamBadge(t.id, 'chip-badge')}${t.short_name}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
       </tr>`);
     }
   }
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🗓️ Blanks &amp; doubles — chip planning radar</div>
+      <div class="section-title">🗓️ Blanks &amp; doubles - chip planning radar</div>
       <div class="table-wrap" style="max-height:40vh;overflow-y:auto">
         <table class="data">
           <thead><tr><th class="no-sort">GW</th><th class="no-sort">Double gameweek</th><th class="no-sort">Blank gameweek</th></tr></thead>
-          <tbody>${rows.join('') || '<tr><td colspan="3" class="note">None detected yet — blanks and doubles usually appear mid-season when cup games force postponements.</td></tr>'}</tbody>
+          <tbody>${rows.join('') || '<tr><td colspan="3" class="note">None detected yet - blanks and doubles usually appear mid-season when cup games force postponements.</td></tr>'}</tbody>
         </table>
       </div>
     </div>`;
@@ -116,17 +116,17 @@ function swingsCard() {
   </tr>`;
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🔀 Fixture swings — when to buy in / sell out</div>
+      <div class="section-title">🔀 Fixture swings - when to buy in / sell out</div>
       <div class="swing-grid">
         <div>
-          <div class="note" style="padding:8px 16px 0"><strong class="hi">↗ Gets easier</strong> after the next 3 GWs — buy their assets early</div>
+          <div class="note" style="padding:8px 16px 0"><strong class="hi">↗ Gets easier</strong> after the next 3 GWs - buy their assets early</div>
           <div class="table-wrap"><table class="data">
             <thead><tr><th class="no-sort">Team</th><th class="num no-sort">Next 3</th><th class="num no-sort">GW +4–8</th></tr></thead>
             <tbody>${easing.map(row).join('')}</tbody>
           </table></div>
         </div>
         <div>
-          <div class="note" style="padding:8px 16px 0"><strong class="lo">↘ Gets harder</strong> — enjoy them now, plan the exit</div>
+          <div class="note" style="padding:8px 16px 0"><strong class="lo">↘ Gets harder</strong> - enjoy them now, plan the exit</div>
           <div class="table-wrap"><table class="data">
             <thead><tr><th class="no-sort">Team</th><th class="num no-sort">Next 3</th><th class="num no-sort">GW +4–8</th></tr></thead>
             <tbody>${toughening.map(row).join('')}</tbody>
@@ -136,7 +136,7 @@ function swingsCard() {
     </div>`;
 }
 
-// Two cheap teams that cover each other's hard fixtures — classic
+// Two cheap teams that cover each other's hard fixtures - classic
 // budget GK/DEF rotation.
 function rotationCard() {
   const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
@@ -171,7 +171,7 @@ function rotationCard() {
     .join('');
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🔄 Rotation pairs — always play the easier fixture (next 8 GWs)</div>
+      <div class="section-title">🔄 Rotation pairs - always play the easier fixture (next 8 GWs)</div>
       <div class="note" style="padding-top:2px">Best duos for budget goalkeepers and defenders: pick one of each, start whoever has the friendlier match.</div>
       <div class="table-wrap">
         <table class="data">

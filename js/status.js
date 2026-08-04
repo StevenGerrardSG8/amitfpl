@@ -42,7 +42,7 @@ export function renderStatus(root) {
     })
     .join('');
 
-  // yellow_cards holds last season's totals until GW1 finishes —
+  // yellow_cards holds last season's totals until GW1 finishes -
   // showing them as ban risk would be misleading.
   const seasonLive = state.currentEvent != null;
   const bookings = (seasonLive ? els : [])
@@ -69,7 +69,7 @@ export function renderStatus(root) {
 
   root.innerHTML = `
     <div class="card">
-      <div class="section-title">🚑 Injuries &amp; doubts — official FPL flags, sorted by ownership</div>
+      <div class="section-title">🚑 Injuries &amp; doubts - official FPL flags, sorted by ownership</div>
       <div class="table-wrap" style="max-height: 45vh; overflow-y: auto;">
         <table class="data">
           <thead><tr>
@@ -77,13 +77,13 @@ export function renderStatus(root) {
             <th class="num no-sort">Price</th><th class="num no-sort">Sel %</th>
             <th class="no-sort">Status</th><th class="no-sort">News</th>
           </tr></thead>
-          <tbody>${flaggedRows || '<tr><td colspan="6" class="note">No flagged players right now — everyone\'s fit. 🎉</td></tr>'}</tbody>
+          <tbody>${flaggedRows || '<tr><td colspan="6" class="note">No flagged players right now - everyone\'s fit. 🎉</td></tr>'}</tbody>
         </table>
       </div>
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="section-title">🟨 Suspension watch — ${threshold} yellows = 1-match ban (through GW${threshold === 5 ? 19 : threshold === 10 ? 32 : 38})</div>
+      <div class="section-title">🟨 Suspension watch - ${threshold} yellows = 1-match ban (through GW${threshold === 5 ? 19 : threshold === 10 ? 32 : 38})</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>
@@ -91,7 +91,7 @@ export function renderStatus(root) {
             <th class="num no-sort">Yellows</th><th class="no-sort">Ban distance</th>
             <th class="num no-sort">Sel %</th><th class="no-sort">Next 3</th>
           </tr></thead>
-          <tbody>${bookingRows || `<tr><td colspan="6" class="note">${seasonLive ? 'Nobody near a ban yet.' : 'Card counts reset when the season kicks off — this fills up as yellows pile up.'}</td></tr>`}</tbody>
+          <tbody>${bookingRows || `<tr><td colspan="6" class="note">${seasonLive ? 'Nobody near a ban yet.' : 'Card counts reset when the season kicks off - this fills up as yellows pile up.'}</td></tr>`}</tbody>
         </table>
       </div>
     </div>`;

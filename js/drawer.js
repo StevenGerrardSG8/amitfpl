@@ -1,5 +1,5 @@
 // Player drawer: click any player name/row (elements carrying data-pid)
-// to open a full profile — key stats, upcoming fixtures with model xP,
+// to open a full profile - key stats, upcoming fixtures with model xP,
 // this season's gameweek log, and past-season history.
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, spBadges } from './ui.js';
@@ -17,7 +17,7 @@ async function fetchSummary(id) {
     summaryCache.set(id, data);
     return data;
   } catch {
-    return null; // hosted without a proxy — drawer degrades gracefully
+    return null; // hosted without a proxy - drawer degrades gracefully
   }
 }
 
@@ -57,7 +57,7 @@ function gwLogRows(history) {
       const opp = state.teamsById[h.opponent_team];
       return `<tr>
         <td>GW${h.round}</td>
-        <td>${opp ? `${teamBadge(opp.id, 'meta-badge')} ${opp.short_name}` : '—'} (${h.was_home ? 'H' : 'A'})</td>
+        <td>${opp ? `${teamBadge(opp.id, 'meta-badge')} ${opp.short_name}` : '-'} (${h.was_home ? 'H' : 'A'})</td>
         <td class="num" style="font-weight:700">${h.total_points}</td>
         <td class="num">${h.minutes}'</td>
         <td class="num">${h.goals_scored}</td>
@@ -129,7 +129,7 @@ export async function openDrawer(id) {
 
   const sections = [];
   sections.push(`
-    <div class="section-title" style="padding-left:0">📅 Upcoming — model forecast</div>
+    <div class="section-title" style="padding-left:0">📅 Upcoming - model forecast</div>
     <div class="table-wrap"><table class="data">
       <thead><tr><th class="no-sort">GW</th><th class="no-sort">Fixture</th><th class="num no-sort">xP</th></tr></thead>
       <tbody>${upcomingRows(model, p)}</tbody>
@@ -137,7 +137,7 @@ export async function openDrawer(id) {
 
   if (summary?.history?.length) {
     sections.push(`
-      <div class="section-title" style="padding-left:0">📈 This season — last ${Math.min(10, summary.history.length)} GWs</div>
+      <div class="section-title" style="padding-left:0">📈 This season - last ${Math.min(10, summary.history.length)} GWs</div>
       <div class="table-wrap"><table class="data">
         <thead><tr><th class="no-sort">GW</th><th class="no-sort">Opp</th><th class="num no-sort">Pts</th>
         <th class="num no-sort">Min</th><th class="num no-sort">G</th><th class="num no-sort">A</th>
@@ -156,7 +156,7 @@ export async function openDrawer(id) {
         <tbody>${pastSeasonRows(summary.history_past)}</tbody>
       </table></div>`);
   } else if (!summary) {
-    sections.push('<div class="note" style="padding-left:0">Detailed history needs the live API — available when running locally.</div>');
+    sections.push('<div class="note" style="padding-left:0">Detailed history needs the live API - available when running locally.</div>');
   }
 
   body.innerHTML = sections.join('');

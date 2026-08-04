@@ -61,8 +61,8 @@ export function renderMarket(root) {
   root.innerHTML = `
     <div class="card">
       <div class="toolbar">
-        <span class="result-count">Price moves and transfer momentum — spot rises before they happen. Click headers to sort.</span>
-        ${anyMovement ? '' : '<span class="spacer"></span><span class="result-count">⏳ All zeros for now — this comes alive once the season starts.</span>'}
+        <span class="result-count">Price moves and transfer momentum - spot rises before they happen. Click headers to sort.</span>
+        ${anyMovement ? '' : '<span class="spacer"></span><span class="result-count">⏳ All zeros for now - this comes alive once the season starts.</span>'}
       </div>
       <div class="table-wrap" style="max-height: 75vh; overflow-y: auto;">
         <table class="data">

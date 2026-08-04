@@ -32,7 +32,7 @@ const view = {
   search: '',
   sortKey: 'xp',
   swapId: null,
-  pending: null,   // {type:'in'|'out', id} — half-made transfer
+  pending: null,   // {type:'in'|'out', id} - half-made transfer
   showAssistant: false,
   building: false,
 };
@@ -359,7 +359,7 @@ function assistantPanel(model, gw) {
   if (view.baseSquad.length < 15) {
     return `<div class="assistant-card">
       <div class="assistant-head">🤖 Assistant</div>
-      <div class="note" style="padding:0">Your squad has ${view.baseSquad.length}/15 players — hit <strong>⚡ Auto-build squad</strong> and I'll take it from there.</div>
+      <div class="note" style="padding:0">Your squad has ${view.baseSquad.length}/15 players - hit <strong>⚡ Auto-build squad</strong> and I'll take it from there.</div>
     </div>`;
   }
   const name = (id) => `<span class="clickable" data-pid="${id}">${inlinePhoto(state.playersById[id])} ${escapeHtml(state.playersById[id].web_name)}</span>`;
@@ -477,7 +477,7 @@ function pitchHtml(model, gw) {
   if (!view.baseSquad.length) {
     return `<div class="myteam-setup" style="padding:32px 24px">
       <h2>Let's build a squad ⚽</h2>
-      <p>Hit <strong>⚡ Auto-build squad</strong> above for an optimal £100M team in one click —
+      <p>Hit <strong>⚡ Auto-build squad</strong> above for an optimal £100M team in one click -
       or start from scratch by picking players from the list${innerWidth < 900 ? ' below' : ' on the right'}.</p>
       <p class="muted">2 GK · 5 DEF · 5 MID · 3 FWD · max 3 per club. Your squad saves on this device.</p>
     </div>`;
@@ -503,10 +503,14 @@ function pitchHtml(model, gw) {
   const benchIds = squad.filter((id) => !starters.includes(id))
     .sort((a, b) => (posOf(a) === 1 ? -1 : posOf(b) === 1 ? 1 : model.xp(b, gw) - model.xp(a, gw)));
   const benchCards = benchIds.map((id) => playerCard(model, id, gw, false, opts));
+  // The bench is always exactly 4 spots - pad with generic slots while
+  // the squad is still being built.
   if (isFirst) {
-    const squadCounts = posCounts(squad);
-    for (const pos of [1, 2, 3, 4]) {
-      for (let i = squadCounts[pos]; i < QUOTA[pos]; i++) benchCards.push(emptySlot(pos));
+    while (benchCards.length < 4) {
+      benchCards.push(`<div class="pp-card slot-empty" data-pos="all" title="Pick players from the list">
+        <div class="slot-circle">+</div>
+        <div class="pp-name muted">Add</div>
+      </div>`);
     }
   }
 
@@ -528,16 +532,16 @@ function transfersBar(model, gw, ft) {
     </span>`).join('');
   const pendingNote = view.pending
     ? `<span class="muted">${view.pending.type === 'in'
-        ? `Adding ${escapeHtml(state.playersById[view.pending.id].web_name)} — click the squad player to replace (highlighted)`
-        : `Transferring out ${escapeHtml(state.playersById[view.pending.id].web_name)} — pick a replacement from the list`}
+        ? `Adding ${escapeHtml(state.playersById[view.pending.id].web_name)} - click the squad player to replace (highlighted)`
+        : `Transferring out ${escapeHtml(state.playersById[view.pending.id].web_name)} - pick a replacement from the list`}
       <button class="link-btn" id="tr-cancel">cancel</button></span>`
     : '';
   return `<div class="transfers-bar">
     <span class="chips-label">GW${gw} transfers</span>
     <span class="ft-pill" title="Free transfers available entering this GW">FT: ${info.avail}</span>
     ${info.hits ? `<span class="ft-pill ft-hit">-${info.hits} hit</span>` : ''}
-    ${info.free ? `<span class="ft-pill ft-free">${view.chips[gw]} — moves are free</span>` : ''}
-    ${chips || '<span class="muted">no moves planned — use OUT on a player or + in the list</span>'}
+    ${info.free ? `<span class="ft-pill ft-free">${view.chips[gw]} - moves are free</span>` : ''}
+    ${chips || '<span class="muted">no moves planned - use OUT on a player or + in the list</span>'}
     ${pendingNote}
   </div>`;
 }
