@@ -95,12 +95,17 @@ async function fetchCore() {
   initState(bootstrap, fixtures);
 }
 
-async function refresh() {
+async function refresh(manual = false) {
   if (refreshing) return;
   refreshing = true;
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('spinning');
   try {
+    if (manual) {
+      // On the local server this pulls brand-new data from FPL before we
+      // refetch; elsewhere (e.g. GitHub Pages) it 404s and we move on.
+      await fetch('/api/refresh-now', { method: 'POST' }).catch(() => {});
+    }
     await fetchCore();
     renderDeadline();
     rerenderAll();
@@ -144,7 +149,7 @@ async function main() {
     const tab = e.target.closest('.tab');
     if (tab) showTab(tab.dataset.tab);
   });
-  document.getElementById('refresh-btn').addEventListener('click', refresh);
+  document.getElementById('refresh-btn').addEventListener('click', () => refresh(true));
 
   const initial = location.hash.slice(1);
   showTab(views[initial] ? initial : 'players');
