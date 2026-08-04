@@ -1,12 +1,15 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { fixtureChips, playerPhoto, teamBadge, spBadges, isNewSigning } from './ui.js';
+import { loadBaseline, buildModel } from './model.js';
+
+let model = null; // built once in renderPlayers, reused on every re-render
 
 const COLUMNS = [
   { key: 'web_name', label: 'Player', numeric: false },
   { key: 'position', label: 'Pos', numeric: false },
   { key: 'now_cost', label: 'Price', numeric: true },
   { key: 'selected_by_percent', label: 'Sel %', numeric: true },
-  { key: 'ep_next', label: 'xP Next', numeric: true, title: 'FPL expected points, next gameweek' },
+  { key: 'ep_next', label: 'xP Next', numeric: true, title: 'amitfpl model - expected points next gameweek' },
   { key: 'form', label: 'Form', numeric: true },
   { key: 'total_points', label: 'Pts', numeric: true },
   { key: 'points_per_game', label: 'PPG', numeric: true },
@@ -29,9 +32,12 @@ const view = {
   limit: 100,
 };
 
+const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
+
 function playerValue(p, key) {
   if (key === 'web_name') return p.web_name.toLowerCase();
   if (key === 'position') return p.element_type;
+  if (key === 'ep_next') return modelXp(p);
   const raw = p[key];
   return typeof raw === 'number' ? raw : num(raw);
 }
@@ -79,7 +85,7 @@ function render(root) {
       const flag = st
         ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>`
         : '';
-      const ep = num(p.ep_next);
+      const ep = modelXp(p);
       return `<tr>
         <td><div class="player-flex clickable" data-pid="${p.id}" title="Player profile">
           ${playerPhoto(p, 'row-photo')}
@@ -159,7 +165,7 @@ function render(root) {
       state.positionsById[p.element_type].singular_name_short,
       state.teamsById[p.team].short_name,
       (p.now_cost / 10).toFixed(1),
-      p.selected_by_percent, p.ep_next, p.form, p.total_points, p.points_per_game,
+      p.selected_by_percent, modelXp(p).toFixed(1), p.form, p.total_points, p.points_per_game,
       p.expected_goals, p.expected_assists, p.expected_goal_involvements,
       p.defensive_contribution, p.minutes,
     ].join(','));
@@ -197,6 +203,10 @@ function renderPreservingFocus(root, selector) {
   }
 }
 
-export function renderPlayers(root) {
+export async function renderPlayers(root) {
+  if (!model) {
+    await loadBaseline();
+    model = buildModel(1);
+  }
   render(root);
 }

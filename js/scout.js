@@ -9,6 +9,8 @@ function available(p) {
   return p.status === 'a' || p.status === 'd';
 }
 
+let xpOf = (p) => num(p.ep_next); // replaced with the model in renderScout
+
 function rowsHtml(players, extraCols) {
   return players
     .map((p) => `<tr>
@@ -16,7 +18,7 @@ function rowsHtml(players, extraCols) {
       <td>${posBadge(p)}</td>
       <td class="num">${fmtPrice(p.now_cost)}</td>
       <td class="num">${p.selected_by_percent}%</td>
-      <td class="num ${num(p.ep_next) >= 4 ? 'hi' : ''}">${num(p.ep_next).toFixed(1)}</td>
+      <td class="num ${xpOf(p) >= 4 ? 'hi' : ''}">${xpOf(p).toFixed(1)}</td>
       ${extraCols(p)}
       <td><div class="fdr-cell" style="flex-direction:row">${fixtureChips(p.team)}</div></td>
     </tr>`)
@@ -53,9 +55,10 @@ export async function renderScout(root) {
     })
     .join('');
 
+  xpOf = (p) => model.xp(p.id, model.gws[0]);
   const diffs = [...els]
     .filter((p) => available(p) && num(p.selected_by_percent) < view.diffMax)
-    .sort((a, b) => num(b.ep_next) - num(a.ep_next))
+    .sort((a, b) => xpOf(b) - xpOf(a))
     .slice(0, 15);
 
   const value = [...els]
