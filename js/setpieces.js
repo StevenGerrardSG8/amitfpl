@@ -1,5 +1,5 @@
 import { state, escapeHtml, statusInfo } from './state.js';
-import { teamBadge, inlinePhoto } from './ui.js';
+import { teamBadge, inlinePhoto, fixtureChips } from './ui.js';
 
 function takers(players, orderKey) {
   return players
@@ -32,6 +32,7 @@ export function renderSetPieces(root) {
         <td>${takerCell(takers(squad, 'penalties_order'))}</td>
         <td>${takerCell(takers(squad, 'direct_freekicks_order'))}</td>
         <td>${takerCell(takers(squad, 'corners_and_indirect_freekicks_order'))}</td>
+        <td><div class="fdr-cell" style="flex-direction:row">${fixtureChips(t.id, 1)}</div></td>
       </tr>`;
     })
     .join('');
@@ -48,6 +49,7 @@ export function renderSetPieces(root) {
             <th class="no-sort">Penalties</th>
             <th class="no-sort">Direct free kicks</th>
             <th class="no-sort">Corners &amp; indirect FKs</th>
+            <th class="no-sort">Next</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>

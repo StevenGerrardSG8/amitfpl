@@ -135,7 +135,7 @@ function render(root) {
         <span class="result-count">${list.length} players${list.length > view.limit ? ` · showing top ${view.limit}` : ''}</span>
       </div>
       <div class="table-wrap" style="max-height: 70vh; overflow-y: auto;">
-        <table class="data">
+        <table class="data sticky-first">
           <thead><tr>${header}</tr></thead>
           <tbody>${rows}</tbody>
         </table>

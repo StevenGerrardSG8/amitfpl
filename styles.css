@@ -276,6 +276,32 @@ table.data tbody tr:hover { background: #f8f9ff; }
 
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* First column stays visible while scrolling wide tables sideways */
+.sticky-first th:first-child,
+.sticky-first td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+.sticky-first thead th:first-child { z-index: 3; background: #fafbfe; }
+[data-theme="dark"] .sticky-first thead th:first-child { background: #1a2135; }
+.sticky-first tbody tr:hover td:first-child { background: #f8f9ff; }
+[data-theme="dark"] .sticky-first tbody tr:hover td:first-child { background: #1c2440; }
+
+.cmp-slot { position: relative; display: flex; flex: 1; min-width: 140px; align-items: center; }
+.cmp-slot .cmp-input { width: 100%; }
+.cmp-x {
+  position: absolute;
+  right: 6px;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  cursor: pointer;
+}
+.cmp-x:hover { color: var(--red); }
+
 .player-cell { display: flex; flex-direction: column; }
 .player-name { font-weight: 600; }
 .player-meta { font-size: 11px; color: var(--text-faint); }

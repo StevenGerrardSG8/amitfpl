@@ -17,13 +17,15 @@ const STATUS_LABEL = {
   n: 'Not in squad',
 };
 
+let onlyDoubtful = false;
+
 export function renderStatus(root) {
   const els = state.bootstrap.elements;
   const gw = (state.currentEvent || state.nextEvent)?.id ?? 1;
   const threshold = yellowThreshold(gw);
 
   const flagged = els
-    .filter((p) => p.status !== 'a' && num(p.selected_by_percent) >= 0)
+    .filter((p) => (onlyDoubtful ? p.status === 'd' : p.status !== 'a') && num(p.selected_by_percent) >= 0)
     .sort((a, b) => num(b.selected_by_percent) - num(a.selected_by_percent))
     .slice(0, 60);
 
@@ -69,7 +71,11 @@ export function renderStatus(root) {
 
   root.innerHTML = `
     <div class="card">
-      <div class="section-title">Injuries &amp; doubts - official FPL flags, sorted by ownership</div>
+      <div class="toolbar" style="border-bottom:none">
+        <span class="section-title" style="padding:0">Injuries &amp; doubts - official FPL flags, sorted by ownership</span>
+        <span class="spacer"></span>
+        <label class="chk"><input type="checkbox" id="st-doubt" ${onlyDoubtful ? 'checked' : ''}/> Doubtful only</label>
+      </div>
       <div class="table-wrap" style="max-height: 45vh; overflow-y: auto;">
         <table class="data">
           <thead><tr>
@@ -95,4 +101,9 @@ export function renderStatus(root) {
         </table>
       </div>
     </div>`;
+
+  root.querySelector('#st-doubt').addEventListener('change', (e) => {
+    onlyDoubtful = e.target.checked;
+    renderStatus(root);
+  });
 }

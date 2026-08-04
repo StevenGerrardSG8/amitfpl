@@ -69,9 +69,9 @@ export async function renderCompare(root) {
     .join('')}</datalist>`;
 
   const inputs = players
-    .map((p, i) => `<input type="text" list="cmp-players" data-slot="${i}" class="cmp-input"
+    .map((p, i) => `<span class="cmp-slot"><input type="text" list="cmp-players" data-slot="${i}" class="cmp-input"
         placeholder="Player ${i + 1}${i === 2 ? ' (optional)' : ''}"
-        value="${p ? `${escapeHtml(p.web_name)} (${state.teamsById[p.team].short_name})` : ''}" />`)
+        value="${p ? `${escapeHtml(p.web_name)} (${state.teamsById[p.team].short_name})` : ''}" />${p ? `<button class="cmp-x" data-slot="${i}" title="Clear">✕</button>` : ''}</span>`)
     .join('');
 
   let table = '';
@@ -128,6 +128,14 @@ export async function renderCompare(root) {
       renderCompare(root);
     });
   });
+  root.querySelectorAll('.cmp-x').forEach((b) =>
+    b.addEventListener('click', () => {
+      const next = load();
+      next[+b.dataset.slot] = null;
+      save(next);
+      renderCompare(root);
+    })
+  );
   root.querySelector('#cmp-clear').addEventListener('click', () => {
     save([]);
     renderCompare(root);

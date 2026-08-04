@@ -15,6 +15,8 @@ const COLUMNS = [
 ];
 
 const view = { sortKey: 'transfers_in_event', sortDir: 'desc', limit: 50 };
+try { Object.assign(view, JSON.parse(localStorage.getItem('amitfpl:market:sort')) || {}); } catch { /* defaults */ }
+const saveSort = () => { try { localStorage.setItem('amitfpl:market:sort', JSON.stringify({ sortKey: view.sortKey, sortDir: view.sortDir })); } catch { /* private mode */ } };
 
 let trendsCache;
 async function fetchTrends() {
@@ -135,6 +137,7 @@ export async function renderMarket(root) {
       const key = th.dataset.key;
       if (view.sortKey === key) view.sortDir = view.sortDir === 'asc' ? 'desc' : 'asc';
       else { view.sortKey = key; view.sortDir = key === 'web_name' ? 'asc' : 'desc'; }
+      saveSort();
       renderMarket(root);
     });
   });
