@@ -222,3 +222,8 @@ async function main() {
 }
 
 main();
+
+// PWA: installable app + offline fallback (network-first, never stale).
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* http or unsupported */ });
+}

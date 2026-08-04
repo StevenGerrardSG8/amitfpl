@@ -1,2 +1,4 @@
 .DS_Store
 .claude/
+config.local.json
+data/.alerts-state.json

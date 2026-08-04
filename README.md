@@ -29,6 +29,24 @@ To refresh local snapshots manually:
 python3 scripts/fetch_data.py
 ```
 
+## Telegram alerts (optional)
+
+Deadline reminders + injury/price alerts for players on your watchlist,
+checked on every data refresh while the local server runs.
+
+1. In Telegram, talk to **@BotFather** → `/newbot` → copy the token.
+2. Message your new bot once (any text), then open
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` in the browser and
+   copy your `chat.id` from the response.
+3. `cp config.local.example.json config.local.json` and paste both
+   values in (the file is gitignored — your token stays local).
+4. Test: `python3 scripts/alerts.py --test`
+
+## Install as an app (PWA)
+
+Chrome/Edge: the install icon appears in the address bar — one click
+adds amitfpl as a desktop app. Works offline with the last-loaded data.
+
 ## Structure
 
 - `index.html` / `styles.css` — shell and design

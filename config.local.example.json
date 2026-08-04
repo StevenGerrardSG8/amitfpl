@@ -1,0 +1,6 @@
+{
+  "_instructions": "Copy this file to config.local.json and fill in your values. It stays on your machine (gitignored).",
+  "telegram_token": "PASTE-YOUR-BOT-TOKEN-HERE",
+  "telegram_chat_id": "PASTE-YOUR-CHAT-ID-HERE",
+  "watchlist": ["Haaland", "B.Fernandes", "Semenyo"]
+}

@@ -41,9 +41,21 @@ def refresh_snapshots():
             return False
 
 
+def run_alerts():
+    """Telegram alerts (no-op unless config.local.json is set up)."""
+    try:
+        subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "alerts.py")],
+            capture_output=True, timeout=60,
+        )
+    except Exception:
+        pass
+
+
 def refresh_loop():
     while True:
         refresh_snapshots()
+        run_alerts()
         time.sleep(REFRESH_EVERY_S)
 
 

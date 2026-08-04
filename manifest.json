@@ -1,0 +1,13 @@
+{
+  "name": "amitfpl — FPL Toolkit",
+  "short_name": "amitfpl",
+  "description": "Personal Fantasy Premier League toolkit",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
