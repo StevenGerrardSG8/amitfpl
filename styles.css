@@ -685,6 +685,63 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chip-btn.on { background: #ffc107; border-color: #a87d00; color: #201800; }
 .chips-note { font-size: 11px; }
 
+/* ---------- Transfers bar ---------- */
+.transfers-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.ft-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ft-pill.ft-hit { background: #fde3e1; color: #8a231b; }
+[data-theme="dark"] .ft-pill.ft-hit { background: #46201d; color: #f3a09a; }
+.ft-pill.ft-free { background: #d9f2e2; color: #0f5c33; }
+[data-theme="dark"] .ft-pill.ft-free { background: #143c26; color: #7fdca4; }
+.tr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 600;
+  background: var(--surface);
+}
+.tr-arrow { color: var(--accent); font-weight: 800; }
+.tr-x {
+  font: inherit;
+  font-size: 11px;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 0 0 0 2px;
+}
+.tr-x:hover { color: var(--red); }
+.pc-btn.pc-out { width: auto; padding: 0 6px; font-size: 9px; }
+.pp-in {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: #0f9d58;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+
 /* ---------- Assistant ---------- */
 .assistant-card {
   margin: 12px 16px 0;

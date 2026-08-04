@@ -1,33 +1,38 @@
-// Planner v2: interactive squad builder.
-// Pitch with drag & drop (+ click-to-swap fallback), side player browser,
-// captain picking, per-GW chip planning, optimizer, and xP forecasts.
+// Planner v3: interactive squad builder + season transfer simulation.
+// The first GW in the horizon is your editable base squad (pitch drag &
+// drop, captain, chips). Later GWs simulate a rolling plan: record
+// transfers per GW, free transfers bank up (max 5), extra moves cost
+// -4, Wildcard/Free Hit make a GW's moves free (FH reverts after).
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, inlinePhoto } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 
-const STORAGE_KEY = 'amitfpl:planner:v2';
+const STORAGE_KEY = 'amitfpl:planner:v3';
 const QUOTA = { 1: 2, 2: 5, 3: 5, 4: 3 };
 const BUDGET = 1000; // £100.0M in API units
 const MAX_PER_CLUB = 3;
+const MAX_FT = 5;
 
 const CHIPS = [
-  { key: 'WC', label: 'Wildcard', boost: false },
-  { key: 'FH', label: 'Free Hit', boost: false },
-  { key: 'BB', label: 'Bench Boost', boost: true },
-  { key: 'TC', label: 'Triple Captain', boost: true },
+  { key: 'WC', label: 'Wildcard' },
+  { key: 'FH', label: 'Free Hit' },
+  { key: 'BB', label: 'Bench Boost' },
+  { key: 'TC', label: 'Triple Captain' },
 ];
 
 const view = {
   horizon: 5,
   planGw: null,
-  squad: [],      // up to 15 player ids
-  starters: [],   // up to 11 ids ⊆ squad
+  baseSquad: [],   // 15 ids at the start of the plan
+  starters: [],    // manual XI for the first GW
   captain: null,
-  chips: {},      // eventId -> 'WC' | 'FH' | 'BB' | 'TC'
+  chips: {},       // eventId -> 'WC' | 'FH' | 'BB' | 'TC'
+  transfers: {},   // eventId -> [{out, in}] for GWs after the first
   filterPos: 'all',
   search: '',
   sortKey: 'xp',
-  swapId: null,   // click-to-swap source
+  swapId: null,
+  pending: null,   // {type:'in'|'out', id} — half-made transfer
   showAssistant: false,
   building: false,
 };
@@ -42,28 +47,35 @@ function load() {
     if (saved) {
       Object.assign(view, {
         horizon: saved.horizon || 5,
-        squad: (saved.squad || []).filter((id) => state.playersById[id]),
+        baseSquad: (saved.baseSquad || []).filter((id) => state.playersById[id]),
         starters: (saved.starters || []).filter((id) => state.playersById[id]),
         captain: saved.captain || null,
         chips: saved.chips || {},
+        transfers: saved.transfers || {},
       });
       return;
     }
   } catch { /* fresh start */ }
   try {
-    // Migrate the v1 planner (squad list only).
-    const v1 = JSON.parse(localStorage.getItem('amitfpl:planner'));
-    if (v1?.squad) view.squad = v1.squad.filter((id) => state.playersById[id]);
+    // Migrate planner v2 (single squad, no transfers).
+    const v2 = JSON.parse(localStorage.getItem('amitfpl:planner:v2'));
+    if (v2?.squad) {
+      view.baseSquad = v2.squad.filter((id) => state.playersById[id]);
+      view.starters = (v2.starters || []).filter((id) => state.playersById[id]);
+      view.captain = v2.captain || null;
+      view.chips = v2.chips || {};
+    }
   } catch { /* nothing to migrate */ }
 }
 
 const save = () =>
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     horizon: view.horizon,
-    squad: view.squad,
+    baseSquad: view.baseSquad,
     starters: view.starters,
     captain: view.captain,
     chips: view.chips,
+    transfers: view.transfers,
   }));
 
 /* ---------------- squad rules ---------------- */
@@ -96,7 +108,60 @@ const swapLegal = (starterId, benchId) =>
 
 const cost = (ids) => ids.reduce((s, id) => s + state.playersById[id].now_cost, 0);
 
-/* ---------------- optimizer (unchanged core) ---------------- */
+/* ---------------- transfer simulation ---------------- */
+
+const firstGw = (model) => model.gws[0];
+
+// Squad after applying the plan up to (and including) `gw`.
+// Free Hit transfers apply only in their own GW.
+function squadAt(model, gw) {
+  let squad = [...view.baseSquad];
+  for (const e of model.gws) {
+    if (e > gw) break;
+    if (view.chips[e] === 'FH' && e !== gw) continue;
+    for (const t of view.transfers[e] || []) {
+      squad = squad.map((id) => (id === t.out ? t.in : id));
+    }
+  }
+  return squad;
+}
+
+// Free-transfer bookkeeping across the horizon.
+function ftInfo(model) {
+  const info = {};
+  let carry = 1; // FTs available entering the first planned GW
+  for (const e of model.gws) {
+    const avail = Math.min(MAX_FT, carry);
+    const moves = (view.transfers[e] || []).length;
+    const chip = view.chips[e];
+    const free = chip === 'WC' || chip === 'FH';
+    const counted = free ? 0 : moves;
+    const hits = Math.max(0, counted - avail) * 4;
+    info[e] = { avail, moves, hits, free };
+    const leftover = free ? avail : Math.max(0, avail - counted);
+    carry = Math.min(MAX_FT, leftover + 1);
+  }
+  return info;
+}
+
+function recordTransfer(model, gw, outId, inId) {
+  if (posOf(outId) !== posOf(inId)) return false;
+  const squad = squadAt(model, gw);
+  if (!squad.includes(outId) || squad.includes(inId)) return false;
+  const next = squad.map((id) => (id === outId ? inId : id));
+  if ((clubCounts(next)[state.playersById[inId].team] || 0) > MAX_PER_CLUB) return false;
+  if (cost(next) > BUDGET) return false; // can't spend money you don't have
+  (view.transfers[gw] = view.transfers[gw] || []).push({ out: outId, in: inId });
+  return true;
+}
+
+function dropTransfer(gw, idx) {
+  const list = view.transfers[gw] || [];
+  list.splice(idx, 1);
+  if (!list.length) delete view.transfers[gw];
+}
+
+/* ---------------- optimizer ---------------- */
 
 function buildOptimalSquad(model) {
   const score = {};
@@ -156,7 +221,7 @@ function bestXI(model, squadIds, eventId) {
     if (byPos[2].length < d || byPos[3].length < m || byPos[4].length < f || !byPos[1].length) continue;
     const xi = [byPos[1][0], ...byPos[2].slice(0, d), ...byPos[3].slice(0, m), ...byPos[4].slice(0, f)];
     const total = xi.reduce((s, e) => s + e.xp, 0);
-    if (!best || total > best.total) best = { xi, total };
+    if (!best || total > best.total) best = { xi: xi.map((e) => e.id), total, formation: `${d}-${m}-${f}` };
   }
   return best;
 }
@@ -164,32 +229,37 @@ function bestXI(model, squadIds, eventId) {
 /* ---------------- state upkeep ---------------- */
 
 function selectedGw(model) {
-  return view.planGw && model.gws.includes(view.planGw) ? view.planGw : model.gws[0];
+  return view.planGw && model.gws.includes(view.planGw) ? view.planGw : firstGw(model);
 }
 
 function ensureConsistency(model) {
-  view.squad = [...new Set(view.squad)].filter((id) => state.playersById[id]);
-  view.starters = view.starters.filter((id) => view.squad.includes(id));
-  if (view.squad.length === 15 && !formationValid(view.starters)) {
-    const xi = bestXI(model, view.squad, selectedGw(model));
-    if (xi) view.starters = xi.xi.map((e) => e.id);
+  view.baseSquad = [...new Set(view.baseSquad)].filter((id) => state.playersById[id]);
+  view.starters = view.starters.filter((id) => view.baseSquad.includes(id));
+  for (const e of Object.keys(view.transfers)) {
+    view.transfers[e] = view.transfers[e].filter(
+      (t) => state.playersById[t.out] && state.playersById[t.in]
+    );
+    if (!view.transfers[e].length) delete view.transfers[e];
+  }
+  if (view.baseSquad.length === 15 && !formationValid(view.starters)) {
+    const xi = bestXI(model, view.baseSquad, firstGw(model));
+    if (xi) view.starters = xi.xi;
   }
   if (view.captain && !view.starters.includes(view.captain)) view.captain = null;
   if (!view.captain && view.starters.length) {
-    const gw = selectedGw(model);
+    const gw = firstGw(model);
     view.captain = [...view.starters].sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0];
   }
 }
 
-/* ---------------- mutations ---------------- */
+/* ---------------- base-squad mutations (first GW only) ---------------- */
 
 function addPlayer(id) {
   const p = state.playersById[id];
-  if (!p || view.squad.includes(id)) return;
-  if (posCounts(view.squad)[p.element_type] >= QUOTA[p.element_type]) return;
-  if ((clubCounts(view.squad)[p.team] || 0) >= MAX_PER_CLUB) return;
-  view.squad.push(id);
-  // Slot into the XI while it's still filling up and the shape allows it.
+  if (!p || view.baseSquad.includes(id)) return;
+  if (posCounts(view.baseSquad)[p.element_type] >= QUOTA[p.element_type]) return;
+  if ((clubCounts(view.baseSquad)[p.team] || 0) >= MAX_PER_CLUB) return;
+  view.baseSquad.push(id);
   if (view.starters.length < 11) {
     const c = posCounts(view.starters);
     const max = { 1: 1, 2: 5, 3: 5, 4: 3 };
@@ -198,14 +268,13 @@ function addPlayer(id) {
 }
 
 function removePlayer(id) {
-  view.squad = view.squad.filter((x) => x !== id);
+  view.baseSquad = view.baseSquad.filter((x) => x !== id);
   view.starters = view.starters.filter((x) => x !== id);
   if (view.captain === id) view.captain = null;
   if (view.swapId === id) view.swapId = null;
 }
 
 function trySwap(aId, bId) {
-  // One of the two must be a starter, the other on the bench.
   const starter = view.starters.includes(aId) ? aId : view.starters.includes(bId) ? bId : null;
   const bench = starter === aId ? bId : aId;
   if (!starter || view.starters.includes(bench)) return false;
@@ -215,33 +284,47 @@ function trySwap(aId, bId) {
   return true;
 }
 
-/* ---------------- xP summary ---------------- */
+/* ---------------- forecasts ---------------- */
 
-function gwForecast(model, gw) {
-  const xi = view.starters.reduce((s, id) => s + model.xp(id, gw), 0);
-  const cap = view.captain ? model.xp(view.captain, gw) : 0;
-  const bench = view.squad.filter((id) => !view.starters.includes(id))
+// Lineup used for a GW's forecast: manual for the first GW, auto later.
+function lineupFor(model, gw) {
+  const squad = squadAt(model, gw);
+  if (gw === firstGw(model) && formationValid(view.starters)) {
+    const cap = view.captain;
+    return { squad, starters: view.starters, captain: cap, formation: null, manual: true };
+  }
+  const xi = bestXI(model, squad, gw);
+  if (!xi) return { squad, starters: [], captain: null, formation: null, manual: false };
+  const captain = [...xi.xi].sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0];
+  return { squad, starters: xi.xi, captain, formation: xi.formation, manual: false };
+}
+
+function gwForecast(model, gw, ft) {
+  const { squad, starters, captain } = lineupFor(model, gw);
+  const xiPts = starters.reduce((s, id) => s + model.xp(id, gw), 0);
+  const capPts = captain ? model.xp(captain, gw) : 0;
+  const benchPts = squad.filter((id) => !starters.includes(id))
     .reduce((s, id) => s + model.xp(id, gw), 0);
   const chip = view.chips[gw];
-  let total = xi + cap; // captain counts double
-  if (chip === 'TC') total += cap;
-  if (chip === 'BB') total += bench;
-  return total;
+  let pts = xiPts + capPts;
+  if (chip === 'TC') pts += capPts;
+  if (chip === 'BB') pts += benchPts;
+  return pts - (ft[gw]?.hits || 0);
 }
 
 /* ---------------- assistant ---------------- */
 
-// Best same-position upgrades within budget and club limits.
-function upgradeSuggestions(model) {
-  const itb = BUDGET - cost(view.squad);
-  const clubs = clubCounts(view.squad);
+function upgradeSuggestions(model, gw) {
+  const squad = squadAt(model, gw);
+  const itb = BUDGET - cost(squad);
+  const clubs = clubCounts(squad);
   const out = [];
-  for (const id of view.squad) {
+  for (const id of squad) {
     const cur = state.playersById[id];
     const curScore = model.horizonTotal(id);
     let best = null;
     for (const cand of state.bootstrap.elements) {
-      if (cand.element_type !== cur.element_type || view.squad.includes(cand.id)) continue;
+      if (cand.element_type !== cur.element_type || squad.includes(cand.id)) continue;
       if (cand.status !== 'a' && cand.status !== 'd') continue;
       if (cand.now_cost > cur.now_cost + itb) continue;
       const clubCount = (clubs[cand.team] || 0) - (cand.team === cur.team ? 1 : 0);
@@ -251,7 +334,6 @@ function upgradeSuggestions(model) {
     }
     if (best) out.push({ outId: id, inId: best.cand.id, gain: best.gain });
   }
-  // One suggestion per incoming player — keep the biggest gain.
   const seen = new Set();
   return out
     .sort((a, b) => b.gain - a.gain)
@@ -259,20 +341,13 @@ function upgradeSuggestions(model) {
     .slice(0, 4);
 }
 
-function applyTransfer(outId, inId) {
-  view.squad = view.squad.map((id) => (id === outId ? inId : id));
-  view.starters = view.starters.map((id) => (id === outId ? inId : id));
-  if (view.captain === outId) view.captain = inId;
-}
-
 function chipAdvice(model) {
   let tc = null;
   let bb = null;
   for (const e of model.gws) {
-    const capXp = view.starters.length
-      ? Math.max(...view.starters.map((id) => model.xp(id, e)))
-      : 0;
-    const benchXp = view.squad.filter((id) => !view.starters.includes(id))
+    const { squad, starters, captain } = lineupFor(model, e);
+    const capXp = captain ? model.xp(captain, e) : 0;
+    const benchXp = squad.filter((id) => !starters.includes(id))
       .reduce((s, id) => s + model.xp(id, e), 0);
     if (!tc || capXp > tc.v) tc = { e, v: capXp };
     if (!bb || benchXp > bb.v) bb = { e, v: benchXp };
@@ -281,52 +356,47 @@ function chipAdvice(model) {
 }
 
 function assistantPanel(model, gw) {
-  if (view.squad.length < 15) {
+  if (view.baseSquad.length < 15) {
     return `<div class="assistant-card">
       <div class="assistant-head">🤖 Assistant</div>
-      <div class="note" style="padding:0">Your squad has ${view.squad.length}/15 players — hit <strong>⚡ Auto-build squad</strong> and I'll take it from there.</div>
+      <div class="note" style="padding:0">Your squad has ${view.baseSquad.length}/15 players — hit <strong>⚡ Auto-build squad</strong> and I'll take it from there.</div>
     </div>`;
   }
-
   const name = (id) => `${inlinePhoto(state.playersById[id])} ${escapeHtml(state.playersById[id].web_name)}`;
+  const isFirst = gw === firstGw(model);
   const items = [];
 
-  // 1. Transfers
-  const upgrades = upgradeSuggestions(model);
+  const upgrades = upgradeSuggestions(model, gw);
   for (const { outId, inId, gain } of upgrades) {
     items.push(`<div class="as-item">
       <span>🔁 <strong>${name(inId)}</strong> in for <strong>${name(outId)}</strong>
-      <span class="hi">+${gain.toFixed(1)} xP</span> <span class="muted">over ${view.horizon} GWs · ${fmtPrice(state.playersById[inId].now_cost)}</span></span>
+      <span class="hi">+${gain.toFixed(1)} xP</span>
+      <span class="muted">${isFirst ? 'base squad change' : `as a GW${gw} transfer`} · ${fmtPrice(state.playersById[inId].now_cost)}</span></span>
       <button class="as-apply" data-act="transfer" data-out="${outId}" data-in="${inId}">Apply</button>
     </div>`);
   }
   if (!upgrades.length) {
-    items.push('<div class="as-item"><span>✅ No clear upgrades within budget — your squad is close to optimal.</span></div>');
+    items.push('<div class="as-item"><span>✅ No clear upgrades within budget for this GW\'s squad.</span></div>');
   }
 
-  // 2. XI check
-  const xi = bestXI(model, view.squad, gw);
-  const curXi = view.starters.reduce((s, id) => s + model.xp(id, gw), 0);
-  if (xi && xi.total > curXi + 0.3) {
-    items.push(`<div class="as-item">
-      <span>📋 A different XI scores <span class="hi">+${(xi.total - curXi).toFixed(1)} xP</span> in GW${gw}</span>
-      <button class="as-apply" data-act="bestxi">Apply</button>
-    </div>`);
-  }
-
-  // 3. Captain for the selected GW
-  if (view.starters.length) {
+  if (isFirst && view.starters.length) {
+    const xi = bestXI(model, view.baseSquad, gw);
+    const curXi = view.starters.reduce((s, id) => s + model.xp(id, gw), 0);
+    if (xi && xi.total > curXi + 0.3) {
+      items.push(`<div class="as-item">
+        <span>📋 A different XI scores <span class="hi">+${(xi.total - curXi).toFixed(1)} xP</span> in GW${gw}</span>
+        <button class="as-apply" data-act="bestxi">Apply</button>
+      </div>`);
+    }
     const top = [...view.starters].sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0];
     if (top !== view.captain) {
       items.push(`<div class="as-item">
-        <span>©️ Best armband for GW${gw}: <strong>${name(top)}</strong>
-        <span class="muted">${model.xp(top, gw).toFixed(1)} vs ${view.captain ? `${name(view.captain)} ${model.xp(view.captain, gw).toFixed(1)}` : 'none'}</span></span>
+        <span>©️ Best armband for GW${gw}: <strong>${name(top)}</strong></span>
         <button class="as-apply" data-act="captain" data-id="${top}">Set captain</button>
       </div>`);
     }
   }
 
-  // 4. Chip timing
   const { tc, bb } = chipAdvice(model);
   if (tc && view.chips[tc.e] !== 'TC') {
     items.push(`<div class="as-item">
@@ -342,23 +412,14 @@ function assistantPanel(model, gw) {
   }
 
   return `<div class="assistant-card">
-    <div class="assistant-head">🤖 Assistant <span class="muted" style="font-weight:500">· powered by the amitfpl xP model, ${view.horizon}-GW horizon</span></div>
+    <div class="assistant-head">🤖 Assistant <span class="muted" style="font-weight:500">· amitfpl xP model · ${view.horizon}-GW plan incl. transfer hits</span></div>
     ${items.join('')}
   </div>`;
 }
 
 /* ---------------- rendering ---------------- */
 
-function cardButtons(id, isStarter) {
-  const capCls = view.captain === id ? 'on' : '';
-  return `<div class="pc-actions">
-    ${isStarter ? `<button class="pc-btn pc-cap ${capCls}" data-id="${id}" title="Make captain">C</button>` : ''}
-    <button class="pc-btn pc-swap" data-id="${id}" title="Swap with bench/pitch">⇄</button>
-    <button class="pc-btn pc-remove" data-id="${id}" title="Remove from squad">✕</button>
-  </div>`;
-}
-
-function playerCard(model, id, gw, isStarter) {
+function playerCard(model, id, gw, isStarter, opts) {
   const p = state.playersById[id];
   const xp = model.xp(id, gw);
   const opp = (state.upcomingByTeam[p.team] || [])
@@ -367,24 +428,36 @@ function playerCard(model, id, gw, isStarter) {
     .join(', ');
   const isSwapSource = view.swapId === id;
   let swapTarget = false;
-  if (view.swapId && view.swapId !== id) {
+  if (opts.editable && view.swapId && view.swapId !== id) {
     const srcStarter = view.starters.includes(view.swapId);
     if (srcStarter !== isStarter) {
       swapTarget = srcStarter ? swapLegal(view.swapId, id) : swapLegal(id, view.swapId);
     }
   }
-  return `<div class="pp-card pc-card ${isSwapSource ? 'swap-source' : ''} ${swapTarget ? 'swap-target' : ''}"
-       draggable="true" data-id="${id}" data-starter="${isStarter ? 1 : 0}">
+  const transferTarget = view.pending?.type === 'in' && posOf(view.pending.id) === p.element_type;
+  const isIn = opts.gwIns.has(id);
+  const buttons = opts.editable
+    ? `<div class="pc-actions">
+        ${isStarter ? `<button class="pc-btn pc-cap ${view.captain === id ? 'on' : ''}" data-id="${id}" title="Make captain">C</button>` : ''}
+        <button class="pc-btn pc-swap" data-id="${id}" title="Swap with bench/pitch">⇄</button>
+        <button class="pc-btn pc-remove" data-id="${id}" title="Remove from squad">✕</button>
+      </div>`
+    : `<div class="pc-actions">
+        <button class="pc-btn pc-out" data-id="${id}" title="Transfer out in GW${gw}">OUT</button>
+      </div>`;
+  return `<div class="pp-card pc-card ${isSwapSource ? 'swap-source' : ''} ${swapTarget || transferTarget ? 'swap-target' : ''}"
+       ${opts.editable ? 'draggable="true"' : ''} data-id="${id}" data-starter="${isStarter ? 1 : 0}">
     <div class="pp-photo-wrap">
       ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
-      ${view.captain === id && isStarter ? '<span class="pp-cap" title="Captain">C</span>' : ''}
+      ${opts.captain === id && isStarter ? '<span class="pp-cap" title="Captain">C</span>' : ''}
+      ${isIn ? '<span class="pp-in" title="Transferred in this GW">IN</span>' : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
     <div class="pp-name">${escapeHtml(p.web_name)}</div>
     ${isStarter ? `<div class="pp-fix">${opp || 'no fixture'}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
-    ${cardButtons(id, isStarter)}
+    ${buttons}
   </div>`;
 }
 
@@ -396,29 +469,65 @@ function emptySlot(pos) {
 }
 
 function pitchHtml(model, gw) {
-  const c = posCounts(view.starters);
-  // Show empty XI slots down to the minimum shape while building.
+  const isFirst = gw === firstGw(model);
+  const lineup = lineupFor(model, gw);
+  const gwIns = new Set((view.transfers[gw] || []).map((t) => t.in));
+  const opts = { editable: isFirst, captain: lineup.captain, gwIns };
+
+  const starters = lineup.starters;
+  const squad = lineup.squad;
+  const c = posCounts(starters);
   const XI_MIN = { 1: 1, 2: 3, 3: 2, 4: 1 };
   const rows = [4, 3, 2, 1].map((pos) => {
-    const cards = view.starters.filter((id) => posOf(id) === pos)
+    const cards = starters.filter((id) => posOf(id) === pos)
       .sort((a, b) => model.xp(b, gw) - model.xp(a, gw))
-      .map((id) => playerCard(model, id, gw, true));
-    const missing = Math.max(0, XI_MIN[pos] - c[pos]);
-    for (let i = 0; i < missing; i++) cards.push(emptySlot(pos));
+      .map((id) => playerCard(model, id, gw, true, opts));
+    if (isFirst) {
+      for (let i = 0; i < Math.max(0, XI_MIN[pos] - c[pos]); i++) cards.push(emptySlot(pos));
+    }
     return cards.length ? `<div class="pitch-row" data-pos="${pos}">${cards.join('')}</div>` : '';
   }).join('');
 
-  const benchIds = view.squad.filter((id) => !view.starters.includes(id))
+  const benchIds = squad.filter((id) => !starters.includes(id))
     .sort((a, b) => (posOf(a) === 1 ? -1 : posOf(b) === 1 ? 1 : model.xp(b, gw) - model.xp(a, gw)));
-  const benchCards = benchIds.map((id) => playerCard(model, id, gw, false));
-  const squadCounts = posCounts(view.squad);
-  for (const pos of [1, 2, 3, 4]) {
-    for (let i = squadCounts[pos]; i < QUOTA[pos]; i++) benchCards.push(emptySlot(pos));
+  const benchCards = benchIds.map((id) => playerCard(model, id, gw, false, opts));
+  if (isFirst) {
+    const squadCounts = posCounts(squad);
+    for (const pos of [1, 2, 3, 4]) {
+      for (let i = squadCounts[pos]; i < QUOTA[pos]; i++) benchCards.push(emptySlot(pos));
+    }
   }
 
   return `
     <div class="pitch">${rows}</div>
     <div class="bench-strip" data-bench="1"><span class="bench-label">Bench</span>${benchCards.join('')}</div>`;
+}
+
+function transfersBar(model, gw, ft) {
+  const isFirst = gw === firstGw(model);
+  if (isFirst) return '';
+  const info = ft[gw];
+  const list = view.transfers[gw] || [];
+  const chips = list.map((t, i) => `<span class="tr-chip">
+      ${inlinePhoto(state.playersById[t.out])} ${escapeHtml(state.playersById[t.out].web_name)}
+      <span class="tr-arrow">➜</span>
+      ${inlinePhoto(state.playersById[t.in])} ${escapeHtml(state.playersById[t.in].web_name)}
+      <button class="tr-x" data-gw="${gw}" data-idx="${i}" title="Cancel transfer">✕</button>
+    </span>`).join('');
+  const pendingNote = view.pending
+    ? `<span class="muted">${view.pending.type === 'in'
+        ? `Adding ${escapeHtml(state.playersById[view.pending.id].web_name)} — click the squad player to replace (highlighted)`
+        : `Transferring out ${escapeHtml(state.playersById[view.pending.id].web_name)} — pick a replacement from the list`}
+      <button class="link-btn" id="tr-cancel">cancel</button></span>`
+    : '';
+  return `<div class="transfers-bar">
+    <span class="chips-label">GW${gw} transfers</span>
+    <span class="ft-pill" title="Free transfers available entering this GW">FT: ${info.avail}</span>
+    ${info.hits ? `<span class="ft-pill ft-hit">-${info.hits} hit</span>` : ''}
+    ${info.free ? `<span class="ft-pill ft-free">${view.chips[gw]} — moves are free</span>` : ''}
+    ${chips || '<span class="muted">no moves planned — use OUT on a player or + in the list</span>'}
+    ${pendingNote}
+  </div>`;
 }
 
 function chipsBar(model, gw) {
@@ -432,18 +541,22 @@ function chipsBar(model, gw) {
       return `<button class="chip-btn ${active === key ? 'on' : ''}" data-chip="${key}"
         title="${elsewhere.length ? `Also planned: ${elsewhere.join(', ')}` : label}">${label}${elsewhere.length ? ' ·' + elsewhere.join(',') : ''}</button>`;
     }).join('')}
-    ${active === 'WC' || active === 'FH' ? '<span class="muted chips-note">marker only — transfers aren\'t simulated yet</span>' : ''}
   </div>`;
 }
 
-function sideList(model) {
+function sideList(model, gw) {
   const q = view.search.trim().toLowerCase();
-  const inSquad = new Set(view.squad);
-  const clubs = clubCounts(view.squad);
-  const squadPos = posCounts(view.squad);
+  const squad = squadAt(model, gw);
+  const inSquad = new Set(squad);
+  const clubs = clubCounts(squad);
+  const squadPos = posCounts(squad);
+  const isFirst = gw === firstGw(model);
+  const pendingOut = view.pending?.type === 'out' ? state.playersById[view.pending.id] : null;
+
   let list = state.bootstrap.elements.filter((p) => {
     if (inSquad.has(p.id)) return false;
     if (p.status === 'u' || p.status === 'n') return false;
+    if (pendingOut && p.element_type !== pendingOut.element_type) return false;
     if (view.filterPos !== 'all' && p.element_type !== +view.filterPos) return false;
     if (q && !`${p.first_name} ${p.second_name} ${p.web_name}`.toLowerCase().includes(q)) return false;
     return true;
@@ -456,11 +569,16 @@ function sideList(model) {
   };
   list.sort(sorters[view.sortKey] || sorters.xp);
 
+  const squadCost = cost(squad);
   const rows = list.slice(0, 60).map((p) => {
-    const posFull = squadPos[p.element_type] >= QUOTA[p.element_type];
+    const posFull = isFirst && squadPos[p.element_type] >= QUOTA[p.element_type];
     const clubFull = (clubs[p.team] || 0) >= MAX_PER_CLUB;
-    const blocked = posFull || clubFull;
-    const reason = posFull ? 'Position quota full' : clubFull ? 'Max 3 per club' : 'Add to squad';
+    const tooDear = !!pendingOut && squadCost - pendingOut.now_cost + p.now_cost > BUDGET;
+    const blocked = (isFirst && posFull && view.baseSquad.length >= 15) || clubFull || tooDear;
+    const title = clubFull ? 'Max 3 per club'
+      : tooDear ? 'Over budget for this swap'
+      : isFirst ? 'Add to squad'
+      : pendingOut ? `Transfer in for ${pendingOut.web_name}` : `Transfer into the GW${gw} squad`;
     return `<div class="side-row">
       <span class="clickable" data-pid="${p.id}" title="Player profile">${playerPhoto(p, 'row-photo')}</span>
       <div class="side-info clickable" data-pid="${p.id}">
@@ -468,7 +586,7 @@ function sideList(model) {
         <span class="player-meta">${state.positionsById[p.element_type].singular_name_short} · ${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
       </div>
       <span class="side-xp" title="Expected points over the plan horizon">${model.horizonTotal(p.id).toFixed(1)}</span>
-      <button class="side-add" data-id="${p.id}" ${blocked ? 'disabled' : ''} title="${reason}">+</button>
+      <button class="side-add" data-id="${p.id}" ${blocked ? 'disabled' : ''} title="${title}">+</button>
     </div>`;
   }).join('');
 
@@ -500,16 +618,27 @@ export async function renderPlanner(root) {
   const model = buildModel(view.horizon);
   ensureConsistency(model);
   const gw = selectedGw(model);
+  const isFirst = gw === firstGw(model);
+  const ft = ftInfo(model);
 
-  const totalCost = cost(view.squad);
+  const squad = squadAt(model, gw);
+  const totalCost = cost(squad);
   const itb = BUDGET - totalCost;
+  const totalHits = model.gws.reduce((s, e) => s + (ft[e]?.hits || 0), 0);
+  const horizonTotal = model.gws.reduce((s, e) => s + gwForecast(model, e, ft), 0);
+  const lineup = lineupFor(model, gw);
+  const formationLabel = lineup.formation
+    || (formationValid(lineup.starters)
+      ? [2, 3, 4].map((pos) => posCounts(lineup.starters)[pos]).join('-')
+      : `${lineup.starters.length}/11 picked`);
+
   const gwChips = model.gws
-    .map((e) => `<button class="gw-chip ${e === gw ? 'active' : ''}" data-gw="${e}">GW${e}${view.chips[e] ? ` · ${view.chips[e]}` : ''}</button>`)
+    .map((e) => {
+      const marks = [view.chips[e], (view.transfers[e] || []).length ? `${view.transfers[e].length}↔` : null]
+        .filter(Boolean).join(' ');
+      return `<button class="gw-chip ${e === gw ? 'active' : ''}" data-gw="${e}">GW${e}${marks ? ` · ${marks}` : ''}</button>`;
+    })
     .join('');
-  const horizonTotal = model.gws.reduce((s, e) => s + gwForecast(model, e), 0);
-  const formationLabel = formationValid(view.starters)
-    ? [2, 3, 4].map((pos) => posCounts(view.starters)[pos]).join('-')
-    : `${view.starters.length}/11 picked`;
 
   root.dataset.booted = '1';
   root.innerHTML = `
@@ -519,30 +648,30 @@ export async function renderPlanner(root) {
         <select id="pl-horizon">
           ${[3, 5, 8].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${n} GWs</option>`).join('')}
         </select>
-        <button class="btn" id="pl-build">${view.squad.length ? '⚡ Re-optimize' : '⚡ Auto-build squad'}</button>
-        <button class="btn ghost" id="pl-bestxi" ${view.squad.length === 15 ? '' : 'disabled'}>Best XI for GW${gw}</button>
+        <button class="btn" id="pl-build">${view.baseSquad.length ? '⚡ Re-optimize' : '⚡ Auto-build squad'}</button>
         <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">🤖 Assistant</button>
         <span class="spacer"></span>
         <span class="result-count">
-          ${view.squad.length}/15 · <strong>${fmtPrice(totalCost)}</strong> · Bank
+          ${squad.length}/15 · <strong>${fmtPrice(totalCost)}</strong> · Bank
           <strong class="${itb < 0 ? 'lo' : ''}">${fmtPrice(itb)}</strong> ·
-          Plan xP <strong>${horizonTotal.toFixed(0)}</strong>
+          Plan xP <strong>${horizonTotal.toFixed(0)}</strong>${totalHits ? ` <span class="lo">(-${totalHits} hits)</span>` : ''}
         </span>
-        <button class="link-btn" id="pl-copy" ${view.squad.length ? '' : 'disabled'}>📋 Copy</button>
-        <button class="link-btn" id="pl-clear" ${view.squad.length ? '' : 'disabled'}>Clear</button>
+        <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>📋 Copy</button>
+        <button class="link-btn" id="pl-clear" ${view.baseSquad.length ? '' : 'disabled'}>Clear</button>
       </div>
       <div class="toolbar" style="border-bottom:none;padding-top:10px">
         <div class="gw-chips">${gwChips}</div>
         <span class="spacer"></span>
-        <span class="result-count">${formationLabel} · GW${gw} forecast <strong>${gwForecast(model, gw).toFixed(1)} pts</strong></span>
+        <span class="result-count">${formationLabel} · GW${gw} forecast <strong>${gwForecast(model, gw, ft).toFixed(1)} pts</strong>${isFirst ? '' : ' · auto lineup'}</span>
       </div>
       ${chipsBar(model, gw)}
+      ${transfersBar(model, gw, ft)}
       ${view.showAssistant ? assistantPanel(model, gw) : ''}
       <div class="planner-layout">
         <div class="planner-main">${pitchHtml(model, gw)}</div>
-        <aside class="planner-side">${sideList(model)}</aside>
+        <aside class="planner-side">${sideList(model, gw)}</aside>
       </div>
-      ${view.swapId ? '<div class="note">Swap mode: pick a highlighted player to swap with, or click ⇄ again to cancel.</div>' : ''}
+      ${view.swapId ? '<div class="note">Swap mode: pick a highlighted player, or click ⇄ again to cancel.</div>' : ''}
     </div>`;
 
   const rerender = () => { save(); renderPlanner(root); };
@@ -562,9 +691,10 @@ export async function renderPlanner(root) {
     btn.textContent = 'Optimizing…';
     btn.disabled = true;
     setTimeout(() => {
-      view.squad = buildOptimalSquad(model);
+      view.baseSquad = buildOptimalSquad(model);
       view.starters = [];
       view.captain = null;
+      view.transfers = {};
       ensureConsistency(model);
       view.building = false;
       rerender();
@@ -579,10 +709,20 @@ export async function renderPlanner(root) {
   root.querySelectorAll('.as-apply').forEach((b) =>
     b.addEventListener('click', () => {
       const act = b.dataset.act;
-      if (act === 'transfer') applyTransfer(+b.dataset.out, +b.dataset.in);
+      if (act === 'transfer') {
+        const outId = +b.dataset.out;
+        const inId = +b.dataset.in;
+        if (isFirst) {
+          view.baseSquad = view.baseSquad.map((id) => (id === outId ? inId : id));
+          view.starters = view.starters.map((id) => (id === outId ? inId : id));
+          if (view.captain === outId) view.captain = inId;
+        } else {
+          recordTransfer(model, gw, outId, inId);
+        }
+      }
       if (act === 'bestxi') {
-        const xi = bestXI(model, view.squad, gw);
-        if (xi) { view.starters = xi.xi.map((e) => e.id); view.captain = null; }
+        const xi = bestXI(model, view.baseSquad, gw);
+        if (xi) { view.starters = xi.xi; view.captain = null; }
       }
       if (act === 'captain') view.captain = +b.dataset.id;
       if (act === 'chip') view.chips[+b.dataset.gw] = b.dataset.chip;
@@ -591,23 +731,16 @@ export async function renderPlanner(root) {
     })
   );
 
-  root.querySelector('#pl-bestxi')?.addEventListener('click', () => {
-    const xi = bestXI(model, view.squad, gw);
-    if (xi) {
-      view.starters = xi.xi.map((e) => e.id);
-      view.captain = null;
-      ensureConsistency(model);
-      rerender();
-    }
-  });
-
   root.querySelector('#pl-copy')?.addEventListener('click', async (e) => {
     const label = (id) => {
       const p = state.playersById[id];
-      return `${state.positionsById[p.element_type].singular_name_short}  ${p.web_name} (${state.teamsById[p.team].short_name}) ${fmtPrice(p.now_cost)}${view.captain === id ? ' (C)' : ''}`;
+      return `${state.positionsById[p.element_type].singular_name_short}  ${p.web_name} (${state.teamsById[p.team].short_name}) ${fmtPrice(p.now_cost)}${lineup.captain === id ? ' (C)' : ''}`;
     };
-    const bench = view.squad.filter((id) => !view.starters.includes(id));
-    const text = `amitfpl squad · ${fmtPrice(totalCost)}\nXI:\n${view.starters.map(label).join('\n')}\nBench:\n${bench.map(label).join('\n')}`;
+    const bench = squad.filter((id) => !lineup.starters.includes(id));
+    const moves = Object.entries(view.transfers)
+      .map(([e, list]) => `GW${e}: ${list.map((t) => `${state.playersById[t.out].web_name} ➜ ${state.playersById[t.in].web_name}`).join(', ')}`)
+      .join('\n');
+    const text = `amitfpl plan · GW${gw} squad · ${fmtPrice(totalCost)}\nXI:\n${lineup.starters.map(label).join('\n')}\nBench:\n${bench.map(label).join('\n')}${moves ? `\nTransfers:\n${moves}` : ''}`;
     try {
       await navigator.clipboard.writeText(text);
       e.target.textContent = '✓ Copied';
@@ -616,15 +749,12 @@ export async function renderPlanner(root) {
   });
 
   root.querySelector('#pl-clear')?.addEventListener('click', () => {
-    view.squad = [];
-    view.starters = [];
-    view.captain = null;
-    view.swapId = null;
+    Object.assign(view, { baseSquad: [], starters: [], captain: null, transfers: {}, swapId: null, pending: null });
     rerender();
   });
 
   root.querySelectorAll('.gw-chip').forEach((b) =>
-    b.addEventListener('click', () => { view.planGw = +b.dataset.gw; rerender(); })
+    b.addEventListener('click', () => { view.planGw = +b.dataset.gw; view.pending = null; view.swapId = null; rerender(); })
   );
 
   root.querySelectorAll('.chip-btn').forEach((b) =>
@@ -635,6 +765,11 @@ export async function renderPlanner(root) {
       rerender();
     })
   );
+
+  root.querySelectorAll('.tr-x').forEach((b) =>
+    b.addEventListener('click', () => { dropTransfer(+b.dataset.gw, +b.dataset.idx); rerender(); })
+  );
+  root.querySelector('#tr-cancel')?.addEventListener('click', () => { view.pending = null; rerender(); });
 
   // Side browser
   root.querySelector('#sd-search').addEventListener('input', (e) => {
@@ -652,12 +787,31 @@ export async function renderPlanner(root) {
   sideEl?.addEventListener('scroll', () => { sideScroll = sideEl.scrollTop; });
 
   root.querySelectorAll('.side-add').forEach((b) =>
-    b.addEventListener('click', () => { addPlayer(+b.dataset.id); ensureConsistency(model); rerender(); })
+    b.addEventListener('click', () => {
+      const id = +b.dataset.id;
+      if (isFirst) {
+        addPlayer(id);
+      } else if (view.pending?.type === 'out') {
+        if (recordTransfer(model, gw, view.pending.id, id)) view.pending = null;
+      } else {
+        view.pending = { type: 'in', id };
+      }
+      ensureConsistency(model);
+      rerender();
+    })
   );
 
   // Card actions
   root.querySelectorAll('.pc-remove').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); removePlayer(+b.dataset.id); rerender(); })
+  );
+  root.querySelectorAll('.pc-out').forEach((b) =>
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      view.pending = { type: 'out', id: +b.dataset.id };
+      view.filterPos = String(posOf(+b.dataset.id));
+      rerender();
+    })
   );
   root.querySelectorAll('.pc-cap').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); view.captain = +b.dataset.id; rerender(); })
@@ -672,7 +826,13 @@ export async function renderPlanner(root) {
   );
   root.querySelectorAll('.pc-card.swap-target').forEach((card) =>
     card.addEventListener('click', () => {
-      if (view.swapId && trySwap(view.swapId, +card.dataset.id)) {
+      const targetId = +card.dataset.id;
+      if (view.pending?.type === 'in') {
+        if (recordTransfer(model, gw, targetId, view.pending.id)) {
+          view.pending = null;
+          rerender();
+        }
+      } else if (view.swapId && trySwap(view.swapId, targetId)) {
         view.swapId = null;
         rerender();
       }
@@ -685,29 +845,31 @@ export async function renderPlanner(root) {
     })
   );
 
-  // Drag & drop: squad card ↔ squad card (starter/bench swap).
-  root.querySelectorAll('.pc-card').forEach((card) => {
-    card.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/plain', card.dataset.id);
-      e.dataTransfer.effectAllowed = 'move';
-      card.classList.add('dragging');
+  // Drag & drop starter<->bench swaps (first GW only).
+  if (isFirst) {
+    root.querySelectorAll('.pc-card[draggable]').forEach((card) => {
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', card.dataset.id);
+        e.dataTransfer.effectAllowed = 'move';
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        card.classList.add('drop-hover');
+      });
+      card.addEventListener('dragleave', () => card.classList.remove('drop-hover'));
+      card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        card.classList.remove('drop-hover');
+        const dragged = +e.dataTransfer.getData('text/plain');
+        const target = +card.dataset.id;
+        if (dragged && target && dragged !== target && trySwap(dragged, target)) {
+          view.swapId = null;
+          rerender();
+        }
+      });
     });
-    card.addEventListener('dragend', () => card.classList.remove('dragging'));
-    card.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      card.classList.add('drop-hover');
-    });
-    card.addEventListener('dragleave', () => card.classList.remove('drop-hover'));
-    card.addEventListener('drop', (e) => {
-      e.preventDefault();
-      card.classList.remove('drop-hover');
-      const dragged = +e.dataTransfer.getData('text/plain');
-      const target = +card.dataset.id;
-      if (dragged && target && dragged !== target && trySwap(dragged, target)) {
-        view.swapId = null;
-        rerender();
-      }
-    });
-  });
+  }
   return Promise.resolve();
 }
