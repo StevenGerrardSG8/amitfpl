@@ -1,5 +1,5 @@
 import { state, escapeHtml } from './state.js';
-import { teamBadge } from './ui.js';
+import { teamBadge, inlinePhoto } from './ui.js';
 
 function takers(players, orderKey) {
   return players
@@ -13,7 +13,7 @@ function takerCell(list) {
   const alt = rest.length
     ? `<div class="sp-alt">then ${rest.slice(0, 2).map((p) => escapeHtml(p.web_name)).join(', ')}</div>`
     : '';
-  return `<div><span class="sp-primary">${escapeHtml(first.web_name)}</span>${alt}</div>`;
+  return `<div><span class="sp-primary">${inlinePhoto(first)} ${escapeHtml(first.web_name)}</span>${alt}</div>`;
 }
 
 export function renderSetPieces(root) {

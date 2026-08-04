@@ -61,16 +61,16 @@ function blanksDoublesCard() {
     const doubles = [];
     for (const t of state.bootstrap.teams) {
       const c = counts[t.id][e] || 0;
-      if (c === 0) blanks.push(t.short_name);
-      if (c >= 2) doubles.push(`${t.short_name} ×${c}`);
+      if (c === 0) blanks.push(t);
+      if (c >= 2) doubles.push({ t, c });
     }
     // A GW where nobody plays isn't scheduled yet — skip the noise.
     if (blanks.length >= state.bootstrap.teams.length) continue;
     if (blanks.length || doubles.length) {
       rows.push(`<tr>
         <td class="team-cell">GW${e}</td>
-        <td>${doubles.length ? doubles.map((d) => `<span class="fdr-chip fdr-1">${d}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
-        <td>${blanks.length ? blanks.map((b) => `<span class="fdr-chip fdr-blank">${b}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
+        <td>${doubles.length ? doubles.map(({ t, c }) => `<span class="fdr-chip fdr-1">${teamBadge(t.id, 'chip-badge')}${t.short_name} ×${c}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
+        <td>${blanks.length ? blanks.map((t) => `<span class="fdr-chip fdr-blank">${teamBadge(t.id, 'chip-badge')}${t.short_name}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
       </tr>`);
     }
   }
@@ -217,7 +217,7 @@ export function renderFixtures(root) {
           const chips = fx
             .map((f) => {
               const opp = state.teamsById[f.opponent].short_name;
-              return `<span class="fdr-chip fdr-${f.difficulty}">${opp} (${f.isHome ? 'H' : 'A'})</span>`;
+              return `<span class="fdr-chip fdr-${f.difficulty}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${f.isHome ? 'H' : 'A'})</span>`;
             })
             .join('');
           return `<td><div class="fdr-cell">${chips}</div></td>`;

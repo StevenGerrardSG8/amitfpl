@@ -1,6 +1,6 @@
 // Scout tab: captaincy shortlist, differentials, best value.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { fixtureChips, posBadge, playerCell } from './ui.js';
+import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 
 const view = { diffMax: 10 };
@@ -43,9 +43,9 @@ export async function renderScout(root) {
       const cells = top
         .map(({ p, xp }, i) => {
           const opp = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e)
-            .map((f) => `${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
+            .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
             .join(', ');
-          return `<td>${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}
+          return `<td>${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}
             <span class="muted">${xp.toFixed(1)} · ${opp || '—'}</span></td>`;
         })
         .join('');

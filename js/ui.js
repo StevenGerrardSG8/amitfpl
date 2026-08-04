@@ -8,9 +8,14 @@ export function fixtureChips(teamId, count = 3) {
     .map((f) => {
       const opp = state.teamsById[f.opponent].short_name;
       const ha = f.isHome ? 'H' : 'A';
-      return `<span class="fdr-chip fdr-${f.difficulty}" title="GW${f.event}">${opp} (${ha})</span>`;
+      return `<span class="fdr-chip fdr-${f.difficulty}" title="GW${f.event}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${ha})</span>`;
     })
     .join(' ');
+}
+
+// Tiny inline headshot for use next to a player's name in running text.
+export function inlinePhoto(p) {
+  return playerPhoto(p, 'inline-photo');
 }
 
 export function posBadge(p) {

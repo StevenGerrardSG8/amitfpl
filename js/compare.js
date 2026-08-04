@@ -6,7 +6,7 @@ const STORAGE_KEY = 'amitfpl:compare';
 const SLOTS = 3;
 
 const METRICS = [
-  { label: 'Team', fn: (p) => escapeHtml(state.teamsById[p.team].name) },
+  { label: 'Team', fn: (p) => `${teamBadge(p.team, 'meta-badge')} ${escapeHtml(state.teamsById[p.team].name)}` },
   { label: 'Position', fn: (p) => state.positionsById[p.element_type].singular_name_short },
   { label: 'Price', fn: (p) => fmtPrice(p.now_cost) },
   { label: 'Selected by', fn: (p) => `${p.selected_by_percent}%` },

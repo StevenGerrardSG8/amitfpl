@@ -2,7 +2,7 @@
 // Pitch with drag & drop (+ click-to-swap fallback), side player browser,
 // captain picking, per-GW chip planning, optimizer, and xP forecasts.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { playerPhoto } from './ui.js';
+import { playerPhoto, teamBadge, inlinePhoto } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 
 const STORAGE_KEY = 'amitfpl:planner:v2';
@@ -288,7 +288,7 @@ function assistantPanel(model, gw) {
     </div>`;
   }
 
-  const name = (id) => escapeHtml(state.playersById[id].web_name);
+  const name = (id) => `${inlinePhoto(state.playersById[id])} ${escapeHtml(state.playersById[id].web_name)}`;
   const items = [];
 
   // 1. Transfers
@@ -377,6 +377,7 @@ function playerCard(model, id, gw, isStarter) {
        draggable="true" data-id="${id}" data-starter="${isStarter ? 1 : 0}">
     <div class="pp-photo-wrap">
       ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
+      <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
       ${view.captain === id && isStarter ? '<span class="pp-cap" title="Captain">C</span>' : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
@@ -464,7 +465,7 @@ function sideList(model) {
       ${playerPhoto(p, 'row-photo')}
       <div class="side-info">
         <span class="player-name">${escapeHtml(p.web_name)}</span>
-        <span class="player-meta">${state.positionsById[p.element_type].singular_name_short} · ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
+        <span class="player-meta">${state.positionsById[p.element_type].singular_name_short} · ${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
       </div>
       <span class="side-xp" title="Expected points over the plan horizon">${model.horizonTotal(p.id).toFixed(1)}</span>
       <button class="side-add" data-id="${p.id}" ${blocked ? 'disabled' : ''} title="${reason}">+</button>
