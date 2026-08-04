@@ -28,6 +28,7 @@ const view = {
   search: '',
   sortKey: 'xp',
   swapId: null,   // click-to-swap source
+  showAssistant: false,
   building: false,
 };
 
@@ -228,6 +229,124 @@ function gwForecast(model, gw) {
   return total;
 }
 
+/* ---------------- assistant ---------------- */
+
+// Best same-position upgrades within budget and club limits.
+function upgradeSuggestions(model) {
+  const itb = BUDGET - cost(view.squad);
+  const clubs = clubCounts(view.squad);
+  const out = [];
+  for (const id of view.squad) {
+    const cur = state.playersById[id];
+    const curScore = model.horizonTotal(id);
+    let best = null;
+    for (const cand of state.bootstrap.elements) {
+      if (cand.element_type !== cur.element_type || view.squad.includes(cand.id)) continue;
+      if (cand.status !== 'a' && cand.status !== 'd') continue;
+      if (cand.now_cost > cur.now_cost + itb) continue;
+      const clubCount = (clubs[cand.team] || 0) - (cand.team === cur.team ? 1 : 0);
+      if (clubCount >= MAX_PER_CLUB) continue;
+      const gain = model.horizonTotal(cand.id) - curScore;
+      if (gain > 0.5 && (!best || gain > best.gain)) best = { cand, gain };
+    }
+    if (best) out.push({ outId: id, inId: best.cand.id, gain: best.gain });
+  }
+  // One suggestion per incoming player — keep the biggest gain.
+  const seen = new Set();
+  return out
+    .sort((a, b) => b.gain - a.gain)
+    .filter((s) => (seen.has(s.inId) ? false : seen.add(s.inId)))
+    .slice(0, 4);
+}
+
+function applyTransfer(outId, inId) {
+  view.squad = view.squad.map((id) => (id === outId ? inId : id));
+  view.starters = view.starters.map((id) => (id === outId ? inId : id));
+  if (view.captain === outId) view.captain = inId;
+}
+
+function chipAdvice(model) {
+  let tc = null;
+  let bb = null;
+  for (const e of model.gws) {
+    const capXp = view.starters.length
+      ? Math.max(...view.starters.map((id) => model.xp(id, e)))
+      : 0;
+    const benchXp = view.squad.filter((id) => !view.starters.includes(id))
+      .reduce((s, id) => s + model.xp(id, e), 0);
+    if (!tc || capXp > tc.v) tc = { e, v: capXp };
+    if (!bb || benchXp > bb.v) bb = { e, v: benchXp };
+  }
+  return { tc, bb };
+}
+
+function assistantPanel(model, gw) {
+  if (view.squad.length < 15) {
+    return `<div class="assistant-card">
+      <div class="assistant-head">🤖 Assistant</div>
+      <div class="note" style="padding:0">Your squad has ${view.squad.length}/15 players — hit <strong>⚡ Auto-build squad</strong> and I'll take it from there.</div>
+    </div>`;
+  }
+
+  const name = (id) => escapeHtml(state.playersById[id].web_name);
+  const items = [];
+
+  // 1. Transfers
+  const upgrades = upgradeSuggestions(model);
+  for (const { outId, inId, gain } of upgrades) {
+    items.push(`<div class="as-item">
+      <span>🔁 <strong>${name(inId)}</strong> in for <strong>${name(outId)}</strong>
+      <span class="hi">+${gain.toFixed(1)} xP</span> <span class="muted">over ${view.horizon} GWs · ${fmtPrice(state.playersById[inId].now_cost)}</span></span>
+      <button class="as-apply" data-act="transfer" data-out="${outId}" data-in="${inId}">Apply</button>
+    </div>`);
+  }
+  if (!upgrades.length) {
+    items.push('<div class="as-item"><span>✅ No clear upgrades within budget — your squad is close to optimal.</span></div>');
+  }
+
+  // 2. XI check
+  const xi = bestXI(model, view.squad, gw);
+  const curXi = view.starters.reduce((s, id) => s + model.xp(id, gw), 0);
+  if (xi && xi.total > curXi + 0.3) {
+    items.push(`<div class="as-item">
+      <span>📋 A different XI scores <span class="hi">+${(xi.total - curXi).toFixed(1)} xP</span> in GW${gw}</span>
+      <button class="as-apply" data-act="bestxi">Apply</button>
+    </div>`);
+  }
+
+  // 3. Captain for the selected GW
+  if (view.starters.length) {
+    const top = [...view.starters].sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0];
+    if (top !== view.captain) {
+      items.push(`<div class="as-item">
+        <span>©️ Best armband for GW${gw}: <strong>${name(top)}</strong>
+        <span class="muted">${model.xp(top, gw).toFixed(1)} vs ${view.captain ? `${name(view.captain)} ${model.xp(view.captain, gw).toFixed(1)}` : 'none'}</span></span>
+        <button class="as-apply" data-act="captain" data-id="${top}">Set captain</button>
+      </div>`);
+    }
+  }
+
+  // 4. Chip timing
+  const { tc, bb } = chipAdvice(model);
+  if (tc && view.chips[tc.e] !== 'TC') {
+    items.push(`<div class="as-item">
+      <span>🎯 Best Triple Captain window: <strong>GW${tc.e}</strong> <span class="muted">captain projects ${tc.v.toFixed(1)} → ×3</span></span>
+      <button class="as-apply" data-act="chip" data-gw="${tc.e}" data-chip="TC">Plan TC</button>
+    </div>`);
+  }
+  if (bb && view.chips[bb.e] !== 'BB') {
+    items.push(`<div class="as-item">
+      <span>💪 Best Bench Boost window: <strong>GW${bb.e}</strong> <span class="muted">bench projects +${bb.v.toFixed(1)}</span></span>
+      <button class="as-apply" data-act="chip" data-gw="${bb.e}" data-chip="BB">Plan BB</button>
+    </div>`);
+  }
+
+  return `<div class="assistant-card">
+    <div class="assistant-head">🤖 Assistant <span class="muted" style="font-weight:500">· powered by the amitfpl xP model, ${view.horizon}-GW horizon</span></div>
+    ${items.join('')}
+  </div>`;
+}
+
 /* ---------------- rendering ---------------- */
 
 function cardButtons(id, isStarter) {
@@ -396,6 +515,7 @@ export async function renderPlanner(root) {
         </select>
         <button class="btn" id="pl-build">${view.squad.length ? '⚡ Re-optimize' : '⚡ Auto-build squad'}</button>
         <button class="btn ghost" id="pl-bestxi" ${view.squad.length === 15 ? '' : 'disabled'}>Best XI for GW${gw}</button>
+        <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">🤖 Assistant</button>
         <span class="spacer"></span>
         <span class="result-count">
           ${view.squad.length}/15 · <strong>${fmtPrice(totalCost)}</strong> · Bank
@@ -411,6 +531,7 @@ export async function renderPlanner(root) {
         <span class="result-count">${formationLabel} · GW${gw} forecast <strong>${gwForecast(model, gw).toFixed(1)} pts</strong></span>
       </div>
       ${chipsBar(model, gw)}
+      ${view.showAssistant ? assistantPanel(model, gw) : ''}
       <div class="planner-layout">
         <div class="planner-main">${pitchHtml(model, gw)}</div>
         <aside class="planner-side">${sideList(model)}</aside>
@@ -443,6 +564,26 @@ export async function renderPlanner(root) {
       rerender();
     }, 30);
   });
+
+  root.querySelector('#pl-assist').addEventListener('click', () => {
+    view.showAssistant = !view.showAssistant;
+    rerender();
+  });
+
+  root.querySelectorAll('.as-apply').forEach((b) =>
+    b.addEventListener('click', () => {
+      const act = b.dataset.act;
+      if (act === 'transfer') applyTransfer(+b.dataset.out, +b.dataset.in);
+      if (act === 'bestxi') {
+        const xi = bestXI(model, view.squad, gw);
+        if (xi) { view.starters = xi.xi.map((e) => e.id); view.captain = null; }
+      }
+      if (act === 'captain') view.captain = +b.dataset.id;
+      if (act === 'chip') view.chips[+b.dataset.gw] = b.dataset.chip;
+      ensureConsistency(model);
+      rerender();
+    })
+  );
 
   root.querySelector('#pl-bestxi')?.addEventListener('click', () => {
     const xi = bestXI(model, view.squad, gw);
