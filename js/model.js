@@ -153,3 +153,30 @@ export function buildModel(horizon) {
 
   return { xp, gws, horizonTotal };
 }
+
+// Per-fixture team forecast for one gameweek: expected goals scored and
+// clean sheet probability, for every team playing that GW. Uses strength
+// ratings when published, FDR tables otherwise (same logic as player xP).
+export function teamForecast(eventId) {
+  const rows = [];
+  for (const t of state.bootstrap.teams) {
+    for (const f of state.upcomingByTeam[t.id] || []) {
+      if (f.event !== eventId) continue;
+      const opp = state.teamsById[f.opponent];
+      const homeNudge = f.isHome ? 1.07 : 0.93;
+      const ourXG =
+        teamXG(t, opp, f.isHome) ??
+        AVG_TEAM_XG * (FDR_ATTACK_SCALE[f.difficulty] ?? 1) * homeNudge;
+      const theirXG = teamXG(opp, t, !f.isHome) ?? FDR_OPP_XG[f.difficulty] ?? AVG_TEAM_XG;
+      rows.push({
+        team: t,
+        opp,
+        isHome: f.isHome,
+        xg: ourXG,
+        cs: Math.exp(-theirXG),
+      });
+    }
+  }
+  rows.sort((a, b) => b.xg - a.xg);
+  return rows;
+}

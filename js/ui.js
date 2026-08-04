@@ -39,3 +39,10 @@ export function signed(n, digits = 1, suffix = '') {
 }
 
 export const fmtCount = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : String(n));
+
+// Official player headshot (falls back to a blank circle on 404).
+export function playerPhoto(p, cls = 'pp-photo') {
+  return `<img class="${cls}" loading="lazy" alt=""
+    src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png"
+    onerror="this.style.opacity=0" />`;
+}

@@ -1,7 +1,7 @@
 // Planner tab: xP predictions, auto-built optimal squad, and a
 // gameweek-by-gameweek best-XI plan. All client-side.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { posBadge, playerCell } from './ui.js';
+import { posBadge, playerCell, playerPhoto } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 
 const STORAGE_KEY = 'amitfpl:planner';
@@ -9,7 +9,7 @@ const QUOTA = { 1: 2, 2: 5, 3: 5, 4: 3 };
 const BUDGET = 1000; // £100.0M in API units
 const MAX_PER_CLUB = 3;
 
-const view = { horizon: 5, squad: [], building: false };
+const view = { horizon: 5, squad: [], building: false, planGw: null };
 
 function load() {
   try {
@@ -157,38 +157,61 @@ function squadTable(model) {
   </table>`;
 }
 
-function planCards(model) {
-  return model.gws
-    .map((e) => {
-      const plan = bestXI(model, view.squad, e);
-      if (!plan) return '';
-      const lines = [1, 2, 3, 4]
-        .map((pos) => {
-          const names = plan.xi
-            .filter((x) => x.p.element_type === pos)
-            .map((x) => {
-              const cap = x.p.id === plan.captain.p.id ? '<span class="captain-badge" title="Captain">C</span>' : '';
-              return `${escapeHtml(x.p.web_name)}${cap} <span class="muted">${x.xp.toFixed(1)}</span>`;
-            })
-            .join(' · ');
-          return names ? `<div class="plan-line"><span class="plan-pos">${state.positionsById[pos].singular_name_short}</span>${names}</div>` : '';
-        })
+function pitchPlayerCard(x, isCaptain) {
+  const p = x.p;
+  const pos = state.positionsById[p.element_type].singular_name_short;
+  return `<div class="pp-card">
+    <div class="pp-photo-wrap">
+      ${playerPhoto(p)}
+      ${isCaptain ? '<span class="pp-cap" title="Captain">C</span>' : ''}
+      <span class="pp-sel">${p.selected_by_percent}%</span>
+    </div>
+    <div class="pp-meta">${pos} · ${fmtPrice(p.now_cost)}</div>
+    <div class="pp-name">${escapeHtml(p.web_name)}</div>
+    <span class="pp-xp">${x.xp.toFixed(1)}</span>
+  </div>`;
+}
+
+function pitchView(model) {
+  const e = view.planGw && model.gws.includes(view.planGw) ? view.planGw : model.gws[0];
+  const plan = bestXI(model, view.squad, e);
+  if (!plan) return '<div class="note">Squad can\'t field a legal XI yet — check the position quotas above.</div>';
+
+  const chips = model.gws
+    .map((gw) => `<button class="gw-chip ${gw === e ? 'active' : ''}" data-gw="${gw}">GW${gw}</button>`)
+    .join('');
+
+  // Attackers at the top, keeper at the bottom — like a real team sheet.
+  const rows = [4, 3, 2, 1]
+    .map((pos) => {
+      const cards = plan.xi
+        .filter((x) => x.p.element_type === pos)
+        .map((x) => pitchPlayerCard(x, x.p.id === plan.captain.p.id))
         .join('');
-      const bench = plan.bench
-        .map((x) => `${escapeHtml(x.p.web_name)} <span class="muted">${x.xp.toFixed(1)}</span>`)
-        .join(' · ');
-      return `<div class="plan-card">
-        <div class="plan-head">
-          <strong>GW${e}</strong>
-          <span class="muted">${plan.formation}</span>
-          <span class="spacer"></span>
-          <span title="Expected points incl. captain">xP <strong>${plan.totalWithCaptain.toFixed(1)}</strong></span>
-        </div>
-        ${lines}
-        <div class="plan-line plan-bench"><span class="plan-pos">Bench</span>${bench}</div>
-      </div>`;
+      return cards ? `<div class="pitch-row">${cards}</div>` : '';
     })
     .join('');
+
+  const bench = plan.bench
+    .map((x) => `<div class="pp-card pp-bench">
+        <div class="pp-photo-wrap">${playerPhoto(x.p, 'pp-photo pp-photo-sm')}</div>
+        <div class="pp-name">${escapeHtml(x.p.web_name)}</div>
+        <span class="pp-xp pp-xp-sm">${x.xp.toFixed(1)}</span>
+      </div>`)
+    .join('');
+
+  return `
+    <div class="card" style="margin-top:16px">
+      <div class="toolbar">
+        <div class="gw-chips">${chips}</div>
+        <span class="spacer"></span>
+        <span class="result-count">${plan.formation} · expected <strong>${plan.totalWithCaptain.toFixed(1)} pts</strong> incl. captain</span>
+      </div>
+      <div class="pitch-wrap">
+        <div class="pitch">${rows}</div>
+        <div class="bench-strip"><span class="bench-label">Bench</span>${bench}</div>
+      </div>
+    </div>`;
 }
 
 export async function renderPlanner(root) {
@@ -237,8 +260,15 @@ export async function renderPlanner(root) {
              <button class="link-btn" id="pl-clear">Clear squad</button>
            </div>`}
     </div>
-    ${empty ? '' : `<div class="plan-grid">${planCards(model)}</div>`}
+    ${empty ? '' : pitchView(model)}
     ${datalist}`;
+
+  root.querySelectorAll('.gw-chip').forEach((b) =>
+    b.addEventListener('click', () => {
+      view.planGw = +b.dataset.gw;
+      renderPlanner(root);
+    })
+  );
 
   root.querySelector('#pl-horizon').addEventListener('change', (e) => {
     view.horizon = +e.target.value;

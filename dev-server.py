@@ -48,6 +48,12 @@ def refresh_loop():
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        # Force revalidation so edits show up on refresh (the browser's
+        # heuristic caching otherwise serves stale JS/data).
+        self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def do_GET(self):
         if self.path.startswith("/api/fpl/"):
             self.proxy_fpl(self.path[len("/api/fpl"):])

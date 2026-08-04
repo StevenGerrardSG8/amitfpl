@@ -1,6 +1,48 @@
 import { state, escapeHtml } from './state.js';
+import { teamForecast } from './model.js';
 
-const view = { horizon: 6, sortByEase: true };
+const view = { horizon: 6, sortByEase: true, forecastGw: null };
+
+function forecastCard() {
+  const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
+  const gws = [];
+  for (let e = fromEvent; e < fromEvent + 6 && e <= 38; e++) gws.push(e);
+  const gw = view.forecastGw && gws.includes(view.forecastGw) ? view.forecastGw : gws[0];
+
+  const rows = teamForecast(gw)
+    .map(({ team, opp, isHome, xg, cs }) => {
+      const csPct = Math.round(cs * 100);
+      return `<tr>
+        <td class="team-cell">${escapeHtml(team.name)}</td>
+        <td>${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
+        <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
+        <td class="num"><span class="cs-pill ${csPct >= 40 ? 'cs-hi' : csPct <= 20 ? 'cs-lo' : ''}">${csPct}%</span></td>
+      </tr>`;
+    })
+    .join('');
+
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="toolbar">
+        <span class="section-title" style="padding:0">⚽ Goals &amp; clean sheet forecast</span>
+        <select id="fx-fc-gw">
+          ${gws.map((e) => `<option value="${e}" ${e === gw ? 'selected' : ''}>GW${e}</option>`).join('')}
+        </select>
+        <span class="spacer"></span>
+        <span class="result-count">amitfpl model · sorted by expected goals</span>
+      </div>
+      <div class="table-wrap" style="max-height:50vh;overflow-y:auto">
+        <table class="data">
+          <thead><tr>
+            <th class="no-sort">Team</th><th class="no-sort">Fixture</th>
+            <th class="num no-sort" title="Expected goals scored">Goals</th>
+            <th class="num no-sort" title="Clean sheet probability">Clean sheet</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
 
 export function renderFixtures(root) {
   const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
@@ -52,6 +94,7 @@ export function renderFixtures(root) {
     .join('');
 
   root.innerHTML = `
+    ${forecastCard()}
     <div class="card">
       <div class="toolbar">
         <label>Horizon</label>
@@ -80,6 +123,10 @@ export function renderFixtures(root) {
       </div>
     </div>`;
 
+  root.querySelector('#fx-fc-gw').addEventListener('change', (e) => {
+    view.forecastGw = +e.target.value;
+    renderFixtures(root);
+  });
   root.querySelector('#fx-horizon').addEventListener('change', (e) => {
     view.horizon = +e.target.value;
     renderFixtures(root);
