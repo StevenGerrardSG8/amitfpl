@@ -361,6 +361,10 @@ function cardButtons(id, isStarter) {
 function playerCard(model, id, gw, isStarter) {
   const p = state.playersById[id];
   const xp = model.xp(id, gw);
+  const opp = (state.upcomingByTeam[p.team] || [])
+    .filter((f) => f.event === gw)
+    .map((f) => `${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
+    .join(', ');
   const isSwapSource = view.swapId === id;
   let swapTarget = false;
   if (view.swapId && view.swapId !== id) {
@@ -377,6 +381,7 @@ function playerCard(model, id, gw, isStarter) {
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
     <div class="pp-name">${escapeHtml(p.web_name)}</div>
+    ${isStarter ? `<div class="pp-fix">${opp || 'no fixture'}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${cardButtons(id, isStarter)}
   </div>`;

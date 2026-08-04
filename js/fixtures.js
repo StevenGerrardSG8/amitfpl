@@ -1,4 +1,5 @@
 import { state, escapeHtml } from './state.js';
+import { teamBadge } from './ui.js';
 import { teamForecast } from './model.js';
 
 const view = { horizon: 6, sortByEase: true, forecastGw: null };
@@ -13,8 +14,8 @@ function forecastCard() {
     .map(({ team, opp, isHome, xg, cs }) => {
       const csPct = Math.round(cs * 100);
       return `<tr>
-        <td class="team-cell">${escapeHtml(team.name)}</td>
-        <td>${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
+        <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.name)}</td>
+        <td>${teamBadge(opp.id, 'meta-badge')} ${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
         <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
         <td class="num"><span class="cs-pill ${csPct >= 40 ? 'cs-hi' : csPct <= 20 ? 'cs-lo' : ''}">${csPct}%</span></td>
       </tr>`;
@@ -109,7 +110,7 @@ function swingsCard() {
   const easing = [...scored].sort((a, b) => a.delta - b.delta).slice(0, 5);
   const toughening = [...scored].sort((a, b) => b.delta - a.delta).slice(0, 5);
   const row = ({ t, early, later }) => `<tr>
-    <td class="team-cell">${escapeHtml(t.name)}</td>
+    <td class="team-cell">${teamBadge(t.id)} ${escapeHtml(t.name)}</td>
     <td class="num">${early.toFixed(2)}</td>
     <td class="num">${later.toFixed(2)}</td>
   </tr>`;
@@ -164,7 +165,7 @@ function rotationCard() {
   pairs.sort((x, y) => x.score - y.score);
   const rows = pairs.slice(0, 8)
     .map(({ a, b, score }) => `<tr>
-      <td class="team-cell">${escapeHtml(a.name)} + ${escapeHtml(b.name)}</td>
+      <td class="team-cell">${teamBadge(a.id)} ${escapeHtml(a.name)} + ${teamBadge(b.id)} ${escapeHtml(b.name)}</td>
       <td class="num"><span class="avg-pill">${score.toFixed(2)}</span></td>
     </tr>`)
     .join('');
@@ -223,7 +224,7 @@ export function renderFixtures(root) {
         })
         .join('');
       return `<tr>
-        <td class="team-cell">${escapeHtml(team.name)}</td>
+        <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.name)}</td>
         <td class="num"><span class="avg-pill">${avg.toFixed(2)}</span></td>
         ${cells}
       </tr>`;

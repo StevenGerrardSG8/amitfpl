@@ -1,5 +1,5 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
-import { fixtureChips, playerPhoto, spBadges, isNewSigning } from './ui.js';
+import { fixtureChips, playerPhoto, teamBadge, spBadges, isNewSigning } from './ui.js';
 
 const COLUMNS = [
   { key: 'web_name', label: 'Player', numeric: false },
@@ -84,7 +84,7 @@ function render(root) {
           ${playerPhoto(p, 'row-photo')}
           <div class="player-cell">
             <span class="player-name">${escapeHtml(p.web_name)}${flag}${spBadges(p)}</span>
-            <span class="player-meta">${team.short_name}${isNewSigning(p) ? ' <span class="new-tag">NEW</span>' : ''}</span>
+            <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}${isNewSigning(p) ? ' <span class="new-tag">NEW</span>' : ''}</span>
           </div>
         </div></td>
         <td><span class="pos-badge pos-${pos}">${pos}</span></td>

@@ -721,6 +721,39 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .shirt-img { object-fit: contain !important; padding: 6px; box-sizing: border-box; }
 
+/* ---------- Badges & photo extras ---------- */
+.team-badge {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: -4px;
+  margin-right: 2px;
+}
+.meta-badge {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  vertical-align: -2px;
+}
+.cmp-head { padding-top: 10px !important; }
+.cmp-photo {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #e3e7f1;
+  object-fit: cover;
+  object-position: top;
+}
+[data-theme="dark"] .cmp-photo { background: #26304a; }
+.pp-fix {
+  font-size: 9px;
+  opacity: 0.85;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- Team forecast ---------- */
 .xg-pill {
   display: inline-block;

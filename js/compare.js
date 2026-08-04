@@ -1,6 +1,6 @@
 // Compare tab: 2–3 players side by side.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { fixtureChips } from './ui.js';
+import { fixtureChips, playerPhoto, teamBadge } from './ui.js';
 
 const STORAGE_KEY = 'amitfpl:compare';
 const SLOTS = 3;
@@ -69,7 +69,11 @@ export function renderCompare(root) {
   let table = '';
   if (chosen.length >= 2) {
     const head = chosen
-      .map((p) => `<th class="num">${escapeHtml(p.web_name)}<br><span class="muted" style="font-weight:500">${state.teamsById[p.team].short_name}</span></th>`)
+      .map((p) => `<th class="num cmp-head">
+        ${playerPhoto(p, 'cmp-photo')}<br>
+        ${escapeHtml(p.web_name)}<br>
+        <span class="muted" style="font-weight:500">${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name}</span>
+      </th>`)
       .join('');
     const rows = METRICS.map((m) => {
       const vals = chosen.map((p) => m.fn(p));

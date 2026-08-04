@@ -18,15 +18,26 @@ export function posBadge(p) {
   return `<span class="pos-badge pos-${pos}">${pos}</span>`;
 }
 
+// Official club crest.
+export function teamBadge(teamId, cls = 'team-badge') {
+  const t = state.teamsById[teamId];
+  return `<img class="${cls}" loading="lazy" alt=""
+    src="https://resources.premierleague.com/premierleague/badges/70/t${t.code}.png"
+    onerror="this.style.opacity=0" />`;
+}
+
 export function playerCell(p) {
   const team = state.teamsById[p.team];
   const st = statusInfo(p);
   const flag = st
     ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>`
     : '';
-  return `<div class="player-cell">
-    <span class="player-name">${escapeHtml(p.web_name)}${flag}</span>
-    <span class="player-meta">${team.short_name}</span>
+  return `<div class="player-flex">
+    ${playerPhoto(p, 'row-photo')}
+    <div class="player-cell">
+      <span class="player-name">${escapeHtml(p.web_name)}${flag}</span>
+      <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}</span>
+    </div>
   </div>`;
 }
 

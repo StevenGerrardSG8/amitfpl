@@ -1,4 +1,5 @@
 import { state, escapeHtml } from './state.js';
+import { teamBadge } from './ui.js';
 
 function takers(players, orderKey) {
   return players
@@ -25,7 +26,7 @@ export function renderSetPieces(root) {
     .map((t) => {
       const squad = byTeam[t.id] || [];
       return `<tr>
-        <td class="team-cell">${escapeHtml(t.name)}</td>
+        <td class="team-cell">${teamBadge(t.id)} ${escapeHtml(t.name)}</td>
         <td>${takerCell(takers(squad, 'penalties_order'))}</td>
         <td>${takerCell(takers(squad, 'direct_freekicks_order'))}</td>
         <td>${takerCell(takers(squad, 'corners_and_indirect_freekicks_order'))}</td>
