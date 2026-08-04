@@ -45,8 +45,9 @@ function showTab(name) {
     t.classList.toggle('active', t.dataset.tab === name);
   });
   const v = views[name];
-  // My Team re-renders on every visit (live data); others render once.
-  if (!v.done || name === 'myteam') {
+  // My Team re-renders every visit (live data); the planner too (its
+  // layout depends on viewport size); others render once.
+  if (!v.done || name === 'myteam' || name === 'planner') {
     v.render(v.el);
     v.done = true;
   }
@@ -205,6 +206,13 @@ async function main() {
 
   // Keep the "updated Xm ago" label honest.
   setInterval(() => { if (!refreshing) renderUpdatedChip(); }, 30000);
+
+  // The planner's markup differs across the mobile breakpoint - refresh
+  // it when the viewport crosses over (rotation, window resize).
+  matchMedia('(max-width: 640px)').addEventListener('change', () => {
+    views.planner.done = false;
+    if (activeTab === 'planner') showTab('planner');
+  });
 
   // Photo watchdog: ~190 players have no headshot on the PL CDN yet
   // (new signings pre-season), and some requests hang without firing

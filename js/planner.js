@@ -6,6 +6,10 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, inlinePhoto } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
+import { openDrawer } from './drawer.js';
+
+// On phones the per-card action buttons become a bottom action sheet.
+const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
 
 const STORAGE_KEY = 'amitfpl:planner:v3';
 const QUOTA = { 1: 2, 2: 5, 3: 5, 4: 3 };
@@ -449,6 +453,49 @@ function assistantPanel(model, gw) {
   </div>`;
 }
 
+/* ---------------- mobile action sheet ---------------- */
+
+function openSheet(model, root, id, gw) {
+  const p = state.playersById[id];
+  if (!p) return;
+  const isFirst = gw === firstGw(model);
+  const isStarter = isFirst && view.starters.includes(id);
+  const rerender = () => { save(); renderPlanner(root); };
+  const actions = [];
+  if (isFirst && isStarter && view.captain !== id) {
+    actions.push(['©️ Make captain', () => { view.captain = id; rerender(); }]);
+  }
+  if (isFirst) {
+    actions.push(['⇄ Swap with bench/pitch', () => { view.swapId = id; rerender(); }]);
+    actions.push(['✕ Remove from squad', () => { removePlayer(id); rerender(); }]);
+  } else {
+    actions.push([`➡ Transfer out in GW${gw}`, () => {
+      view.pending = { type: 'out', id };
+      view.filterPos = String(posOf(id));
+      rerender();
+    }]);
+  }
+  actions.push(['👤 Player profile', () => openDrawer(id)]);
+
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-overlay';
+  sheet.innerHTML = `<div class="sheet">
+    <div class="sheet-head">${escapeHtml(p.web_name)} <span class="muted">· ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span></div>
+    ${actions.map(([label], i) => `<button class="sheet-btn" data-i="${i}">${label}</button>`).join('')}
+    <button class="sheet-btn sheet-cancel">Cancel</button>
+  </div>`;
+  const closeSheet = () => sheet.remove();
+  sheet.addEventListener('click', (e) => {
+    if (e.target === sheet || e.target.closest('.sheet-cancel')) return closeSheet();
+    const btn = e.target.closest('.sheet-btn[data-i]');
+    if (btn) {
+      closeSheet();
+      actions[+btn.dataset.i][1]();
+    }
+  });
+  document.body.appendChild(sheet);
+}
+
 /* ---------------- rendering ---------------- */
 
 function playerCard(model, id, gw, isStarter, opts) {
@@ -468,22 +515,25 @@ function playerCard(model, id, gw, isStarter, opts) {
   }
   const transferTarget = view.pending?.type === 'in' && posOf(view.pending.id) === p.element_type;
   const isIn = opts.gwIns.has(id);
-  const buttons = opts.editable
-    ? `<div class="pc-actions">
-        ${isStarter ? `<button class="pc-btn pc-cap ${view.captain === id ? 'on' : ''}" data-id="${id}" title="Make captain">C</button>` : ''}
-        <button class="pc-btn pc-swap" data-id="${id}" title="Swap with bench/pitch">⇄</button>
-        <button class="pc-btn pc-remove" data-id="${id}" title="Remove from squad">✕</button>
-      </div>`
-    : `<div class="pc-actions">
-        <button class="pc-btn pc-out" data-id="${id}" title="Transfer out in GW${gw}">OUT</button>
-      </div>`;
-  // When no swap/transfer is in progress, clicking the photo or name
-  // opens the player profile drawer.
+  const buttons = isMobile()
+    ? '' // phones: tap the card for a bottom action sheet instead
+    : opts.editable
+      ? `<div class="pc-actions">
+          ${isStarter ? `<button class="pc-btn pc-cap ${view.captain === id ? 'on' : ''}" data-id="${id}" title="Make captain">C</button>` : ''}
+          <button class="pc-btn pc-swap" data-id="${id}" title="Swap with bench/pitch">⇄</button>
+          <button class="pc-btn pc-remove" data-id="${id}" title="Remove from squad">✕</button>
+        </div>`
+      : `<div class="pc-actions">
+          <button class="pc-btn pc-out" data-id="${id}" title="Transfer out in GW${gw}">OUT</button>
+        </div>`;
+  // When no swap/transfer is in progress: desktop click on photo/name
+  // opens the profile; on phones the whole card opens the action sheet.
   const calm = !view.swapId && !view.pending;
-  const pid = calm ? `class="clickable" data-pid="${id}"` : '';
+  const mobileSheet = calm && isMobile();
+  const pid = calm && !mobileSheet ? `class="clickable" data-pid="${id}"` : '';
   return `<div class="pp-card pc-card ${isSwapSource ? 'swap-source' : ''} ${swapTarget || transferTarget ? 'swap-target' : ''}"
-       ${opts.editable ? 'draggable="true"' : ''} data-id="${id}" data-starter="${isStarter ? 1 : 0}">
-    <div class="pp-photo-wrap" ${calm ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}">
+       ${opts.editable ? 'draggable="true"' : ''} data-id="${id}" data-starter="${isStarter ? 1 : 0}" ${mobileSheet ? `data-sheet="${id}"` : ''}>
+    <div class="pp-photo-wrap" ${calm && !mobileSheet ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}">
       ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
       ${opts.captain === id && isStarter ? '<span class="pp-cap" title="Captain">C</span>' : ''}
@@ -511,15 +561,16 @@ function buildModeHtml(model, gw) {
     const ids = view.baseSquad.filter((id) => posOf(id) === pos);
     const cards = ids.map((id) => {
       const p = state.playersById[id];
-      return `<div class="pp-card pc-card" data-id="${id}">
-        <div class="pp-photo-wrap clickable" data-pid="${id}">
+      const mob = isMobile();
+      return `<div class="pp-card pc-card" data-id="${id}" ${mob ? `data-sheet="${id}"` : ''}>
+        <div class="pp-photo-wrap ${mob ? '' : 'clickable'}" ${mob ? '' : `data-pid="${id}"`}>
           ${playerPhoto(p, 'pp-photo')}
           <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
           <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
         </div>
-        <div class="pp-name clickable" data-pid="${id}">${escapeHtml(p.web_name)}</div>
+        <div class="pp-name ${mob ? '' : 'clickable'}" ${mob ? '' : `data-pid="${id}"`}>${escapeHtml(p.web_name)}</div>
         <span class="pp-xp">${model.horizonTotal(id).toFixed(1)}</span>
-        <div class="pc-actions"><button class="pc-btn pc-remove" data-id="${id}" title="Remove">✕</button></div>
+        ${mob ? '' : `<div class="pc-actions"><button class="pc-btn pc-remove" data-id="${id}" title="Remove">✕</button></div>`}
       </div>`;
     });
     for (let i = ids.length; i < QUOTA[pos]; i++) cards.push(emptySlot(pos));
@@ -546,7 +597,8 @@ function pitchHtml(model, gw) {
   const squad = lineup.squad;
   const c = posCounts(starters);
   const XI_MIN = { 1: 1, 2: 3, 3: 2, 4: 1 };
-  const rows = [4, 3, 2, 1].map((pos) => {
+  // FPL pitch template order: GK top, then DEF, MID, FWD.
+  const rows = [1, 2, 3, 4].map((pos) => {
     const cards = starters.filter((id) => posOf(id) === pos)
       .sort((a, b) => model.xp(b, gw) - model.xp(a, gw))
       .map((id) => playerCard(model, id, gw, true, opts));
@@ -924,6 +976,14 @@ export async function renderPlanner(root) {
     slot.addEventListener('click', () => {
       view.filterPos = slot.dataset.pos;
       rerender();
+    })
+  );
+
+  // Phones: tapping a card opens the action sheet.
+  root.querySelectorAll('.pc-card[data-sheet]').forEach((card) =>
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      openSheet(model, root, +card.dataset.sheet, gw);
     })
   );
 
