@@ -786,6 +786,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .tr-x:hover { color: var(--red); }
 .pc-btn.pc-out { width: auto; padding: 0 6px; font-size: 9px; }
+.pp-vice { background: #6473a8 !important; color: #fff !important; border-color: #3d4a76 !important; right: auto; left: 34px; }
+.bench-ord {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+}
 .pp-in {
   position: absolute;
   top: -4px;

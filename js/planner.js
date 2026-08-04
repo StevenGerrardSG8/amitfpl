@@ -537,7 +537,9 @@ function playerCard(model, id, gw, isStarter, opts) {
       ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
       ${opts.captain === id && isStarter ? '<span class="pp-cap" title="Captain">C</span>' : ''}
+      ${opts.vice === id && isStarter ? '<span class="pp-cap pp-vice" title="Vice captain">V</span>' : ''}
       ${isIn ? '<span class="pp-in" title="Transferred in this GW">IN</span>' : ''}
+      ${opts.benchOrd ? `<span class="bench-ord">${opts.benchOrd}</span>` : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
     <div class="pp-name" ${pid}>${escapeHtml(p.web_name)}</div>
@@ -591,7 +593,10 @@ function pitchHtml(model, gw) {
   }
   const lineup = lineupFor(model, gw);
   const gwIns = new Set((view.transfers[gw] || []).map((t) => t.in));
-  const opts = { editable: isFirst, captain: lineup.captain, gwIns };
+  const vice = [...lineup.starters]
+    .filter((id) => id !== lineup.captain)
+    .sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0] || null;
+  const opts = { editable: isFirst, captain: lineup.captain, vice, gwIns };
 
   const starters = lineup.starters;
   const squad = lineup.squad;
@@ -610,7 +615,11 @@ function pitchHtml(model, gw) {
 
   const benchIds = squad.filter((id) => !starters.includes(id))
     .sort((a, b) => (posOf(a) === 1 ? -1 : posOf(b) === 1 ? 1 : model.xp(b, gw) - model.xp(a, gw)));
-  const benchCards = benchIds.map((id) => playerCard(model, id, gw, false, opts));
+  let subN = 0;
+  const benchCards = benchIds.map((id) => {
+    const ord = posOf(id) === 1 ? 'GK' : `S${++subN}`;
+    return playerCard(model, id, gw, false, { ...opts, benchOrd: ord });
+  });
   // The bench is always exactly 4 spots - pad with generic slots while
   // the squad is still being built.
   if (isFirst) {
@@ -787,7 +796,7 @@ export async function renderPlanner(root) {
       <div class="toolbar" style="border-bottom:none;padding-top:10px">
         <div class="gw-chips">${gwChips}</div>
         <span class="spacer"></span>
-        <span class="result-count">${formationLabel} · GW${gw} forecast <strong>${gwForecast(model, gw, ft).toFixed(1)} pts</strong>${isFirst ? '' : ' · auto lineup'}</span>
+        <span class="result-count">${formationLabel}${lineup.captain ? ` · C: <strong>${escapeHtml(state.playersById[lineup.captain].web_name)}</strong>` : ''} · GW${gw} forecast <strong>${gwForecast(model, gw, ft).toFixed(1)} pts</strong>${isFirst ? '' : ' · auto lineup'}</span>
       </div>
       ${chipsBar(model, gw)}
       ${transfersBar(model, gw, ft)}
@@ -981,6 +990,9 @@ export async function renderPlanner(root) {
     slot.addEventListener('click', () => {
       view.filterPos = slot.dataset.pos;
       rerender();
+      if (isMobile()) {
+        setTimeout(() => root.querySelector('.planner-side')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      }
     })
   );
 

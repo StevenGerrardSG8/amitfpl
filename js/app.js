@@ -225,6 +225,15 @@ async function main() {
     renderDeadline();
   }, 30000);
 
+  // Power-user shortcut: "/" jumps to the Players search from anywhere.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/') return;
+    if (e.target instanceof Element && e.target.closest('input, select, textarea')) return;
+    e.preventDefault();
+    showTab('players');
+    setTimeout(() => document.querySelector('#pl-search')?.focus(), 50);
+  });
+
   // Offline awareness: a slim banner while disconnected (cached data
   // keeps working thanks to the service worker).
   const offlineBar = document.createElement('div');
