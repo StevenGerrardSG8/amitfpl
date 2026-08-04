@@ -8,6 +8,7 @@ export const state = {
   nextEvent: null,
   currentEvent: null,
   faces: {}, // fpl player id -> FotMob face-image id (data/faces.json)
+  elo: {},   // fpl team id -> ClubElo rating (data/elo.json, daily)
   // team id -> [{event, opponent, isHome, difficulty}] for upcoming fixtures
   upcomingByTeam: {},
 };

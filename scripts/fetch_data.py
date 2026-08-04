@@ -69,6 +69,44 @@ def append_trends(elements):
         print(f"trends: recorded {today}")
 
 
+# FPL team name -> ClubElo club name
+ELO_NAMES = {
+    "Arsenal": "Arsenal", "Aston Villa": "Aston Villa", "Bournemouth": "Bournemouth",
+    "Brentford": "Brentford", "Brighton": "Brighton", "Chelsea": "Chelsea",
+    "Coventry City": "Coventry", "Crystal Palace": "Crystal Palace", "Everton": "Everton",
+    "Fulham": "Fulham", "Hull City": "Hull", "Ipswich Town": "Ipswich",
+    "Leeds": "Leeds", "Liverpool": "Liverpool", "Man City": "Man City",
+    "Man Utd": "Man United", "Newcastle": "Newcastle", "Nott'm Forest": "Forest",
+    "Spurs": "Tottenham", "Sunderland": "Sunderland",
+}
+
+
+def fetch_elo(teams):
+    """Daily ClubElo ratings -> data/elo.json {fpl_team_id: elo}."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    req = urllib.request.Request(f"http://api.clubelo.com/{today}", headers=HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            lines = r.read().decode().splitlines()
+    except Exception as e:
+        print(f"elo fetch failed: {e}", file=sys.stderr)
+        return
+    ratings = {}
+    for line in lines[1:]:
+        parts = line.split(",")
+        if len(parts) >= 5 and parts[2] == "ENG":
+            ratings[parts[1]] = float(parts[4])
+    out = {}
+    for t in teams:
+        name = ELO_NAMES.get(t["name"])
+        if name and name in ratings:
+            out[str(t["id"])] = round(ratings[name], 1)
+    if len(out) >= 15:  # sanity - don't overwrite with a broken pull
+        write("elo.json", out)
+    else:
+        print(f"elo: only matched {len(out)} teams, keeping previous file", file=sys.stderr)
+
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -77,6 +115,7 @@ def main():
     write("fixtures.json", fetch("/fixtures/"))
     snapshot_summaries(bootstrap["elements"])
     append_trends(bootstrap["elements"])
+    fetch_elo(bootstrap["teams"])
 
     # Personal team snapshot — set teamId in config.json (repo root) to enable.
     team = None

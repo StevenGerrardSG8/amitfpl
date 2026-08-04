@@ -98,7 +98,7 @@ export async function renderScout(root) {
       </div>
     </div>
     <div class="card">
-      <div class="section-title">⭐ Captaincy planner - best armband pick per gameweek (amitfpl model)</div>
+      <div class="section-title">⭐ Captaincy planner - best armband pick per gameweek (amitfpl model v2 · Elo-powered)</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>

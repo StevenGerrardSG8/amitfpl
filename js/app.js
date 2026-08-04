@@ -103,13 +103,20 @@ async function fetchCore() {
   await loadFaces();
 }
 
-// Face-image map (FotMob ids) - optional, photos fall back without it.
+// Optional enrichment data - the app works without either file.
 async function loadFaces() {
-  if (Object.keys(state.faces).length) return;
-  try {
-    const res = await fetch('data/faces.json');
-    if (res.ok) state.faces = await res.json();
-  } catch { /* fine - portrait crop fallback */ }
+  if (!Object.keys(state.faces).length) {
+    try {
+      const res = await fetch('data/faces.json');
+      if (res.ok) state.faces = await res.json();
+    } catch { /* fine - portrait crop fallback */ }
+  }
+  if (!Object.keys(state.elo).length) {
+    try {
+      const res = await fetch('data/elo.json');
+      if (res.ok) state.elo = await res.json();
+    } catch { /* fine - FDR fallback in the model */ }
+  }
 }
 
 async function refresh(manual = false) {

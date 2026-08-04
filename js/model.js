@@ -38,13 +38,43 @@ export async function loadBaseline() {
 const FDR_ATTACK_SCALE = { 1: 1.35, 2: 1.18, 3: 1.0, 4: 0.8, 5: 0.62 };
 const FDR_OPP_XG = { 1: 0.8, 2: 1.0, 3: 1.35, 4: 1.7, 5: 2.05 };
 
+// Primary team-strength source: ClubElo ratings (data/elo.json,
+// refreshed daily). Goal expectation from the Elo gap with home
+// advantage; calibrated so two equal sides produce ~2.55 total goals.
+const ELO_HOME_ADV = 60;
+const ELO_GOAL_B = 0.0022;
+
+function teamXGElo(teamId, oppId, isHome) {
+  const eh = state.elo?.[teamId];
+  const ea = state.elo?.[oppId];
+  if (!eh || !ea) return null;
+  const diff = (eh + (isHome ? ELO_HOME_ADV : 0)) - (ea + (isHome ? 0 : ELO_HOME_ADV));
+  const base = isHome ? 1.35 : 1.15;
+  return Math.min(4, base * Math.exp(ELO_GOAL_B * diff));
+}
+
 function teamXG(team, opp, isHome) {
+  const elo = teamXGElo(team.id, opp.id, isHome);
+  if (elo != null) return elo;
   const att = isHome ? team.strength_attack_home : team.strength_attack_away;
   const def = isHome ? opp.strength_defence_away : opp.strength_defence_home;
-  if (!att || !def) return null; // strengths not published yet
+  if (!att || !def) return null; // strengths not published yet -> FDR fallback
   const base = isHome ? 1.55 : 1.25;
   const ratio = Math.min(2, Math.max(0.5, att / def));
   return base * Math.pow(ratio, STRENGTH_EXP);
+}
+
+// P(X >= k) for a Poisson(lambda) - used for defensive-contribution
+// threshold points.
+function poissonAtLeast(lambda, k) {
+  if (lambda <= 0) return 0;
+  let term = Math.exp(-lambda);
+  let cdf = term;
+  for (let i = 1; i < k; i++) {
+    term *= lambda / i;
+    cdf += term;
+  }
+  return Math.max(0, Math.min(1, 1 - cdf));
 }
 
 function per90(baseline, current, field) {
@@ -114,10 +144,16 @@ export function buildModel(horizon) {
       const p60 = Math.max(0, Math.min(1, (expMins - 30) / 45));
       const playProb = Math.max(p60, Math.min(1, expMins / 45));
 
-      const xg90 = per90(b, p, 'expected_goals');
+      // First-choice penalty takers get a small xG bump - half of a
+      // typical penalty share, since returning takers' history already
+      // includes spot kicks.
+      const xg90 = per90(b, p, 'expected_goals') + (p.penalties_order === 1 ? 0.05 : 0);
       const xa90 = per90(b, p, 'expected_assists');
       const saves90 = per90(b, p, 'saves');
       const bonus90 = per90(b, p, 'bonus');
+      const dc90 = per90(b, p, 'defensive_contribution');
+      const yc90 = per90(b, p, 'yellow_cards');
+      const dcThreshold = p.element_type === 2 ? 10 : 12;
 
       const team = state.teamsById[p.team];
       for (const f of fixtures) {
@@ -139,6 +175,12 @@ export function buildModel(horizon) {
           pts += (saves90 * minFactor * (theirXG / AVG_TEAM_XG)) / 3;
         }
         pts += bonus90 * minFactor;
+        // Defensive contribution: 2 pts when the per-match count clears
+        // the positional threshold (10 for DEF, 12 for MID/FWD).
+        if (p.element_type >= 2 && dc90 > 0) {
+          pts += 2 * poissonAtLeast(dc90 * minFactor, dcThreshold);
+        }
+        pts -= yc90 * minFactor; // yellow cards cost a point
         total += pts;
       }
 
@@ -171,7 +213,7 @@ export function buildModel(horizon) {
     const startRate = Math.min(1, starts / 38);
     const minsPerStart = starts > 0 ? Math.min(90, ref.minutes / starts) : 0;
     const minFactor = (startRate * minsPerStart * avail) / 90;
-    const xg90 = per90(b, p, 'expected_goals');
+    const xg90 = per90(b, p, 'expected_goals') + (p.penalties_order === 1 ? 0.05 : 0);
     const team = state.teamsById[p.team];
     let xg = 0;
     for (const f of fixtures) {
