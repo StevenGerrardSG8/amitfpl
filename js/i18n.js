@@ -279,6 +279,8 @@ const STRINGS = {
   'players.newSignings': ['New signings', 'רכשים חדשים'],
   'players.newTag': ['NEW', 'חדש'],
   'players.exportCsv': ['Export CSV', 'ייצוא CSV'],
+  'players.moreStats': ['More stats ▾', 'עוד נתונים ▾'],
+  'players.fewerStats': ['Fewer stats ▴', 'פחות נתונים ▴'],
   'players.exportTitle': ['Download the current filtered list as CSV', 'הורדת הרשימה המסוננת כקובץ CSV'],
   'players.count': ['{n} players', '{n} שחקנים'],
   'players.showingTop': [' · showing top {n}', ' · מוצגים {n} הראשונים'],
@@ -565,6 +567,8 @@ const STRINGS = {
 
   /* ---- draft comparison & team import ---- */
   'pl.cmpTitle': ['Compare drafts', 'השוואת טיוטות'],
+  'pl.moreTools': ['More', 'עוד'],
+  'pl.compareDrafts': ['Compare drafts', 'השוואת טיוטות'],
   'pl.cmpDraft': ['Draft', 'טיוטה'],
   'pl.cmpValue': ['Value', 'שווי'],
   'pl.cmpChips': ['Chips', 'צ׳יפים'],
@@ -622,10 +626,10 @@ const STRINGS = {
   'home.toPlanner': ['Final touches in the planner →', 'ליטושים אחרונים במתכנן ←'],
   'ob.title': ['Welcome to amitfpl 👋', 'ברוכים הבאים ל-amitfpl 👋'],
   'ob.sub': ['Your personal FPL toolkit. The 60-second tour:', 'ערכת ה-FPL האישית שלך. סיור של 60 שניות:'],
-  'ob.item1': ['<strong>Players</strong> - every player, sortable, filterable; click one for the full profile.', '<strong>שחקנים</strong> - כל השחקנים עם מיון וסינון; לחיצה על שחקן פותחת פרופיל מלא.'],
-  'ob.item2': ['<strong>Planner</strong> - build your squad on a pitch, plan transfers and chips for future GWs.', '<strong>מתכנן</strong> - בניית סגל על מגרש, תכנון העברות וצ׳יפים למחזורים הבאים.'],
-  'ob.item3': ['<strong>Scout & Fixtures</strong> - captain picks, likely scorers and the difficulty planner.', '<strong>סקאוט ולוח משחקים</strong> - בחירות קפטן, מועמדים להבקיע ומתכנן הקושי.'],
-  'ob.item4': ['<strong>My Team</strong> - connect your real FPL squad with your Team ID.', '<strong>הקבוצה שלי</strong> - חיבור הסגל האמיתי עם מזהה הקבוצה.'],
+  'ob.item1': ['<strong>My Team</strong> - upload your squad by name (no team ID needed) and get an instant AI read: captain, transfers, lineup.', '<strong>הקבוצה שלי</strong> - העלו את הסגל לפי שם (בלי מזהה קבוצה) וקבלו ניתוח AI מיידי: קפטן, העברות והרכב.'],
+  'ob.item2': ['<strong>Planner</strong> - build your squad on a pitch; auto-build gives you 3 squads to pick from, then plan transfers and chips.', '<strong>מתכנן</strong> - בניית סגל על מגרש; הבנייה האוטומטית נותנת 3 הרכבים לבחירה, ואז תכנון העברות וצ׳יפים.'],
+  'ob.item3': ['<strong>Players</strong> - every player, sortable, filterable; click one for the full profile.', '<strong>שחקנים</strong> - כל השחקנים עם מיון וסינון; לחיצה על שחקן פותחת פרופיל מלא.'],
+  'ob.item4': ['<strong>More ▾</strong> - Scout, Market, Fixtures and the rest of the research tools live there.', '<strong>עוד ▾</strong> - סקאוט, שוק, לוח משחקים ושאר כלי המחקר נמצאים שם.'],
   'ob.item5': ['Language (EN/עב), dark mode and help (?) live in the top bar.', 'שפה (EN/עב), מצב כהה ועזרה (?) נמצאים בסרגל העליון.'],
   'ob.go': ["Let's go", 'יאללה, מתחילים'],
 
