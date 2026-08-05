@@ -1853,6 +1853,7 @@ tr.league-me td { background: var(--accent-soft); font-weight: 700; }
   flex: none;
 }
 .note { padding: 10px 16px 16px; color: var(--text-soft); font-size: 13px; }
+.sc-more-row td { text-align: center !important; padding: 10px !important; }
 
 .mt-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 0; flex-wrap: wrap; gap: 8px; }
 .mt-header h2 { margin: 0; font-size: 18px; }
