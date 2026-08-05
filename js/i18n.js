@@ -41,6 +41,55 @@ export const gwLabel = (n) => (isHe() ? `מחזור ${n}` : `GW${n}`);
 // Home/away marker used inside fixture chips: (H)/(A) or (ב)/(ח).
 export const haMark = (isHome) => (isHe() ? (isHome ? 'ב' : 'ח') : (isHome ? 'H' : 'A'));
 
+// Position labels. The API's GKP/DEF/MID/FWD codes stay as CSS class
+// names; only the visible text is localised.
+const POS_SHORT = { GKP: 'שוער', DEF: 'מגן', MID: 'קשר', FWD: 'חלוץ' };
+const POS_PLURAL = { GKP: 'שוערים', DEF: 'מגנים', MID: 'קשרים', FWD: 'חלוצים' };
+export const posShort = (code) => (isHe() ? POS_SHORT[code] || code : code);
+export const posPlural = (code) => (isHe() ? POS_PLURAL[code] || code : code);
+
+// FPL news strings are English API data ("Knee injury - Expected back
+// 22 Aug"). Translate the common patterns; anything unrecognised falls
+// through in English.
+const NEWS_PARTS = {
+  Foot: 'כף הרגל', Shin: 'השוק', Groin: 'המפשעה', Hamstring: 'ההמסטרינג',
+  Knee: 'הברך', Calf: 'התאומים', Thigh: 'הירך', Ankle: 'הקרסול',
+  Back: 'הגב', Hip: 'המותן', Shoulder: 'הכתף', Head: 'הראש', Neck: 'הצוואר',
+  Toe: 'הבוהן', Heel: 'העקב', Rib: 'הצלעות', Hand: 'כף היד', Wrist: 'שורש כף היד',
+  Face: 'הפנים', Eye: 'העין', Achilles: 'גיד אכילס', Muscle: 'שריר', Muscular: 'שריר',
+  Leg: 'הרגל', Knock: 'חבלה',
+};
+const NEWS_MONTHS = {
+  Jan: 'ינו׳', Feb: 'פבר׳', Mar: 'מרץ', Apr: 'אפר׳', May: 'מאי', Jun: 'יוני',
+  Jul: 'יולי', Aug: 'אוג׳', Sep: 'ספט׳', Oct: 'אוק׳', Nov: 'נוב׳', Dec: 'דצמ׳',
+};
+const heDate = (d, mo) => `${d} ב${NEWS_MONTHS[mo] || mo}`;
+export function translateNews(news) {
+  if (!isHe() || !news) return news;
+  let s = news;
+  s = s.replace(/^Unspecified injury/i, 'פציעה לא מוגדרת');
+  s = s.replace(/^([A-Za-z]+) injury/i, (m, part) => {
+    const p = part[0].toUpperCase() + part.slice(1).toLowerCase();
+    return NEWS_PARTS[p] ? `פציעה ב${NEWS_PARTS[p]}` : m;
+  });
+  s = s.replace(/^Illness|^Ilness/i, 'מחלה');
+  s = s.replace(/^Knock/i, 'חבלה');
+  s = s.replace(/^Lack of match fitness/i, 'חוסר כושר משחק');
+  s = s.replace(/ - Unknown return date/i, ' - מועד החזרה לא ידוע');
+  s = s.replace(/ - Expected back (\d+) ([A-Za-z]{3})\w*/i, (m, d, mo) => ` - צפוי לחזור ב-${heDate(d, mo)}`);
+  s = s.replace(/ - (\d+)% chance of playing/i, ' - $1% סיכוי לשחק');
+  s = s.replace(/^Suspended until (\d+) ([A-Za-z]{3})\w*/i, (m, d, mo) => `מורחק עד ${heDate(d, mo)}`);
+  s = s.replace(/^Suspended/i, 'מורחק');
+  s = s.replace(/^Has joined (.+?) on loan for the rest of the season\.?$/i, 'הושאל ל-$1 עד סוף העונה');
+  s = s.replace(/^Has joined (.+?) on loan\.?$/i, 'הושאל ל-$1');
+  s = s.replace(/^Has joined (.+?)\.?$/i, 'הצטרף ל-$1');
+  s = s.replace(/^has returned to (.+?)\.?$/i, 'חזר ל-$1');
+  s = s.replace(/^has departed the club as a free agent\.?$/i, 'עזב את המועדון כשחקן חופשי');
+  s = s.replace(/^Has left the club(?: by mutual consent)?\.?$/i, 'עזב את המועדון');
+  s = s.replace(/^Transferred to (.+?)\.?$/i, 'הועבר ל-$1');
+  return s;
+}
+
 export function t(key, params) {
   const entry = STRINGS[key];
   let s = entry ? (lang === 'he' && entry[1] != null ? entry[1] : entry[0]) : key;
@@ -446,6 +495,7 @@ const STRINGS = {
 // Rebuilds every static (non-view) piece of the page in the active
 // language: tabs, header buttons, loading text, help modal, footer.
 export function applyStaticI18n() {
+  document.title = isHe() ? 'amitfpl - ערכת כלים ל-FPL' : 'amitfpl - FPL Toolkit';
   document.querySelectorAll('#tabs .tab').forEach((b) => {
     b.textContent = t(`tab.${b.dataset.tab}`);
   });

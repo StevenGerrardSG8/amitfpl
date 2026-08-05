@@ -1,7 +1,7 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { fixtureChips, playerPhoto, teamBadge, spBadges, isNewSigning } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t } from './i18n.js';
+import { t, posShort, posPlural } from './i18n.js';
 
 let model = null; // built once in renderPlayers, reused on every re-render
 
@@ -98,7 +98,7 @@ function render(root) {
             <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}${isNewSigning(p) ? ` <span class="new-tag">${t('players.newTag')}</span>` : ''}</span>
           </div>
         </div></td>
-        <td><span class="pos-badge pos-${pos}">${pos}</span></td>
+        <td><span class="pos-badge pos-${pos}">${posShort(pos)}</span></td>
         <td class="num">${fmtPrice(p.now_cost)}</td>
         <td class="num">${p.selected_by_percent}%</td>
         <td class="num ${ep >= 4 ? 'hi' : ''}">${ep.toFixed(1)}</td>
@@ -125,7 +125,7 @@ function render(root) {
         <input type="search" id="pl-search" placeholder="${t('common.searchPlayer')}" value="${escapeHtml(view.search)}" />
         <div class="seg" id="pl-pos">
           <button class="seg-btn ${view.position === 'all' ? 'on' : ''}" data-v="all">${t('common.all')}</button>
-          ${state.bootstrap.element_types.map((et) => `<button class="seg-btn ${view.position == et.id ? 'on' : ''}" data-v="${et.id}">${et.plural_name_short}</button>`).join('')}
+          ${state.bootstrap.element_types.map((et) => `<button class="seg-btn ${view.position == et.id ? 'on' : ''}" data-v="${et.id}">${posPlural(et.plural_name_short)}</button>`).join('')}
         </div>
         <select id="pl-team">
           <option value="all">${t('players.allTeams')}</option>

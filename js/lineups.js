@@ -5,7 +5,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge } from './ui.js';
 import { loadBaseline, baselinePlayer } from './model.js';
-import { t, locale, haMark } from './i18n.js';
+import { t, locale, haMark, translateNews } from './i18n.js';
 
 const FORMATIONS = [];
 for (let d = 3; d <= 5; d++)
@@ -57,7 +57,7 @@ function predictXI(squad) {
 
 function playerChip(p) {
   const doubt = p.status === 'd'
-    ? `<span class="lu-doubt-dot" title="${escapeHtml(p.news || t('lu.doubtful'))}">${p.chance_of_playing_next_round ?? 75}%</span>`
+    ? `<span class="lu-doubt-dot" title="${escapeHtml(translateNews(p.news) || t('lu.doubtful'))}">${p.chance_of_playing_next_round ?? 75}%</span>`
     : '';
   return `<div class="lu-p clickable" data-pid="${p.id}">
     <div class="lu-photo-wrap">
@@ -96,12 +96,12 @@ function teamCard(team, squad) {
     .filter((p) => p.status === 'd')
     .sort((a, b) => b.now_cost - a.now_cost)
     .slice(0, 3)
-    .map((p) => `<span class="lu-flag lu-doubt clickable" data-pid="${p.id}" title="${escapeHtml(p.news || '')}">${escapeHtml(p.web_name)} ${p.chance_of_playing_next_round ?? 75}%</span>`);
+    .map((p) => `<span class="lu-flag lu-doubt clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(p.web_name)} ${p.chance_of_playing_next_round ?? 75}%</span>`);
   const out = squad
     .filter((p) => ['i', 's', 'u'].includes(p.status) && !inXI.has(p.id))
     .sort((a, b) => b.now_cost - a.now_cost)
     .slice(0, 3)
-    .map((p) => `<span class="lu-flag lu-out clickable" data-pid="${p.id}" title="${escapeHtml(p.news || '')}">${escapeHtml(p.web_name)}</span>`);
+    .map((p) => `<span class="lu-flag lu-out clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(p.web_name)}</span>`);
 
   return `<div class="lu-card">
     <div class="lu-head">

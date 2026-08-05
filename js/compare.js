@@ -2,7 +2,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, playerPhoto, teamBadge } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t } from './i18n.js';
+import { t, posShort } from './i18n.js';
 
 let model = null;
 const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
@@ -12,7 +12,7 @@ const SLOTS = 3;
 
 const METRICS = [
   { label: () => t('common.team'), fn: (p) => `${teamBadge(p.team, 'meta-badge')} ${escapeHtml(state.teamsById[p.team].name)}` },
-  { label: () => t('cmp.position'), fn: (p) => state.positionsById[p.element_type].singular_name_short },
+  { label: () => t('cmp.position'), fn: (p) => posShort(state.positionsById[p.element_type].singular_name_short) },
   { label: () => t('common.price'), fn: (p) => fmtPrice(p.now_cost) },
   { label: () => t('cmp.selectedBy'), fn: (p) => `${p.selected_by_percent}%` },
   { label: () => t('cmp.xpNextGw'), fn: (p) => modelXp(p).toFixed(1), best: (p) => modelXp(p) },

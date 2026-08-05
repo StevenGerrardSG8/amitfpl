@@ -4,7 +4,7 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, spBadges, fixtureDifficulty } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t, haMark, gwLabel } from './i18n.js';
+import { t, haMark, gwLabel, posShort } from './i18n.js';
 
 let overlay = null;
 const summaryCache = new Map();
@@ -177,7 +177,7 @@ export async function openDrawer(id) {
         <div>
           <div class="drawer-name">${escapeHtml(p.first_name)} <strong>${escapeHtml(p.second_name)}</strong>${spBadges(p)}</div>
           <div class="drawer-meta">
-            ${teamBadge(p.team)} ${escapeHtml(team.name)} · <span class="pos-badge pos-${pos.singular_name_short}">${pos.singular_name_short}</span>
+            ${teamBadge(p.team)} ${escapeHtml(team.name)} · <span class="pos-badge pos-${pos.singular_name_short}">${posShort(pos.singular_name_short)}</span>
             · ${fmtPrice(p.now_cost)} · ${t('dw.owned', { pct: p.selected_by_percent })}
           </div>
           ${st ? `<div class="drawer-news ${st.cls}">${escapeHtml(st.label)}</div>` : ''}

@@ -7,7 +7,7 @@ import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, inlinePhoto, fixtureChips } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
-import { t, haMark, gwLabel } from './i18n.js';
+import { t, haMark, gwLabel, posShort, posPlural } from './i18n.js';
 
 // On phones the per-card action buttons become a bottom action sheet.
 const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
@@ -577,9 +577,10 @@ function playerCard(model, id, gw, isStarter, opts) {
 }
 
 function emptySlot(pos) {
-  return `<div class="pp-card slot-empty" data-pos="${pos}" title="${t('pl.pickPos', { pos: state.positionsById[pos].singular_name })}">
+  const short = state.positionsById[pos].singular_name_short;
+  return `<div class="pp-card slot-empty" data-pos="${pos}" title="${t('pl.pickPos', { pos: posShort(short) })}">
     <div class="slot-circle">+</div>
-    <div class="pp-name muted">${state.positionsById[pos].singular_name_short}</div>
+    <div class="pp-name muted">${posShort(short)}</div>
   </div>`;
 }
 
@@ -744,7 +745,7 @@ function sideList(model, gw) {
       <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">${playerPhoto(p, 'row-photo')}</span>
       <div class="side-info clickable" data-pid="${p.id}">
         <span class="player-name">${escapeHtml(p.web_name)}</span>
-        <span class="player-meta">${state.positionsById[p.element_type].singular_name_short} · ${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
+        <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
         <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>
       <span class="side-xp" title="${t('pl.sideXpTitle')}">${model.horizonTotal(p.id).toFixed(1)}</span>
@@ -759,7 +760,7 @@ function sideList(model, gw) {
         <input type="number" id="sd-price" placeholder="${t('common.maxPrice')}" step="0.5" min="3.5" max="16" value="${view.maxPrice}" style="width:74px;font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)" />
         <select id="sd-pos">
           <option value="all">${t('common.all')}</option>
-          ${state.bootstrap.element_types.map((et) => `<option value="${et.id}" ${view.filterPos == et.id ? 'selected' : ''}>${et.plural_name_short}</option>`).join('')}
+          ${state.bootstrap.element_types.map((et) => `<option value="${et.id}" ${view.filterPos == et.id ? 'selected' : ''}>${posPlural(et.plural_name_short)}</option>`).join('')}
         </select>
         <select id="sd-sort">
           <option value="xp" ${view.sortKey === 'xp' ? 'selected' : ''}>${t('pl.sortXp')}</option>

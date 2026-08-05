@@ -1,7 +1,7 @@
 // Status tab: injuries & doubts, suspension watch.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, posBadge, playerCell } from './ui.js';
-import { t } from './i18n.js';
+import { t, translateNews } from './i18n.js';
 
 // FPL bans: 5 yellows by GW19, 10 by GW32, 15 all season.
 function yellowThreshold(gw) {
@@ -34,7 +34,7 @@ export function renderStatus(root) {
         <td class="num">${p.selected_by_percent}%</td>
         <td><span class="status-flag status-${p.status}" style="margin:0">${statusLabel(p.status)}</span>
             ${chance != null ? `<span class="muted"> · ${chance}%</span>` : ''}</td>
-        <td class="news-cell">${escapeHtml(p.news || '')}</td>
+        <td class="news-cell">${escapeHtml(translateNews(p.news) || '')}</td>
       </tr>`;
     })
     .join('');

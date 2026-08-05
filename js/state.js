@@ -1,4 +1,4 @@
-import { t } from './i18n.js';
+import { t, translateNews } from './i18n.js';
 
 // Shared derived data, built once after bootstrap + fixtures load.
 export const state = {
@@ -59,7 +59,7 @@ export function statusInfo(p) {
   if (p.status === 'a') return null;
   const flags = { d: '?', i: '✚', s: '■', u: '✕', n: '✕' };
   const chance = p.chance_of_playing_next_round;
-  const label = p.news || (chance != null ? t('status.chance', { chance }) : t('status.unavailable'));
+  const label = translateNews(p.news) || (chance != null ? t('status.chance', { chance }) : t('status.unavailable'));
   return { flag: flags[p.status] || '!', cls: `status-${p.status}`, label };
 }
 

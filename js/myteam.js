@@ -2,7 +2,7 @@ import { getEntry, getPicks, fetchTeamSnapshot, fetchConfig } from './api.js';
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, fixtureDifficulty } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t, haMark, gwLabel } from './i18n.js';
+import { t, haMark, gwLabel, posShort } from './i18n.js';
 
 let model = null;
 const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
@@ -68,7 +68,7 @@ function pickRow(pick) {
         <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}</span>
       </div>
     </div></td>
-    <td><span class="pos-badge pos-${pos}">${pos}</span></td>
+    <td><span class="pos-badge pos-${pos}">${posShort(pos)}</span></td>
     <td class="num">${fmtPrice(p.now_cost)}</td>
     <td class="num">${modelXp(p).toFixed(1)}</td>
     <td class="num">${p.form}</td>

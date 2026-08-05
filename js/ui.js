@@ -1,6 +1,6 @@
 // Small shared rendering helpers used across tabs.
 import { state, statusInfo, escapeHtml } from './state.js';
-import { t, haMark, gwLabel } from './i18n.js';
+import { t, haMark, gwLabel, posShort } from './i18n.js';
 
 // Fixture difficulty 1-5. When ClubElo ratings are loaded the buckets
 // come from the opponent's venue-adjusted Elo (sharper than the flat
@@ -35,7 +35,7 @@ export function inlinePhoto(p) {
 
 export function posBadge(p) {
   const pos = state.positionsById[p.element_type].singular_name_short;
-  return `<span class="pos-badge pos-${pos}">${pos}</span>`;
+  return `<span class="pos-badge pos-${pos}">${posShort(pos)}</span>`;
 }
 
 // Official club crest.
