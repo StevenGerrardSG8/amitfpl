@@ -1117,16 +1117,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-bottom: 14px;
   padding: 12px 16px;
   border-radius: var(--radius);
-  background: linear-gradient(100deg, var(--accent), #7061e8);
-  color: #fff;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent);
+  color: var(--text);
   font-size: 13px;
   font-weight: 600;
   box-shadow: var(--shadow);
 }
-.hero-gw { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
+.hero-gw { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; color: var(--accent); }
 .hero-count {
   margin-inline-start: auto;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--accent-soft);
+  color: var(--accent);
   padding: 3px 12px;
   border-radius: 999px;
   font-weight: 800;
@@ -1298,29 +1301,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ---------- Intro strip (Home) ---------- */
 .intro-strip {
   position: relative;
-  background: linear-gradient(115deg, var(--accent) 0%, #7061e8 100%);
-  color: #fff;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent);
+  color: var(--text);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 20px 24px 18px;
+  padding: 18px 22px 16px;
   margin-bottom: 14px;
   overflow: hidden;
 }
-.intro-strip::after {
-  content: '';
-  position: absolute;
-  inset-inline-end: -60px;
-  top: -60px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 70%);
-  pointer-events: none;
-}
-.intro-name { font-size: 26px; font-weight: 500; letter-spacing: -0.5px; }
-.intro-name strong { font-weight: 800; color: #c7d2fe; }
-.intro-slogan { font-size: 15px; font-weight: 700; margin: 2px 0 8px; color: #dbe3ff; }
-.intro-lines { margin: 4px 0; font-size: 13px; line-height: 1.55; color: rgba(255, 255, 255, 0.88); max-width: 760px; }
+.intro-name { font-size: 22px; font-weight: 500; letter-spacing: -0.5px; }
+.intro-name strong { font-weight: 800; color: var(--accent); }
+.intro-slogan { font-size: 15px; font-weight: 700; margin: 2px 0 8px; color: var(--accent); }
+.intro-lines { margin: 4px 0; font-size: 13px; line-height: 1.55; color: var(--text-soft); max-width: 760px; }
 .intro-x {
   position: absolute;
   top: 10px;
@@ -1329,16 +1323,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-faint);
   cursor: pointer;
   line-height: 1;
 }
-.intro-x:hover { background: rgba(255, 255, 255, 0.22); }
+.intro-x:hover { color: var(--text); border-color: var(--text-faint); }
 @media (max-width: 640px) {
   .intro-strip { padding: 14px 16px 12px; }
-  .intro-name { font-size: 21px; }
+  .intro-name { font-size: 20px; }
 }
 
 /* ---------- ⓘ method explainers ---------- */
@@ -1383,8 +1377,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ---------- Deadline-day hero & onboarding ---------- */
 .hero-strip.hero-urgent {
   background: linear-gradient(100deg, #d93025, #b3132b);
+  border-color: transparent;
+  color: #fff;
   animation: hero-pulse 2.2s ease-in-out infinite;
 }
+.hero-urgent .hero-gw { color: #fff; }
+.hero-urgent .hero-count { background: rgba(255, 255, 255, 0.18); color: #fff; }
 @keyframes hero-pulse {
   0%, 100% { box-shadow: 0 4px 16px rgba(217, 48, 37, 0.25); }
   50% { box-shadow: 0 4px 26px rgba(217, 48, 37, 0.55); }
