@@ -113,6 +113,21 @@ body {
   display: flex;
   gap: 4px;
   overflow-x: auto;
+  scrollbar-width: none; /* the edge fades are the scroll hint */
+}
+.tabs::-webkit-scrollbar { display: none; }
+/* Fade the cut-off edge of the tab bar so it reads as scrollable. */
+.tabs.fade-l {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
+  mask-image: linear-gradient(to right, transparent, #000 32px);
+}
+.tabs.fade-r {
+  -webkit-mask-image: linear-gradient(to left, transparent, #000 32px);
+  mask-image: linear-gradient(to left, transparent, #000 32px);
+}
+.tabs.fade-l.fade-r {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
 }
 
 .tab {
@@ -1373,6 +1388,27 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   z-index: 40;
 }
 .info-wrap.open .info-pop { display: block; }
+
+/* ---------- Back-to-top (phones) ---------- */
+.to-top {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  inset-inline-end: 16px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  z-index: 30;
+}
+@media (min-width: 641px) { .to-top { display: none; } }
 
 /* ---------- Deadline-day hero & onboarding ---------- */
 .hero-strip.hero-urgent {

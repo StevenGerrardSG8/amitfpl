@@ -186,10 +186,28 @@ async function main() {
   initDrawer();
   initAuth(); // optional accounts - no-op until Firebase is configured
 
-  document.getElementById('tabs').addEventListener('click', (e) => {
+  const tabsNav = document.getElementById('tabs');
+  tabsNav.addEventListener('click', (e) => {
     const tab = e.target.closest('.tab');
-    if (tab) showTab(tab.dataset.tab);
+    if (!tab) return;
+    showTab(tab.dataset.tab);
+    tab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   });
+
+  // The tab bar scrolls sideways on phones; fade the cut-off edge so it's
+  // clear there are more tabs. fade-l/fade-r are physical sides.
+  const updateTabFades = () => {
+    const max = tabsNav.scrollWidth - tabsNav.clientWidth;
+    const rtl = document.documentElement.dir === 'rtl';
+    const pos = Math.abs(tabsNav.scrollLeft); // distance scrolled from the start edge
+    const moreAtStart = max > 1 && pos > 1;
+    const moreAtEnd = max > 1 && pos < max - 1;
+    tabsNav.classList.toggle(rtl ? 'fade-r' : 'fade-l', moreAtStart);
+    tabsNav.classList.toggle(rtl ? 'fade-l' : 'fade-r', moreAtEnd);
+  };
+  updateTabFades();
+  tabsNav.addEventListener('scroll', updateTabFades, { passive: true });
+  window.addEventListener('resize', updateTabFades);
   document.getElementById('refresh-btn').addEventListener('click', () => refresh(true));
 
   // Help modal
@@ -340,6 +358,19 @@ async function main() {
     showTab('players');
     setTimeout(() => document.querySelector('#pl-search')?.focus(), 50);
   });
+
+  // Phones: a floating back-to-top button once you're a screen down.
+  const toTop = document.createElement('button');
+  toTop.className = 'to-top';
+  toTop.textContent = '↑';
+  toTop.title = t('chrome.toTop');
+  toTop.setAttribute('aria-label', t('chrome.toTop'));
+  toTop.hidden = true;
+  toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  document.body.appendChild(toTop);
+  window.addEventListener('scroll', () => {
+    toTop.hidden = window.scrollY < window.innerHeight;
+  }, { passive: true });
 
   // Offline awareness: a slim banner while disconnected (cached data
   // keeps working thanks to the service worker).

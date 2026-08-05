@@ -151,6 +151,7 @@ const STRINGS = {
   'chrome.langTitle': ['עברית', 'English'],
   'chrome.loading': ['Loading FPL data…', 'טוען נתוני FPL…'],
   'chrome.offline': ['Offline - showing saved data', 'אין חיבור - מוצגים נתונים שמורים'],
+  'chrome.toTop': ['Back to top', 'חזרה למעלה'],
   'chrome.loadError': ["Couldn't load FPL data ({msg}). Refresh to retry.", 'טעינת נתוני FPL נכשלה ({msg}). רעננו כדי לנסות שוב.'],
   'chrome.updatedNow': ['Updated just now', 'עודכן ממש עכשיו'],
   'chrome.updatedMin': ['Updated {m}m ago', 'עודכן לפני {m} דקות'],
