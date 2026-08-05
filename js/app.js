@@ -235,10 +235,10 @@ async function main() {
   });
 
   // First visit: a short welcome card explaining the main tools.
-  // Skipped for shared-plan links (they land straight in the planner).
-  let onboarded = '1';
-  try { onboarded = localStorage.getItem('amitfpl:onboarded') || ''; } catch { /* private mode */ }
-  if (!onboarded && !location.hash.startsWith('#plan=')) {
+  // Shown only after the sign-in prompt has settled (signed in, guest
+  // chosen, or accounts not configured), so new visitors see the
+  // sign-in screen first. Skipped for shared-plan links.
+  const maybeOnboard = () => {
     const ob = document.createElement('div');
     ob.className = 'drawer-overlay onboard-overlay';
     ob.innerHTML = `
@@ -262,6 +262,11 @@ async function main() {
       if (e.target === ob || e.target.closest('#ob-go')) dismiss();
     });
     document.body.appendChild(ob);
+  };
+  let onboarded = '1';
+  try { onboarded = localStorage.getItem('amitfpl:onboarded') || ''; } catch { /* private mode */ }
+  if (!onboarded && !location.hash.startsWith('#plan=')) {
+    addEventListener('amitfpl:auth-settled', maybeOnboard, { once: true });
   }
 
   const initial = location.hash.slice(1);

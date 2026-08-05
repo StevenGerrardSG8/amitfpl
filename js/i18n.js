@@ -593,6 +593,7 @@ const STRINGS = {
   'auth.forgot': ['Forgot password?', 'שכחתי סיסמה'],
   'auth.or': ['or', 'או'],
   'auth.google': ['Continue with Google', 'המשך עם Google'],
+  'auth.guest': ['Continue as guest (no account)', 'המשך כאורח (בלי חשבון)'],
   'auth.signOut': ['Sign out', 'התנתקות'],
   'auth.syncNote': ['Your drafts, team ID, watchlist and preferences sync automatically to this account.', 'הטיוטות, מזהה הקבוצה, רשימת המעקב וההעדפות מסתנכרנים אוטומטית לחשבון הזה.'],
   'auth.privacy': ['Only your amitfpl data (plans, team ID, watchlist, preferences) is stored - nothing else.', 'נשמרים רק נתוני ה-amitfpl שלכם (תוכניות, מזהה קבוצה, רשימת מעקב, העדפות) - שום דבר מעבר.'],

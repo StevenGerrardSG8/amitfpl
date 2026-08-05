@@ -21,6 +21,22 @@ let sdk = null;    // {auth, db, fns...} once Firebase is loaded
 let user = null;   // current Firebase user or null
 let lastPushed = ''; // JSON of the last state we wrote to the cloud
 
+// Fired once the auth flow has "settled" (signed in, dismissed, guest
+// chosen, or accounts not configured) - app.js waits for this before
+// showing the onboarding card, so first-time visitors see the sign-in
+// screen first.
+const SEEN_KEY = 'amitfpl:seenAuth';
+let settledFired = false;
+function settled() {
+  if (settledFired) return;
+  settledFired = true;
+  dispatchEvent(new CustomEvent('amitfpl:auth-settled'));
+}
+function markSeen() {
+  try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* private mode */ }
+  settled();
+}
+
 const $ = (sel) => document.querySelector(sel);
 
 function snapshot() {
@@ -115,10 +131,14 @@ const AUTH_ERRORS = {
   'auth/popup-closed-by-user': null, // user changed their mind - not an error
 };
 
-function openModal() {
+function openModal(autoShown = false) {
   $('.auth-overlay')?.remove();
   const overlay = document.createElement('div');
   overlay.className = 'drawer-overlay onboard-overlay auth-overlay';
+  const dismiss = () => {
+    overlay.remove();
+    if (autoShown) markSeen();
+  };
 
   if (user) {
     overlay.innerHTML = `
@@ -155,6 +175,7 @@ function openModal() {
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.3 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.7a14.5 14.5 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2.1 1.4-4.7 2.3-7.7 2.3-6.3 0-11.7-3.8-13.6-9.3l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
             ${t('auth.google')}
           </button>
+          ${autoShown ? `<button class="link-btn" id="auth-guest" style="margin-top:2px">${t('auth.guest')}</button>` : ''}
         </div>
         <p class="note" style="padding:12px 0 0">${t('auth.privacy')}</p>
       </div>`;
@@ -173,11 +194,12 @@ function openModal() {
     const attempt = async (fn) => {
       try {
         await fn();
-        overlay.remove();
+        dismiss();
       } catch (e) {
         showErr(e?.code);
       }
     };
+    overlay.querySelector('#auth-guest')?.addEventListener('click', dismiss);
     overlay.querySelector('#auth-login').addEventListener('click', () =>
       attempt(() => sdk.signInWithEmailAndPassword(sdk.auth, ...creds())));
     overlay.querySelector('#auth-register').addEventListener('click', () =>
@@ -203,7 +225,7 @@ function openModal() {
   }
 
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay || e.target.closest('#auth-close')) overlay.remove();
+    if (e.target === overlay || e.target.closest('#auth-close')) dismiss();
   });
   document.body.appendChild(overlay);
 }
@@ -220,7 +242,7 @@ export async function initAuth() {
     const res = await fetch('config.json');
     cfg = (await res.json())?.firebase || null;
   } catch { /* no config - guest mode */ }
-  if (!cfg?.apiKey) return; // accounts not configured - stay invisible
+  if (!cfg?.apiKey) { settled(); return; } // accounts not configured - stay invisible
 
   try {
     const V = '10.12.2';
@@ -241,14 +263,25 @@ export async function initAuth() {
       GoogleAuthProvider: authMod.GoogleAuthProvider,
       signOut: authMod.signOut,
     };
+    let firstState = true;
     authMod.onAuthStateChanged(sdk.auth, (u) => {
       const wasGuest = !user;
       user = u;
       syncButton();
       if (u && wasGuest) pull().catch((e) => console.warn('amitfpl sync pull failed:', e?.code || e));
+      if (firstState) {
+        firstState = false;
+        // New device / signed-out first visit: greet with the sign-in
+        // screen (with a "continue as guest" way out). Shown once.
+        let seen = null;
+        try { seen = localStorage.getItem(SEEN_KEY); } catch { /* private mode */ }
+        if (u || seen) settled();
+        else openModal(true);
+      }
     });
   } catch (e) {
     console.warn('amitfpl accounts unavailable:', e?.code || e?.message || e);
+    settled();
     return;
   }
 
