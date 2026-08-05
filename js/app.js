@@ -38,14 +38,19 @@ const views = {
 let activeTab = 'players';
 let refreshing = false;
 
+// Tabs tucked under the "More" menu - the button lights up when one of
+// these is active so the current place is never invisible.
+const MORE_TABS = ['scout', 'market', 'status', 'compare', 'lineups', 'matches', 'setpieces'];
+
 function showTab(name) {
   activeTab = name;
   for (const [key, v] of Object.entries(views)) {
     v.el.hidden = key !== name;
   }
-  document.querySelectorAll('.tab').forEach((t) => {
+  document.querySelectorAll('.tab[data-tab]').forEach((t) => {
     t.classList.toggle('active', t.dataset.tab === name);
   });
+  document.getElementById('more-btn')?.classList.toggle('active', MORE_TABS.includes(name));
   const v = views[name];
   // My Team re-renders every visit (live data); the planner too (its
   // layout depends on viewport size); others render once.
@@ -187,12 +192,51 @@ async function main() {
   initAuth(); // optional accounts - no-op until Firebase is configured
 
   const tabsNav = document.getElementById('tabs');
+  const moreBtn = document.getElementById('more-btn');
+  const moreMenu = document.getElementById('more-menu');
+  const closeMoreMenu = () => {
+    moreMenu.hidden = true;
+    moreBtn.setAttribute('aria-expanded', 'false');
+  };
+  // The tab bar clips overflow, so the menu is fixed-positioned under the
+  // button and clamped to the viewport (mirrored start edge in RTL).
+  const placeMoreMenu = () => {
+    const margin = 8;
+    const r = moreBtn.getBoundingClientRect();
+    const w = moreMenu.offsetWidth;
+    const start = document.documentElement.dir === 'rtl' ? r.right - w : r.left;
+    moreMenu.style.left = `${Math.max(margin, Math.min(start, window.innerWidth - w - margin))}px`;
+    moreMenu.style.top = `${r.bottom + 6}px`;
+  };
+  const openMoreMenu = () => {
+    moreMenu.hidden = false;
+    moreBtn.setAttribute('aria-expanded', 'true');
+    placeMoreMenu();
+  };
   tabsNav.addEventListener('click', (e) => {
-    const tab = e.target.closest('.tab');
+    if (e.target.closest('#more-btn')) {
+      if (moreMenu.hidden) openMoreMenu();
+      else closeMoreMenu();
+      return;
+    }
+    const tab = e.target.closest('.tab[data-tab]');
     if (!tab) return;
     showTab(tab.dataset.tab);
     tab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   });
+  moreMenu.addEventListener('click', (e) => {
+    const tab = e.target.closest('.tab[data-tab]');
+    if (!tab) return;
+    closeMoreMenu();
+    showTab(tab.dataset.tab);
+  });
+  document.addEventListener('click', (e) => {
+    if (!moreMenu.hidden && !e.target.closest('#more-menu, #more-btn')) closeMoreMenu();
+  });
+  // Scrolling moves the button (the brand row collapses away on phones),
+  // so keep the open menu glued to it rather than snapping it shut.
+  window.addEventListener('scroll', () => { if (!moreMenu.hidden) placeMoreMenu(); }, { capture: true, passive: true });
+  window.addEventListener('resize', () => { if (!moreMenu.hidden) placeMoreMenu(); });
 
   // The tab bar scrolls sideways on phones; fade the cut-off edge so it's
   // clear there are more tabs. fade-l/fade-r are physical sides.

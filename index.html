@@ -80,20 +80,27 @@
         </div>
       </div>
     </div>
+    <!-- Five everyday tabs stay visible; the deeper research tools live
+         under "More" so the first impression isn't a wall of tabs. -->
     <nav class="tabs" id="tabs">
       <button class="tab active" data-tab="home">Home</button>
+      <button class="tab" data-tab="myteam">My Team</button>
       <button class="tab" data-tab="players">Players</button>
       <button class="tab" data-tab="planner">Planner</button>
+      <button class="tab" data-tab="fixtures">Fixtures</button>
+      <button class="tab tab-more" id="more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="more-menu">More ▾</button>
+    </nav>
+    <!-- Lives outside .tabs: the tab bar's scroll-edge fade is a CSS mask
+         that would erase anything drawn beyond its box. -->
+    <div class="more-menu" id="more-menu" hidden>
       <button class="tab" data-tab="scout">Scout</button>
       <button class="tab" data-tab="market">Market</button>
       <button class="tab" data-tab="status">Status</button>
       <button class="tab" data-tab="compare">Compare</button>
-      <button class="tab" data-tab="fixtures">Fixtures</button>
       <button class="tab" data-tab="lineups">Lineups</button>
       <button class="tab" data-tab="matches">Matches</button>
       <button class="tab" data-tab="setpieces">Set Pieces</button>
-      <button class="tab" data-tab="myteam">My Team</button>
-    </nav>
+    </div>
   </header>
 
   <main class="container">

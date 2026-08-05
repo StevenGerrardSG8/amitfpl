@@ -145,6 +145,29 @@ body {
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+/* "More" dropdown: the research tools tucked behind one tab. */
+.more-menu {
+  position: fixed; /* placed under the button by app.js */
+  z-index: 60;
+  min-width: 170px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.more-menu .tab {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  text-align: start;
+}
+.more-menu .tab:hover { background: var(--bg); }
+.more-menu .tab.active { color: var(--accent); background: var(--accent-soft); }
+
 .offline-bar {
   background: #b06f00;
   color: #fff;

@@ -179,6 +179,7 @@ const STRINGS = {
   'tab.matches': ['Matches', 'תוצאות'],
   'tab.setpieces': ['Set Pieces', 'מצבים נייחים'],
   'tab.myteam': ['My Team', 'הקבוצה שלי'],
+  'tab.more': ['More', 'עוד'],
 
   /* ---- shared table/UI bits ---- */
   'common.player': ['Player', 'שחקן'],
@@ -662,10 +663,11 @@ const STRINGS = {
 // language: tabs, header buttons, loading text, help modal, footer.
 export function applyStaticI18n() {
   document.title = isHe() ? 'amitfpl - ערכת כלים ל-FPL' : 'amitfpl - FPL Toolkit';
-  document.querySelectorAll('#tabs .tab').forEach((b) => {
+  document.querySelectorAll('.tab[data-tab]').forEach((b) => {
     b.textContent = t(`tab.${b.dataset.tab}`);
   });
   const set = (sel, fn) => { const el = document.querySelector(sel); if (el) fn(el); };
+  set('#more-btn', (el) => { el.textContent = `${t('tab.more')} ▾`; });
   set('.brand-sub', (el) => { el.textContent = t('brand.sub'); });
   set('#refresh-btn', (el) => { el.title = t('chrome.refreshTitle'); el.setAttribute('aria-label', t('chrome.refreshAria')); });
   set('#theme-btn', (el) => { el.title = t('chrome.themeTitle'); el.setAttribute('aria-label', t('chrome.themeTitle')); });
@@ -681,7 +683,8 @@ export function applyStaticI18n() {
 }
 
 function helpHtml() {
-  const tabs = ['home', 'players', 'planner', 'scout', 'market', 'status', 'compare', 'fixtures', 'lineups', 'matches', 'setpieces', 'myteam'];
+  // Same order as the nav: the five main tabs, then the "More" menu.
+  const tabs = ['home', 'myteam', 'players', 'planner', 'fixtures', 'scout', 'market', 'status', 'compare', 'lineups', 'matches', 'setpieces'];
   return `
     <h2 style="margin:4px 0 12px">${t('help.title')}</h2>
     <div class="help-list">
