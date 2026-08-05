@@ -50,26 +50,26 @@ function fixtureCards() {
   const left = dl - Date.now();
   const d = Math.floor(left / 86400000);
   const h = Math.floor((left % 86400000) / 3600000);
-  // Deadline day (under 24h to go): the hero strip turns urgent.
+  // Deadline day (under 24h to go): the whole card turns urgent.
   const deadlineDay = left > 0 && left < 86400000;
   const count = left > 0
     ? (deadlineDay ? t('home.hoursLeft', { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) }) : t('home.toGo', { d, h }))
     : t('chrome.locked');
   const when = dl.toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-  // One calm line instead of a wrapped row of separate fragments: a
-  // headline (GW + countdown) and a lighter subline (deadline + fixture
-  // count) underneath it.
+  // One card, not two: a calm headline (GW + countdown) and a lighter
+  // subline (deadline + fixture count), then the fixtures grid right
+  // underneath - a hairline divider separates the two instead of a
+  // second stacked card with its own repeated "Gameweek N" title.
   return `
-    <div class="hero-strip ${deadlineDay ? 'hero-urgent' : ''}">
-      <div class="hero-main">
-        <span class="hero-gw">${escapeHtml(gwName(nxt.name))}</span>
-        <span class="hero-count">${deadlineDay ? `🔥 ${count}` : count}</span>
+    <div class="card hero-card ${deadlineDay ? 'hero-urgent' : ''}" style="margin-bottom:16px">
+      <div class="hero-top">
+        <div class="hero-main">
+          <span class="hero-gw">${escapeHtml(gwName(nxt.name))}</span>
+          <span class="hero-count">${deadlineDay ? `🔥 ${count}` : count}</span>
+        </div>
+        <div class="hero-sub">${t('home.deadline', { when })} · ${t('home.fixtures', { n: fx.length })}</div>
+        ${deadlineDay ? `<button class="hero-cta" data-goto="planner">${t('home.toPlanner')}</button>` : ''}
       </div>
-      <div class="hero-sub">${t('home.deadline', { when })} · ${t('home.fixtures', { n: fx.length })}</div>
-      ${deadlineDay ? `<button class="hero-cta" data-goto="planner">${t('home.toPlanner')}</button>` : ''}
-    </div>
-    <div class="card" style="margin-bottom:16px">
-      <div class="section-title">${t('home.fixturesTitle', { gw: escapeHtml(gwName(nxt.name)) })}</div>
       <div class="fx-grid">${cards}</div>
     </div>`;
 }
@@ -84,7 +84,11 @@ function widget(title, rowsHtml, gotoTab, gotoLabel, infoKey) {
   </div>`;
 }
 
-const mini = (rows) => `<table class="data">${rows}</table>`;
+// A calm list, not a data table: no header row, no cell borders - just
+// a name and a value per line. Home is the at-a-glance page; the full
+// sortable/filterable table for each of these lives one tap away.
+const widgetList = (rows) => `<div class="w-list">${rows.join('')}</div>`;
+const wRow = (left, right) => `<div class="w-row">${left}<span class="w-val">${right}</span></div>`;
 
 export async function renderHome(root) {
   root.innerHTML = '<div class="skel-page"><div class="skel skel-block"></div><div class="skel skel-block"></div></div>';
@@ -97,18 +101,12 @@ export async function renderHome(root) {
     .map((p) => ({ p, xp: model.xp(p.id, gw) }))
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 4);
-  const capRows = mini(captains.map(({ p, xp }) => `<tr>
-      <td>${playerCell(p)}</td>
-      <td class="num"><span class="pp-xp" style="margin:0">${xp.toFixed(1)}</span></td>
-    </tr>`).join(''));
+  const capRows = widgetList(captains.map(({ p, xp }) => wRow(playerCell(p), xp.toFixed(1))));
 
   const watched = watchlist().map((id) => state.playersById[id]).filter(Boolean);
   const watchRows = watched.length
-    ? mini(watched.slice(0, 6).map((p) => `<tr>
-        <td>${playerCell(p)}</td>
-        <td class="num">${fmtPrice(p.now_cost)}</td>
-        <td class="num"><span class="pp-xp" style="margin:0">${model.xp(p.id, gw).toFixed(1)}</span></td>
-      </tr>`).join(''))
+    ? widgetList(watched.slice(0, 6).map((p) =>
+        wRow(playerCell(p), `${fmtPrice(p.now_cost)} · ${model.xp(p.id, gw).toFixed(1)}`)))
     : `<div class="note">${t('home.watchEmpty')}</div>`;
 
   root.innerHTML = `

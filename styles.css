@@ -1329,19 +1329,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .drawer .summary-grid { grid-template-columns: repeat(3, 1fr); }
 
 /* ---------- Home dashboard ---------- */
-/* One calm block: a headline row (GW + countdown pill), a lighter
-   subline underneath - not a wrapped row of same-weight fragments. */
-.hero-strip {
+/* One card, not two: a calm headline (GW + countdown pill) and a
+   lighter subline sit above the fixtures grid, separated by a hairline
+   rather than being a second stacked card with its own title. */
+.hero-card { border-inline-start: 3px solid var(--accent); }
+.hero-top {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 14px;
-  padding: 14px 16px;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-inline-start: 3px solid var(--accent);
-  box-shadow: var(--shadow);
+  padding: 14px 16px 12px;
 }
 .hero-main { display: flex; align-items: center; gap: 12px; }
 .hero-gw { font-size: 17px; font-weight: 800; letter-spacing: -0.2px; }
@@ -1361,6 +1357,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 10px;
   padding: 14px 16px 16px;
+  border-top: 1px solid var(--border);
 }
 .fx-card {
   display: flex;
@@ -1398,7 +1395,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   justify-content: space-between;
   padding: 12px 16px 4px;
 }
-.widget table.data td { padding: 6px 12px; }
+
+/* A calm list for Home's widgets - a name and a value per line, no
+   table header/borders. The full sortable table for each is one tap
+   away (Scout/Players), so this only needs to read at a glance. */
+.w-list { padding: 4px 0 8px; }
+.w-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 16px;
+}
+.w-row:hover { background: var(--bg); }
+.w-val { flex: none; font-weight: 700; color: var(--text-soft); font-size: 13px; }
 
 /* ---------- Drawer extras: actions, trends ---------- */
 .drawer-actions { display: flex; gap: 8px; margin-top: 8px; }
@@ -1582,7 +1592,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (min-width: 641px) { .to-top { display: none; } }
 
 /* ---------- Deadline-day hero & onboarding ---------- */
-.hero-strip.hero-urgent {
+.hero-card.hero-urgent {
   background: linear-gradient(100deg, #d93025, #b3132b);
   border-color: transparent;
   color: #fff;
@@ -1591,6 +1601,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .hero-urgent .hero-gw { color: #fff; }
 .hero-urgent .hero-sub { color: rgba(255, 255, 255, 0.85); }
 .hero-urgent .hero-count { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.hero-urgent .fx-grid { border-top-color: rgba(255, 255, 255, 0.25); }
 @keyframes hero-pulse {
   0%, 100% { box-shadow: 0 4px 16px rgba(217, 48, 37, 0.25); }
   50% { box-shadow: 0 4px 26px rgba(217, 48, 37, 0.55); }
