@@ -10,6 +10,7 @@ compares fresh FPL data against the last-seen state, and sends:
 Runs automatically after every data refresh via dev-server.py.
 Test with:  python3 scripts/alerts.py --test
 """
+import hashlib
 import json
 import os
 import sys
@@ -42,6 +43,15 @@ def load_config():
         "telegram_chat_id": os.environ.get("TELEGRAM_CHAT_ID") or local.get("telegram_chat_id"),
         "watchlist": public.get("watchlist") or local.get("watchlist") or [],
     }
+
+
+def stable_hash(s):
+    """A dedup-key fragment that's the same across runs. Python's built-in
+    hash() is salted with a random seed per process (security feature), so
+    two cron runs 30 minutes apart hash the same text to different numbers
+    - the "already sent" check never matches and the alert repeats forever.
+    """
+    return hashlib.sha256(s.encode()).hexdigest()[:12]
 
 
 def send(config, text):
@@ -144,7 +154,7 @@ def check(config):
             prev = players_seen.get(pid, {})
             news = p.get("news") or ""
             if prev and news != prev.get("news", "") and news:
-                key = f"news:{pid}:{hash(news)}"
+                key = f"news:{pid}:{stable_hash(news)}"
                 if key not in sent:
                     messages.append((key, f"🚑 <b>{p['web_name']}</b>: {news}"))
             price = p["now_cost"]
@@ -183,7 +193,7 @@ def check(config):
     # --- unmapped Hebrew names (new signings) ---
     missing = load_json(os.path.join(ROOT, "data", "names-missing.json"), {}) or {}
     if missing.get("count"):
-        key = f"names:{missing['count']}:{hash(tuple(missing.get('names', [])[:10]))}"
+        key = f"names:{missing['count']}:{stable_hash('|'.join(missing.get('names', [])[:10]))}"
         if key not in sent:
             sample = ", ".join(missing.get("names", [])[:8])
             messages.append((key, f"🈳 <b>{missing['count']} players missing Hebrew names</b> in names-he.js:\n{sample}"))
