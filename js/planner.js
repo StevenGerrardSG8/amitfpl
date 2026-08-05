@@ -272,12 +272,16 @@ function weightedSquadScore(squad, score) {
 
 // avoid: ids from earlier build options, mildly penalized so the next
 // option lands on a genuinely different squad - not the same 15 again.
-function buildOptimalSquad(model, avoid = null) {
+// jitter: random per-player noise so every click of the build button
+// reshuffles the marginal picks instead of repeating the same answer.
+function buildOptimalSquad(model, avoid = null, jitter = 0) {
   const score = {};
   const pools = { 1: [], 2: [], 3: [], 4: [] };
   for (const p of state.bootstrap.elements) {
     if (p.status === 'u' || p.status === 'n') continue;
-    score[p.id] = model.horizonTotal(p.id) * (avoid?.has(p.id) ? 0.9 : 1);
+    score[p.id] = model.horizonTotal(p.id)
+      * (avoid?.has(p.id) ? 0.9 : 1)
+      * (jitter ? 1 + (Math.random() - 0.5) * jitter : 1);
     pools[p.element_type].push(p);
   }
   for (const pos of [1, 2, 3, 4]) {
@@ -1050,8 +1054,11 @@ export async function renderPlanner(root) {
     setTimeout(() => {
       const options = [];
       const used = new Set();
+      // First run: option 1 is the pure optimum. Every run after that
+      // jitters all three, so re-clicking keeps surfacing new squads.
+      const again = !!view.buildOptions;
       for (let k = 0; k < 3; k++) {
-        const squad = buildOptimalSquad(model, k ? used : null);
+        const squad = buildOptimalSquad(model, k ? used : null, k || again ? 0.06 : 0);
         options.push({ squad, xp: Math.round(squadForecast(model, squad)) });
         squad.forEach((id) => used.add(id));
       }

@@ -25,9 +25,11 @@ function introStrip() {
 // The one-tap path Itay asked for: upload your squad, get the AI read.
 // One friendly strip, one button - no wall of tools.
 function analyzeCta() {
-  let teamId = null;
-  try { teamId = localStorage.getItem('amitfpl:teamId'); } catch { /* private mode */ }
-  const k = teamId ? 'Ready' : '';
+  let connected = null;
+  try {
+    connected = localStorage.getItem('amitfpl:teamId') || localStorage.getItem('amitfpl:manualSquad');
+  } catch { /* private mode */ }
+  const k = connected ? 'Ready' : '';
   return `<div class="analyze-cta">
     <span class="ac-icon">🧠</span>
     <div class="ac-text">

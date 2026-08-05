@@ -494,7 +494,7 @@ const STRINGS = {
   'pl.optimizing': ['Optimizing…', 'מבצע אופטימיזציה…'],
   'pl.buildOpts': ['Auto-build gave you 3 squads:', 'הבנייה האוטומטית הכינה 3 הרכבים:'],
   'pl.buildOptN': ['Squad {n}', 'הרכב {n}'],
-  'info.buildOpts': ['Three different strong squads for the same budget - each one is built to avoid leaning on the previous one\'s players. The number is the forecast (best XI + captain) over the selected horizon. Tap to switch, then fine-tune on the pitch.', 'שלושה הרכבים חזקים ושונים לאותו תקציב - כל אחד נבנה כך שלא יישען על שחקני הקודם. המספר הוא הצפי (11 הטובים + קפטן) לאופק שנבחר. מקישים כדי להחליף, ואז מלטשים על המגרש.'],
+  'info.buildOpts': ['Three different strong squads for the same budget - each one is built to avoid leaning on the previous one\'s players. The number is the forecast (best XI + captain) over the selected horizon. Tap to switch, fine-tune on the pitch - and every extra click of the build button deals three fresh squads.', 'שלושה הרכבים חזקים ושונים לאותו תקציב - כל אחד נבנה כך שלא יישען על שחקני הקודם. המספר הוא הצפי (11 הטובים + קפטן) לאופק שנבחר. מקישים כדי להחליף, מלטשים על המגרש - וכל לחיצה נוספת על כפתור הבנייה מחלקת שלושה הרכבים חדשים.'],
   'pl.assistant': ['Assistant', 'עוזר'],
   'pl.bank': ['Bank', 'בנק'],
   'pl.planXp': ['Plan xP', 'צפי לתוכנית'],
@@ -580,6 +580,22 @@ const STRINGS = {
   'home.acReadyTitle': ['Your squad analysis is ready', 'ניתוח הסגל שלכם מוכן'],
   'home.acReadySub': ['Captain call, transfer ideas and lineup checks for the coming gameweek.', 'קפטן מומלץ, רעיונות להעברות ובדיקת הרכב למחזור הקרוב.'],
   'home.acReadyBtn': ['See my analysis', 'לניתוח שלי'],
+
+  // My Team: manual squad entry (the simple upload path)
+  'mp.title': ['Upload your squad', 'העלאת הסגל שלכם'],
+  'mp.lead': ['The quick way: pick your players by name and get the AI analysis right away - no team ID, works before the season too.', 'הדרך המהירה: בוחרים את השחקנים לפי שם ומקבלים את ניתוח ה-AI מיד - בלי מזהה קבוצה, עובד גם לפני העונה.'],
+  'mp.start': ['Enter my squad by name', 'הזנת הסגל לפי שמות'],
+  'mp.or': ['or connect with your team ID', 'או התחברות עם מזהה הקבוצה'],
+  'mp.sub': ['Type a name, tap to add. 11 players are enough for the analysis; all 15 give the full picture.', 'מקלידים שם ומוסיפים בהקשה. 11 שחקנים מספיקים לניתוח; כל ה-15 נותנים תמונה מלאה.'],
+  'mp.searchPh': ['Search player… (e.g. Haaland)', 'חיפוש שחקן… (למשל הולאנד)'],
+  'mp.analyze': ['Analyze my squad', 'נתחו את הסגל שלי'],
+  'mp.count': ['{n} players in', 'נבחרו {n} שחקנים'],
+  'mp.need': ['Add at least a legal XI (1 GK, 3 DEF, 2 MID, 1 FWD)', 'הוסיפו לפחות הרכב חוקי (שוער, 3 מגנים, 2 קשרים וחלוץ)'],
+  'mp.back': ['Back', 'חזרה'],
+  'mm.title': ['My squad', 'הסגל שלי'],
+  'mm.edit': ['Edit squad', 'עריכת הסגל'],
+  'mm.connect': ['Connect with team ID', 'התחברות עם מזהה'],
+  'mm.squad': ['Squad', 'הסגל'],
 
   // My Team: AI squad analysis card
   'an.title': ['🧠 AI squad analysis', '🧠 ניתוח AI של הסגל'],
