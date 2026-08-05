@@ -322,6 +322,29 @@ body {
 .mp-quota { margin-inline-start: auto; color: var(--text-faint); font-size: 11px; font-weight: 700; }
 [data-theme="dark"] .mp-chip { background: #232b6b33; }
 
+/* Planner "⋯" tools menu (Share/Copy/Compare drafts) */
+.pl-tools-wrap { display: flex; }
+.pl-tools-menu {
+  position: fixed; /* placed under the button by planner.js */
+  z-index: 60;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pl-tools-menu .link-btn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  text-align: start;
+}
+.pl-tools-menu .link-btn:hover { background: var(--bg); }
+.pl-tools-menu .link-btn[disabled] { opacity: 0.45; cursor: default; }
+
 /* Auto-build options strip in the planner */
 .build-opts { padding-top: 10px; }
 .build-opts-label { font-size: 13px; font-weight: 600; color: var(--text-soft); }

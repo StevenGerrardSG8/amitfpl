@@ -7,20 +7,23 @@ let model = null; // built once in renderPlayers, reused on every re-render
 
 // Labels/titles resolve at render time so a language switch re-renders
 // with the right strings. xG/xA/xGI/PPG stay Latin in both languages.
+// `extra` columns are the deeper stats (sel%, PPG, xG/xA/xGI, DC, minutes) -
+// hidden by default so a first-time visitor sees 7 columns, not 14; "More
+// stats" reveals them for anyone who wants the full table.
 const COLUMNS = [
   { key: 'web_name', label: () => t('common.player'), numeric: false },
   { key: 'position', label: () => t('common.pos'), numeric: false },
   { key: 'now_cost', label: () => t('common.price'), numeric: true },
-  { key: 'selected_by_percent', label: () => t('common.sel'), numeric: true },
   { key: 'ep_next', label: () => t('common.xpNext'), numeric: true, title: () => t('common.xpNextTitle') },
   { key: 'form', label: () => t('common.form'), numeric: true },
   { key: 'total_points', label: () => t('common.pts'), numeric: true },
-  { key: 'points_per_game', label: () => t('stat.ppg'), numeric: true },
-  { key: 'expected_goals', label: () => t('stat.xg'), numeric: true },
-  { key: 'expected_assists', label: () => t('stat.xa'), numeric: true },
-  { key: 'expected_goal_involvements', label: () => t('stat.xgi'), numeric: true },
-  { key: 'defensive_contribution', label: () => t('stat.dc'), numeric: true, title: () => t('players.dcTitle') },
-  { key: 'minutes', label: () => t('common.min'), numeric: true },
+  { key: 'selected_by_percent', label: () => t('common.sel'), numeric: true, extra: true },
+  { key: 'points_per_game', label: () => t('stat.ppg'), numeric: true, extra: true },
+  { key: 'expected_goals', label: () => t('stat.xg'), numeric: true, extra: true },
+  { key: 'expected_assists', label: () => t('stat.xa'), numeric: true, extra: true },
+  { key: 'expected_goal_involvements', label: () => t('stat.xgi'), numeric: true, extra: true },
+  { key: 'defensive_contribution', label: () => t('stat.dc'), numeric: true, title: () => t('players.dcTitle'), extra: true },
+  { key: 'minutes', label: () => t('common.min'), numeric: true, extra: true },
   { key: 'fixtures', label: () => t('common.next3'), numeric: false, noSort: true },
 ];
 
@@ -33,6 +36,7 @@ const view = {
   sortKey: 'ep_next',
   sortDir: 'desc',
   limit: 100,
+  moreStats: false,
 };
 
 const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
@@ -74,46 +78,48 @@ function filtered() {
 function render(root) {
   const list = filtered();
   const shown = list.slice(0, view.limit);
+  const cols = COLUMNS.filter((c) => !c.extra || view.moreStats);
 
-  const header = COLUMNS.map((c) => {
+  const header = cols.map((c) => {
     const sorted = view.sortKey === c.key;
     const arrow = sorted ? `<span class="arrow">${view.sortDir === 'asc' ? '▲' : '▼'}</span>` : '';
     const cls = [c.numeric ? 'num' : '', sorted ? 'sorted' : '', c.noSort ? 'no-sort' : ''].join(' ');
     return `<th class="${cls}" data-key="${c.noSort ? '' : c.key}" title="${c.title ? c.title() : ''}">${c.label()}${arrow}</th>`;
   }).join('');
 
-  const rows = shown
-    .map((p) => {
+  const CELLS = {
+    web_name: (p) => {
       const team = state.teamsById[p.team];
-      const pos = state.positionsById[p.element_type].singular_name_short;
       const st = statusInfo(p);
-      const flag = st
-        ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>`
-        : '';
-      const ep = modelXp(p);
-      return `<tr>
-        <td><div class="player-flex clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">
+      const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
+      return `<td><div class="player-flex clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">
           ${playerPhoto(p, 'row-photo')}
           <div class="player-cell">
             <span class="player-name">${escapeHtml(playerName(p))}${flag}${spBadges(p)}</span>
             <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${teamShort(team)}${isNewSigning(p) ? ` <span class="new-tag">${t('players.newTag')}</span>` : ''}</span>
           </div>
-        </div></td>
-        <td><span class="pos-badge pos-${pos}">${posShort(pos)}</span></td>
-        <td class="num">${fmtPrice(p.now_cost)}</td>
-        <td class="num">${p.selected_by_percent}%</td>
-        <td class="num ${ep >= 4 ? 'hi' : ''}">${ep.toFixed(1)}</td>
-        <td class="num">${p.form}</td>
-        <td class="num">${p.total_points}</td>
-        <td class="num">${p.points_per_game}</td>
-        <td class="num">${p.expected_goals}</td>
-        <td class="num">${p.expected_assists}</td>
-        <td class="num">${p.expected_goal_involvements}</td>
-        <td class="num">${p.defensive_contribution}</td>
-        <td class="num">${p.minutes}</td>
-        <td><div class="fdr-cell" style="flex-direction:row">${fixtureChips(p.team)}</div></td>
-      </tr>`;
-    })
+        </div></td>`;
+    },
+    position: (p) => {
+      const pos = state.positionsById[p.element_type].singular_name_short;
+      return `<td><span class="pos-badge pos-${pos}">${posShort(pos)}</span></td>`;
+    },
+    now_cost: (p) => `<td class="num">${fmtPrice(p.now_cost)}</td>`,
+    ep_next: (p) => `<td class="num ${modelXp(p) >= 4 ? 'hi' : ''}">${modelXp(p).toFixed(1)}</td>`,
+    form: (p) => `<td class="num">${p.form}</td>`,
+    total_points: (p) => `<td class="num">${p.total_points}</td>`,
+    selected_by_percent: (p) => `<td class="num">${p.selected_by_percent}%</td>`,
+    points_per_game: (p) => `<td class="num">${p.points_per_game}</td>`,
+    expected_goals: (p) => `<td class="num">${p.expected_goals}</td>`,
+    expected_assists: (p) => `<td class="num">${p.expected_assists}</td>`,
+    expected_goal_involvements: (p) => `<td class="num">${p.expected_goal_involvements}</td>`,
+    defensive_contribution: (p) => `<td class="num">${p.defensive_contribution}</td>`,
+    minutes: (p) => `<td class="num">${p.minutes}</td>`,
+    fixtures: (p) => `<td><div class="fdr-cell" style="flex-direction:row">${fixtureChips(p.team)}</div></td>`,
+  };
+
+  const rows = shown
+    .map((p) => `<tr>${cols.map((c) => CELLS[c.key](p)).join('')}</tr>`)
     .join('');
 
   const teamOptions = state.bootstrap.teams
@@ -135,6 +141,7 @@ function render(root) {
         <input type="number" id="pl-price" placeholder="${t('common.maxPrice')}" step="0.5" min="3.5" max="16" style="width:90px" value="${view.maxPrice}" />
         <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> ${t('players.newSignings')}</label>
         <span class="spacer"></span>
+        <button class="link-btn" id="pl-more-stats">${view.moreStats ? t('players.fewerStats') : t('players.moreStats')}</button>
         <button class="link-btn" id="pl-csv" title="${t('players.exportTitle')}">${t('players.exportCsv')}</button>
         <span class="result-count">${t('players.count', { n: list.length })}${list.length > view.limit ? t('players.showingTop', { n: view.limit }) : ''}</span>
       </div>
@@ -159,6 +166,7 @@ function render(root) {
   root.querySelector('#pl-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; render(root); });
   root.querySelector('#pl-new').addEventListener('change', (e) => { view.newOnly = e.target.checked; render(root); });
   root.querySelector('#pl-more')?.addEventListener('click', () => { view.limit += 100; render(root); });
+  root.querySelector('#pl-more-stats').addEventListener('click', () => { view.moreStats = !view.moreStats; render(root); });
 
   root.querySelector('#pl-csv').addEventListener('click', () => {
     const cols = ['web_name', 'position', 'team', 'now_cost', 'selected_by_percent', 'ep_next', 'form',

@@ -57,9 +57,28 @@ const view = {
   showAssistant: false,
   building: false,
   buildOptions: null, // [{squad, xp}] - the auto-build's three takes
+  showPlanTools: false, // Share/Copy/Compare-drafts tucked behind "⋯"
 };
 
 let sideScroll = 0;
+let plannerRootEl = null;
+
+// The "⋯" plan-tools menu closes on any click outside it. Bound once at
+// module load (not per-render, since renderPlanner replaces the whole
+// subtree on every state change) - a no-op until the menu is actually open.
+document.addEventListener('click', (e) => {
+  if (!view.showPlanTools || e.target.closest('.pl-tools-wrap') || !plannerRootEl) return;
+  view.showPlanTools = false;
+  renderPlanner(plannerRootEl);
+});
+// The menu is fixed-positioned (computed on render) since `.card` clips
+// overflow - a stale position after scrolling would look broken, so just
+// close it instead of tracking scroll.
+window.addEventListener('scroll', () => {
+  if (!view.showPlanTools || !plannerRootEl) return;
+  view.showPlanTools = false;
+  renderPlanner(plannerRootEl);
+}, { capture: true, passive: true });
 
 /* ---------------- persistence ---------------- */
 
@@ -940,6 +959,7 @@ function sideList(model, gw) {
 }
 
 export async function renderPlanner(root) {
+  plannerRootEl = root;
   if (!root.dataset.booted) {
     root.innerHTML = '<div class="skel-page"><div class="skel skel-row"></div><div class="skel skel-block" style="height:420px"></div></div>';
   }
@@ -988,10 +1008,15 @@ export async function renderPlanner(root) {
           <strong class="${itb < 0 ? 'lo' : ''}">${fmtPrice(itb)}</strong> ·
           ${t('pl.planXp')} <strong>${horizonTotal.toFixed(0)}</strong> ${infoNote('info.model')}${totalHits ? ` <span class="lo">${t('pl.hits', { n: totalHits })}</span>` : ''}
         </span>
-        <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareTitle')}">${t('pl.share')}</button>
-        <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>${t('pl.copy')}</button>
         <button class="link-btn" id="pl-clear" ${view.baseSquad.length ? '' : 'disabled'}>${t('common.clear')}</button>
-        <button class="link-btn" id="pl-drafts-cmp" title="${t('pl.cmpTitle')}">⚖</button>
+        <div class="pl-tools-wrap">
+          <button class="link-btn" id="pl-tools-btn" aria-haspopup="true" aria-expanded="${view.showPlanTools ? 'true' : 'false'}">${t('pl.moreTools')} ⋯</button>
+          <div class="pl-tools-menu" id="pl-tools-menu" ${view.showPlanTools ? '' : 'hidden'}>
+            <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareTitle')}">${t('pl.share')}</button>
+            <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>${t('pl.copy')}</button>
+            <button class="link-btn" id="pl-drafts-cmp" title="${t('pl.cmpTitle')}">${t('pl.compareDrafts')}</button>
+          </div>
+        </div>
         <div class="gw-chips" id="pl-drafts" title="${t('pl.draftsTitle')}">
           ${DRAFTS.map((s) => {
             const meta = s === slot ? { n: view.baseSquad.length, xp: Math.round(horizonTotal) } : draftMeta(s);
@@ -1025,6 +1050,21 @@ export async function renderPlanner(root) {
   const rerender = () => { save(); renderPlanner(root); };
   const sideEl = root.querySelector('#side-list');
   if (sideEl) sideEl.scrollTop = sideScroll;
+
+  // `.card` clips overflow, so the "⋯" menu is fixed-positioned under its
+  // button (mirrors the tab bar's More menu) instead of plain CSS absolute.
+  if (view.showPlanTools) {
+    const menu = root.querySelector('#pl-tools-menu');
+    const btn = root.querySelector('#pl-tools-btn');
+    if (menu && btn) {
+      const margin = 8;
+      const r = btn.getBoundingClientRect();
+      const w = menu.offsetWidth;
+      const start = document.documentElement.dir === 'rtl' ? r.right - w : r.left;
+      menu.style.left = `${Math.max(margin, Math.min(start, window.innerWidth - w - margin))}px`;
+      menu.style.top = `${r.bottom + 6}px`;
+    }
+  }
 
   root.querySelector('#pl-horizon').addEventListener('change', (e) => {
     view.horizon = +e.target.value;
@@ -1083,6 +1123,12 @@ export async function renderPlanner(root) {
 
   root.querySelector('#pl-assist').addEventListener('click', () => {
     view.showAssistant = !view.showAssistant;
+    rerender();
+  });
+
+  root.querySelector('#pl-tools-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    view.showPlanTools = !view.showPlanTools;
     rerender();
   });
 
@@ -1146,7 +1192,10 @@ export async function renderPlanner(root) {
     b.addEventListener('click', () => { view.planGw = +b.dataset.gw; view.pending = null; view.swapId = null; rerender(); })
   );
 
-  root.querySelector('#pl-drafts-cmp')?.addEventListener('click', () => openDraftCompare(model, root));
+  root.querySelector('#pl-drafts-cmp')?.addEventListener('click', () => {
+    view.showPlanTools = false;
+    openDraftCompare(model, root);
+  });
 
   root.querySelectorAll('#pl-drafts .gw-chip').forEach((b) =>
     b.addEventListener('click', () => {
