@@ -5,8 +5,8 @@
   --text: #1c2230;
   --text-soft: #5b6478;
   --text-faint: #8b93a7;
-  --accent: #38003c;
-  --accent-soft: #f5eafb;
+  --accent: #4f46e5;
+  --accent-soft: #eef0fe;
   --green: #0f9d58;
   --red: #d93025;
   --amber: #b06f00;
@@ -96,7 +96,7 @@ body {
   align-items: center;
   gap: 8px;
   background: var(--accent-soft);
-  border: 1px solid #e8d5f0;
+  border: 1px solid #dcdffc;
   color: var(--accent);
   padding: 6px 12px;
   border-radius: 999px;
@@ -263,7 +263,7 @@ table.data th, table.data td {
 table.data thead th {
   position: sticky;
   top: 0;
-  background: #fcf9fe;
+  background: #fafbfe;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   font-weight: 700;
@@ -279,8 +279,8 @@ table.data thead th .arrow { font-size: 9px; margin-inline-start: 3px; }
 table.data thead th.no-sort { cursor: default; }
 table.data thead th.no-sort:hover { color: var(--text-soft); }
 
-table.data tbody tr { border-bottom: 1px solid #f2ecf6; }
-table.data tbody tr:hover { background: #faf4fd; }
+table.data tbody tr { border-bottom: 1px solid #f0f2f7; }
+table.data tbody tr:hover { background: #f8f9ff; }
 
 /* Numeric columns keep physical right alignment in both directions -
    digits line up by place value regardless of text direction. */
@@ -300,10 +300,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   left: auto;
   right: 0;
 }
-.sticky-first thead th:first-child { z-index: 3; background: #fcf9fe; }
-[data-theme="dark"] .sticky-first thead th:first-child { background: #251432; }
-.sticky-first tbody tr:hover td:first-child { background: #faf4fd; }
-[data-theme="dark"] .sticky-first tbody tr:hover td:first-child { background: #2b1838; }
+.sticky-first thead th:first-child { z-index: 3; background: #fafbfe; }
+[data-theme="dark"] .sticky-first thead th:first-child { background: #1a2135; }
+.sticky-first tbody tr:hover td:first-child { background: #f8f9ff; }
+[data-theme="dark"] .sticky-first tbody tr:hover td:first-child { background: #1c2440; }
 
 .cmp-slot { position: relative; display: flex; flex: 1; min-width: 140px; align-items: center; }
 .cmp-slot .cmp-input { width: 100%; }
@@ -379,25 +379,24 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ---------- Dark theme ---------- */
 :root[data-theme="dark"] {
-  --bg: #140a1c;
-  --surface: #1e1128;
-  --border: #3a2449;
+  --bg: #0e1220;
+  --surface: #161d2e;
+  --border: #283149;
   --text: #e9edf8;
   --text-soft: #aab3c9;
   --text-faint: #7e879e;
-  --accent: #c77dff;
-  --accent-soft: #341a49;
-  --green: #00e57e;
+  --accent: #818cf8;
+  --accent-soft: #232b52;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
 }
-[data-theme="dark"] table.data thead th { background: #251432; }
-[data-theme="dark"] table.data tbody tr { border-bottom-color: #31203f; }
-[data-theme="dark"] table.data tbody tr:hover { background: #2b1838; }
+[data-theme="dark"] table.data thead th { background: #1a2135; }
+[data-theme="dark"] table.data tbody tr { border-bottom-color: #212a41; }
+[data-theme="dark"] table.data tbody tr:hover { background: #1c2440; }
 [data-theme="dark"] .stat-tile,
 [data-theme="dark"] .bench-strip,
-[data-theme="dark"] .bench-divider td { background: #251432; }
-[data-theme="dark"] .deadline-chip { border-color: #4b2a5e; }
-[data-theme="dark"] .fdr-3 { background: #443055; color: #d5c8e2; }
+[data-theme="dark"] .bench-divider td { background: #1a2135; }
+[data-theme="dark"] .deadline-chip { border-color: #343e6b; }
+[data-theme="dark"] .fdr-3 { background: #39415a; color: #c8cfe2; }
 [data-theme="dark"] .xg-pill { background: #1d3557; color: #a8c8f0; }
 [data-theme="dark"] .cs-pill { background: #4a3413; color: #ffca7a; }
 [data-theme="dark"] .cs-pill.cs-hi { background: #143c26; color: #7fdca4; }
@@ -442,7 +441,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   object-position: top;
   flex: none;
 }
-[data-theme="dark"] .row-photo { background: #33203f; }
+[data-theme="dark"] .row-photo { background: #26304a; }
 .sp-tag {
   display: inline-block;
   margin-inline-start: 4px;
@@ -610,7 +609,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .bench-strip {
   margin-top: 12px;
-  background: #fcf9fe;
+  background: #fafbfe;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
@@ -1004,7 +1003,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   object-fit: cover;
   object-position: top;
 }
-[data-theme="dark"] .cmp-photo { background: #33203f; }
+[data-theme="dark"] .cmp-photo { background: #26304a; }
 .chip-badge {
   width: 12px;
   height: 12px;
@@ -1021,7 +1020,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   object-position: top;
   vertical-align: -5px;
 }
-[data-theme="dark"] .inline-photo { background: #33203f; }
+[data-theme="dark"] .inline-photo { background: #26304a; }
 .pp-club {
   position: absolute;
   top: -4px;
@@ -1103,7 +1102,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border: 2px solid var(--border);
   flex: none;
 }
-[data-theme="dark"] .drawer-photo { background: #33203f; }
+[data-theme="dark"] .drawer-photo { background: #26304a; }
 .drawer-name { font-size: 20px; letter-spacing: -0.3px; }
 .drawer-meta { color: var(--text-soft); font-size: 13px; margin-top: 2px; }
 .drawer-news { font-size: 12px; margin-top: 4px; font-weight: 600; }
@@ -1118,7 +1117,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-bottom: 14px;
   padding: 12px 16px;
   border-radius: var(--radius);
-  background: linear-gradient(100deg, #37003c, #8f22a8);
+  background: linear-gradient(100deg, var(--accent), #7061e8);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -1145,11 +1144,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
-  background: #fcf9fe;
+  background: #fafbfe;
   min-width: 0;
   overflow: hidden;
 }
-[data-theme="dark"] .fx-card { background: #251432; }
+[data-theme="dark"] .fx-card { background: #1a2135; }
 /* Teams on the top row (full width for localised club names, ellipsis
    as a last resort), kickoff time on its own line below. */
 .fx-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
@@ -1299,7 +1298,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ---------- Intro strip (Home) ---------- */
 .intro-strip {
   position: relative;
-  background: linear-gradient(115deg, #37003c 0%, #6a0f7a 55%, #8f22a8 100%);
+  background: linear-gradient(115deg, var(--accent) 0%, #7061e8 100%);
   color: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -1315,12 +1314,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 255, 135, 0.28), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 70%);
   pointer-events: none;
 }
 .intro-name { font-size: 26px; font-weight: 500; letter-spacing: -0.5px; }
-.intro-name strong { font-weight: 800; color: #00ff87; }
-.intro-slogan { font-size: 15px; font-weight: 700; margin: 2px 0 8px; color: #04f5ff; }
+.intro-name strong { font-weight: 800; color: #c7d2fe; }
+.intro-slogan { font-size: 15px; font-weight: 700; margin: 2px 0 8px; color: #dbe3ff; }
 .intro-lines { margin: 4px 0; font-size: 13px; line-height: 1.55; color: rgba(255, 255, 255, 0.88); max-width: 760px; }
 .intro-x {
   position: absolute;
@@ -1531,9 +1530,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 14px;
-  background: #fcf9fe;
+  background: #fafbfe;
 }
-[data-theme="dark"] .mt-match { background: #251432; }
+[data-theme="dark"] .mt-match { background: #1a2135; }
 .mt-score-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -1605,7 +1604,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding: 16px;
 }
 .stat-tile {
-  background: #fcf9fe;
+  background: #fafbfe;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px 14px;
@@ -1656,7 +1655,7 @@ tr.league-me td { background: var(--accent-soft); font-weight: 700; }
 .captain-badge.vice { background: var(--text-faint); }
 
 .bench-divider td {
-  background: #fcf9fe;
+  background: #fafbfe;
   color: var(--text-faint);
   font-size: 11px;
   font-weight: 700;
@@ -1728,10 +1727,3 @@ tr.league-me td { background: var(--accent-soft); font-weight: 700; }
   padding: 1px 5px;
   border-radius: 999px;
 }
-
-/* Dark theme: dark text on the light-purple accent, for contrast */
-[data-theme="dark"] .btn:not(.ghost),
-[data-theme="dark"] .seg-btn.on,
-[data-theme="dark"] .gw-chip.active,
-[data-theme="dark"] .side-add:not(:disabled),
-[data-theme="dark"] .as-apply { color: #23072e; }
