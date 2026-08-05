@@ -4,7 +4,7 @@
 // transfers per GW, free transfers bank up (max 5), extra moves cost
 // -4, Wildcard/Free Hit make a GW's moves free (FH reverts after).
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { playerPhoto, teamBadge, inlinePhoto } from './ui.js';
+import { playerPhoto, teamBadge, inlinePhoto, fixtureChips } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
 
@@ -34,6 +34,7 @@ const view = {
   transfers: {},   // eventId -> [{out, in}] for GWs after the first
   filterPos: 'all',
   search: '',
+  maxPrice: '',
   sortKey: 'xp',
   swapId: null,
   pending: null,   // {type:'in'|'out', id} - half-made transfer
@@ -691,6 +692,7 @@ function sideList(model, gw) {
     if (p.status === 'u' || p.status === 'n') return false;
     if (pendingOut && p.element_type !== pendingOut.element_type) return false;
     if (view.filterPos !== 'all' && p.element_type !== +view.filterPos) return false;
+    if (view.maxPrice && p.now_cost / 10 > +view.maxPrice) return false;
     if (q && !`${p.first_name} ${p.second_name} ${p.web_name}`.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -717,6 +719,7 @@ function sideList(model, gw) {
       <div class="side-info clickable" data-pid="${p.id}">
         <span class="player-name">${escapeHtml(p.web_name)}</span>
         <span class="player-meta">${state.positionsById[p.element_type].singular_name_short} · ${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
+        <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>
       <span class="side-xp" title="Expected points over the plan horizon">${model.horizonTotal(p.id).toFixed(1)}</span>
       <button class="side-add" data-id="${p.id}" ${blocked ? 'disabled' : ''} title="${title}">+</button>
@@ -727,6 +730,7 @@ function sideList(model, gw) {
     <div class="side-controls">
       <input type="search" id="sd-search" placeholder="Search player…" value="${escapeHtml(view.search)}" />
       <div class="side-filters">
+        <input type="number" id="sd-price" placeholder="Max £" step="0.5" min="3.5" max="16" value="${view.maxPrice}" style="width:74px;font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)" />
         <select id="sd-pos">
           <option value="all">All</option>
           ${state.bootstrap.element_types.map((et) => `<option value="${et.id}" ${view.filterPos == et.id ? 'selected' : ''}>${et.plural_name_short}</option>`).join('')}
@@ -931,6 +935,7 @@ export async function renderPlanner(root) {
     });
   });
   root.querySelector('#sd-pos').addEventListener('change', (e) => { view.filterPos = e.target.value; sideScroll = 0; rerender(); });
+  root.querySelector('#sd-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; sideScroll = 0; rerender(); });
   root.querySelector('#sd-sort').addEventListener('change', (e) => { view.sortKey = e.target.value; sideScroll = 0; rerender(); });
   sideEl?.addEventListener('scroll', () => { sideScroll = sideEl.scrollTop; });
 

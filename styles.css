@@ -693,6 +693,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .side-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .side-info .player-name { font-size: 13px; }
 .side-xp { font-weight: 800; font-size: 12px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.side-fx { display: flex; gap: 3px; margin-top: 3px; flex-wrap: wrap; }
+.side-fx .fdr-chip { font-size: 9px; padding: 2px 5px; }
+.side-fx .chip-badge { width: 10px; height: 10px; margin-right: 2px; }
 .side-add {
   font: inherit;
   font-weight: 800;
