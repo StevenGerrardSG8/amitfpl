@@ -797,6 +797,41 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chip-btn.on { background: #ffc107; border-color: #a87d00; color: #201800; }
 .chips-note { font-size: 11px; }
 
+/* Active-chip effect banner: appears when a chip is toggled on, so the
+   click has a visible consequence beyond the button highlight. */
+.chip-note {
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  color: #7a5b00;
+  border-radius: 8px;
+  padding: 6px 12px;
+  animation: chip-note-in 0.22s ease-out;
+}
+[data-theme="dark"] .chip-note { background: #3a2f10; color: #ffd970; border-color: #a87d00; }
+@keyframes chip-note-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Bench Boost: the bench visibly "joins" the scoring squad */
+.bench-strip.bb-on {
+  outline: 2px solid #ffc107;
+  outline-offset: 2px;
+  background: #fff8e1;
+}
+[data-theme="dark"] .bench-strip.bb-on { background: #3a2f10; }
+.bench-strip.bb-on .bench-label { color: #a87d00; }
+[data-theme="dark"] .bench-strip.bb-on .bench-label { color: #ffd970; }
+
+/* Triple Captain: the armband becomes a ×3 pill */
+.pp-cap.tc {
+  width: auto;
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  animation: chip-note-in 0.22s ease-out;
+}
+
 /* ---------- Transfers bar ---------- */
 .transfers-bar {
   display: flex;

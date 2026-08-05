@@ -563,7 +563,11 @@ function playerCard(model, id, gw, isStarter, opts) {
     <div class="pp-photo-wrap" ${calm && !mobileSheet ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}">
       ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
-      ${opts.captain === id && isStarter ? `<span class="pp-cap" title="${t('common.captain')}">${t('badge.c')}</span>` : ''}
+      ${opts.captain === id && isStarter
+        ? (opts.chip === 'TC'
+          ? `<span class="pp-cap tc" title="${t('pl.chipTC')}">×3</span>`
+          : `<span class="pp-cap" title="${t('common.captain')}">${t('badge.c')}</span>`)
+        : ''}
       ${opts.vice === id && isStarter ? `<span class="pp-cap pp-vice" title="${t('common.viceCaptain')}">${t('badge.v')}</span>` : ''}
       ${isIn ? `<span class="pp-in" title="${t('pl.transferredIn')}">${t('badge.in')}</span>` : ''}
       ${opts.benchOrd ? `<span class="bench-ord">${opts.benchOrd}</span>` : ''}
@@ -624,7 +628,7 @@ function pitchHtml(model, gw) {
   const vice = [...lineup.starters]
     .filter((id) => id !== lineup.captain)
     .sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0] || null;
-  const opts = { editable: isFirst, captain: lineup.captain, vice, gwIns };
+  const opts = { editable: isFirst, captain: lineup.captain, vice, gwIns, chip: view.chips[gw] };
 
   const starters = lineup.starters;
   const squad = lineup.squad;
@@ -659,9 +663,10 @@ function pitchHtml(model, gw) {
     }
   }
 
+  const bbOn = view.chips[gw] === 'BB';
   return `
     <div class="pitch">${rows}</div>
-    <div class="bench-strip" data-bench="1"><span class="bench-label">${t('common.bench')}</span>${benchCards.join('')}</div>`;
+    <div class="bench-strip ${bbOn ? 'bb-on' : ''}" data-bench="1"><span class="bench-label">${t('common.bench')}${bbOn ? ` · ${t('pl.benchCounts')}` : ''}</span>${benchCards.join('')}</div>`;
 }
 
 function transfersBar(model, gw, ft) {
@@ -691,6 +696,31 @@ function transfersBar(model, gw, ft) {
   </div>`;
 }
 
+// A yellow banner spelling out what the active chip changes right now,
+// with live numbers - so toggling a chip has visible consequences.
+function chipEffectNote(model, gw) {
+  const chip = view.chips[gw];
+  if (!chip) return '';
+  const { squad, starters, captain } = lineupFor(model, gw);
+  let text = '';
+  if (chip === 'TC') {
+    const capPts = captain ? model.xp(captain, gw) : 0;
+    text = t('pl.chipNoteTC', {
+      name: captain ? escapeHtml(playerName(state.playersById[captain])) : '-',
+      n: capPts.toFixed(1),
+    });
+  } else if (chip === 'BB') {
+    const benchPts = squad.filter((id) => !starters.includes(id))
+      .reduce((s, id) => s + model.xp(id, gw), 0);
+    text = t('pl.chipNoteBB', { n: benchPts.toFixed(1) });
+  } else if (chip === 'WC') {
+    text = t('pl.chipNoteWC');
+  } else if (chip === 'FH') {
+    text = t('pl.chipNoteFH');
+  }
+  return `<div class="chip-note">⚡ ${text}</div>`;
+}
+
 function chipsBar(model, gw) {
   const active = view.chips[gw];
   const plannedElsewhere = (key) =>
@@ -702,6 +732,7 @@ function chipsBar(model, gw) {
       return `<button class="chip-btn ${active === key ? 'on' : ''}" data-chip="${key}"
         title="${elsewhere.length ? t('pl.alsoPlanned', { gws: elsewhere.join(', ') }) : label()}">${label()}${elsewhere.length ? ' ·' + elsewhere.join(',') : ''}</button>`;
     }).join('')}
+    ${chipEffectNote(model, gw)}
   </div>`;
 }
 
