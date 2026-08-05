@@ -14,6 +14,7 @@ import { renderSetPieces } from './setpieces.js';
 import { renderMyTeam } from './myteam.js';
 import { initDrawer } from './drawer.js';
 import { t, getLang, setLang, applyDir, applyStaticI18n, locale, gwName } from './i18n.js';
+import { initAuth } from './auth.js';
 
 const CORE = ['bootstrap', 'fixtures'];
 // Refresh in the background whenever the cached copy is older than this.
@@ -183,6 +184,7 @@ async function main() {
   renderDeadline();
   renderUpdatedChip();
   initDrawer();
+  initAuth(); // optional accounts - no-op until Firebase is configured
 
   document.getElementById('tabs').addEventListener('click', (e) => {
     const tab = e.target.closest('.tab');

@@ -581,6 +581,30 @@ const STRINGS = {
   'ob.item5': ['Language (EN/עב), dark mode and help (?) live in the top bar.', 'שפה (EN/עב), מצב כהה ועזרה (?) נמצאים בסרגל העליון.'],
   'ob.go': ["Let's go", 'יאללה, מתחילים'],
 
+  /* ---- accounts & sync ---- */
+  'auth.signIn': ['Sign in', 'התחברות'],
+  'auth.signInTitle': ['Sign in to sync your squad, plans and watchlist across devices', 'התחברו כדי לסנכרן סגל, תוכניות ורשימת מעקב בין מכשירים'],
+  'auth.account': ['My account', 'החשבון שלי'],
+  'auth.accountTitle': ['Signed in as {email}', 'מחוברים בתור {email}'],
+  'auth.pitch': ['Free account = your plans, team ID and watchlist on every device.', 'חשבון חינמי = התוכניות, מזהה הקבוצה ורשימת המעקב שלכם בכל מכשיר.'],
+  'auth.email': ['Email', 'אימייל'],
+  'auth.password': ['Password', 'סיסמה'],
+  'auth.register': ['Create account', 'יצירת חשבון'],
+  'auth.forgot': ['Forgot password?', 'שכחתי סיסמה'],
+  'auth.or': ['or', 'או'],
+  'auth.google': ['Continue with Google', 'המשך עם Google'],
+  'auth.signOut': ['Sign out', 'התנתקות'],
+  'auth.syncNote': ['Your drafts, team ID, watchlist and preferences sync automatically to this account.', 'הטיוטות, מזהה הקבוצה, רשימת המעקב וההעדפות מסתנכרנים אוטומטית לחשבון הזה.'],
+  'auth.privacy': ['Only your amitfpl data (plans, team ID, watchlist, preferences) is stored - nothing else.', 'נשמרים רק נתוני ה-amitfpl שלכם (תוכניות, מזהה קבוצה, רשימת מעקב, העדפות) - שום דבר מעבר.'],
+  'auth.resetSent': ['Password reset email sent - check your inbox.', 'מייל לאיפוס סיסמה נשלח - בדקו את תיבת הדואר.'],
+  'auth.errEmail': ['That email address doesn\'t look right.', 'כתובת האימייל לא נראית תקינה.'],
+  'auth.errPassword': ['Please enter a password.', 'נא להזין סיסמה.'],
+  'auth.errWeak': ['Password too weak - use at least 6 characters.', 'הסיסמה חלשה מדי - לפחות 6 תווים.'],
+  'auth.errExists': ['An account with this email already exists - try signing in.', 'כבר קיים חשבון עם האימייל הזה - נסו להתחבר.'],
+  'auth.errCreds': ['Wrong email or password.', 'אימייל או סיסמה שגויים.'],
+  'auth.errTooMany': ['Too many attempts - try again in a few minutes.', 'יותר מדי ניסיונות - נסו שוב בעוד כמה דקות.'],
+  'auth.errGeneric': ['Something went wrong - please try again.', 'משהו השתבש - נסו שוב.'],
+
   /* ---- help modal ---- */
   'help.title': ['How to use amitfpl', 'איך משתמשים ב-amitfpl'],
   'help.home': ['<strong>{tab}</strong> - the at-a-glance dashboard: next fixtures and quick picks.', '<strong>{tab}</strong> - לוח המחוונים במבט מהיר: המשחקים הקרובים ובחירות מומלצות.'],
@@ -624,6 +648,7 @@ export function applyStaticI18n() {
   set('#theme-btn', (el) => { el.title = t('chrome.themeTitle'); el.setAttribute('aria-label', t('chrome.themeTitle')); });
   set('#help-btn', (el) => { el.title = t('chrome.helpTitle'); el.setAttribute('aria-label', t('chrome.helpTitle')); });
   set('#lang-btn', (el) => { el.textContent = isHe() ? 'EN' : 'עב'; el.title = t('chrome.langTitle'); el.setAttribute('aria-label', t('chrome.langTitle')); });
+  set('#auth-btn', (el) => { if (!el.classList.contains('on')) { el.title = t('auth.signInTitle'); el.setAttribute('aria-label', t('auth.signIn')); } });
   set('#loading p', (el) => { el.textContent = t('chrome.loading'); });
   set('.offline-bar', (el) => { el.textContent = t('chrome.offline'); });
   set('.footer span', (el) => {

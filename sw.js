@@ -9,7 +9,7 @@ const CORE = [
   'styles.css',
   'manifest.json',
   'icon.svg',
-  'js/app.js', 'js/api.js', 'js/i18n.js', 'js/names-he.js', 'js/state.js', 'js/ui.js', 'js/model.js',
+  'js/app.js', 'js/api.js', 'js/i18n.js', 'js/names-he.js', 'js/auth.js', 'js/state.js', 'js/ui.js', 'js/model.js',
   'js/players.js', 'js/planner.js', 'js/scout.js', 'js/market.js',
   'js/status.js', 'js/compare.js', 'js/fixtures.js', 'js/lineups.js',
   'js/matches.js', 'js/setpieces.js', 'js/myteam.js', 'js/home.js',
