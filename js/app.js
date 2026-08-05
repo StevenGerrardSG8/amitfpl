@@ -322,6 +322,16 @@ async function main() {
   });
   window.addEventListener('scroll', () => closeInfoPops(null), { capture: true, passive: true });
 
+  // Phones: the brand/chips rows scroll away with the page so only the tab
+  // bar stays stuck (the 640px media query sticks .topbar at minus this
+  // height). Observed, not hardcoded - the rows wrap and the deadline chip
+  // appears async.
+  const topbarInner = document.querySelector('.topbar-inner');
+  const setTopbarCollapse = () =>
+    document.documentElement.style.setProperty('--topbar-collapse', `${topbarInner.offsetHeight}px`);
+  setTopbarCollapse();
+  new ResizeObserver(setTopbarCollapse).observe(topbarInner);
+
   // Power-user shortcut: "/" jumps to the Players search from anywhere.
   document.addEventListener('keydown', (e) => {
     if (e.key !== '/') return;

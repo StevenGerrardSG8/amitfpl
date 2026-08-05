@@ -1665,7 +1665,10 @@ tr.league-me td { background: var(--accent-soft); font-weight: 700; }
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .container { padding: 10px; }
-  .topbar-inner { padding: 10px 12px 6px; }
+  /* Header rows scroll away; only the tab bar stays stuck. */
+  .topbar { top: calc(-1 * var(--topbar-collapse, 0px)); }
+  .topbar-inner { padding: 10px 12px 6px; flex-wrap: wrap; row-gap: 6px; }
+  .chips { flex-wrap: wrap; min-width: 0; }
   .tabs { padding: 0 8px; }
   .brand-sub { display: none; }
   .deadline-chip .deadline-time { display: none; }
