@@ -4,7 +4,12 @@ import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge, infoNote } 
 import { loadBaseline, buildModel } from './model.js';
 import { t, haMark, gwLabel, playerName, teamShort } from './i18n.js';
 
-const view = { diffMax: 10 };
+// Every list below defaults to a short, glanceable cut - 5 stacked
+// 15-row tables was a wall of numbers. "Show more" (per section)
+// reveals the rest; nothing is permanently hidden.
+const SHORT = 6;
+const view = { diffMax: 10, limits: {} };
+const limitFor = (key, total) => Math.min(view.limits[key] ?? SHORT, total);
 
 function available(p) {
   return p.status === 'a' || p.status === 'd';
@@ -12,8 +17,16 @@ function available(p) {
 
 let xpOf = (p) => num(p.ep_next); // replaced with the model in renderScout
 
-function rowsHtml(players, extraCols) {
+// "Show more" footer row: shared by every section table below.
+function moreRow(key, total) {
+  const shown = limitFor(key, total);
+  if (shown >= total) return '';
+  return `<tr><td colspan="99" class="sc-more-row"><button class="link-btn sc-more" data-key="${key}">${t('common.showMore')}</button></td></tr>`;
+}
+
+function rowsHtml(key, players, extraCols) {
   return players
+    .slice(0, limitFor(key, players.length))
     .map((p) => `<tr>
       <td>${playerCell(p)}</td>
       <td>${posBadge(p)}</td>
@@ -23,7 +36,7 @@ function rowsHtml(players, extraCols) {
       ${extraCols(p)}
       <td><div class="fdr-cell" style="flex-direction:row">${fixtureChips(p.team)}</div></td>
     </tr>`)
-    .join('');
+    .join('') + moreRow(key, players.length);
 }
 
 const HEAD = () => `<th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
@@ -60,25 +73,27 @@ export async function renderScout(root) {
   const diffs = [...els]
     .filter((p) => available(p) && num(p.selected_by_percent) < view.diffMax)
     .sort((a, b) => xpOf(b) - xpOf(a))
-    .slice(0, 15);
+    .slice(0, 20);
 
   const value = [...els]
     .filter((p) => available(p) && p.total_points > 0)
     .sort((a, b) => num(b.value_season) - num(a.value_season))
-    .slice(0, 15);
+    .slice(0, 20);
 
   const nextGw = model.gws[0];
   const scorers = [...els]
     .filter(available)
     .map((p) => ({ p, prob: model.goalChance(p.id, nextGw) }))
     .sort((a, b) => b.prob - a.prob)
-    .slice(0, 10);
+    .slice(0, 15);
   const creators = [...els]
     .filter(available)
     .map((p) => ({ p, prob: model.assistChance(p.id, nextGw) }))
     .sort((a, b) => b.prob - a.prob)
-    .slice(0, 10);
+    .slice(0, 15);
+
   const creatorRows = creators
+    .slice(0, limitFor('creators', creators.length))
     .map(({ p, prob }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
         .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
@@ -92,9 +107,10 @@ export async function renderScout(root) {
         <td class="num"><span class="cs-pill ${pct >= 35 ? 'cs-hi' : ''}">${pct}%</span></td>
       </tr>`;
     })
-    .join('');
+    .join('') + moreRow('creators', creators.length);
 
   const scorerRows = scorers
+    .slice(0, limitFor('scorers', scorers.length))
     .map(({ p, prob }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
         .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
@@ -108,15 +124,16 @@ export async function renderScout(root) {
         <td class="num"><span class="cs-pill ${pct >= 45 ? 'cs-hi' : ''}">${pct}%</span></td>
       </tr>`;
     })
-    .join('');
+    .join('') + moreRow('scorers', scorers.length);
 
   // Headline table: the model's expected points for the upcoming GW.
   const topXp = [...els]
     .filter(available)
     .map((p) => ({ p, xp: model.xp(p.id, nextGw) }))
     .sort((a, b) => b.xp - a.xp)
-    .slice(0, 15);
+    .slice(0, 20);
   const topXpRows = topXp
+    .slice(0, limitFor('topXp', topXp.length))
     .map(({ p, xp }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
         .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
@@ -131,7 +148,7 @@ export async function renderScout(root) {
         <td class="num"><span class="pp-xp" style="margin:0">${xp.toFixed(1)}</span></td>
       </tr>`;
     })
-    .join('');
+    .join('') + moreRow('topXp', topXp.length);
 
   root.innerHTML = `
     <div class="card" style="margin-bottom:16px">
@@ -193,7 +210,7 @@ export async function renderScout(root) {
       <div class="table-wrap">
         <table class="data">
           <thead><tr>${HEAD()}<th class="num no-sort">${t('common.form')}</th><th class="no-sort">${t('common.next3')}</th></tr></thead>
-          <tbody>${rowsHtml(diffs, (p) => `<td class="num">${p.form}</td>`)}</tbody>
+          <tbody>${rowsHtml('diffs', diffs, (p) => `<td class="num">${p.form}</td>`)}</tbody>
         </table>
       </div>
     </div>
@@ -204,7 +221,7 @@ export async function renderScout(root) {
       <div class="table-wrap">
         <table class="data">
           <thead><tr>${HEAD()}<th class="num no-sort" title="${t('scout.ptsPerMTitle')}">${t('scout.ptsPerM')}</th><th class="no-sort">${t('common.next3')}</th></tr></thead>
-          <tbody>${rowsHtml(value, (p) => `<td class="num hi">${p.value_season}</td>`)}</tbody>
+          <tbody>${rowsHtml('value', value, (p) => `<td class="num hi">${p.value_season}</td>`)}</tbody>
         </table>
       </div>
     </div>`;
@@ -213,4 +230,10 @@ export async function renderScout(root) {
     view.diffMax = +e.target.value;
     renderScout(root);
   });
+  root.querySelectorAll('.sc-more').forEach((b) =>
+    b.addEventListener('click', () => {
+      view.limits[b.dataset.key] = Infinity;
+      renderScout(root);
+    })
+  );
 }
