@@ -110,7 +110,42 @@ export async function renderScout(root) {
     })
     .join('');
 
+  // Headline table: the model's expected points for the upcoming GW.
+  const topXp = [...els]
+    .filter(available)
+    .map((p) => ({ p, xp: model.xp(p.id, nextGw) }))
+    .sort((a, b) => b.xp - a.xp)
+    .slice(0, 15);
+  const topXpRows = topXp
+    .map(({ p, xp }, i) => {
+      const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
+        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
+        .join(', ');
+      return `<tr>
+        <td class="num" style="font-weight:800">${i + 1}</td>
+        <td>${playerCell(p)}</td>
+        <td>${posBadge(p)}</td>
+        <td class="num">${fmtPrice(p.now_cost)}</td>
+        <td class="num">${p.selected_by_percent}%</td>
+        <td>${fx || '-'}</td>
+        <td class="num"><span class="pp-xp" style="margin:0">${xp.toFixed(1)}</span></td>
+      </tr>`;
+    })
+    .join('');
+
   root.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title">${t('scout.topXpTitle', { gw: gwLabel(nextGw) })}</div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="num no-sort">#</th><th class="no-sort">${t('common.player')}</th>
+          <th class="no-sort">${t('common.pos')}</th><th class="num no-sort">${t('common.price')}</th>
+          <th class="num no-sort">${t('common.sel')}</th><th class="no-sort">${t('common.fixture')}</th>
+          <th class="num no-sort" title="${t('scout.topXpColTitle')}">${t('scout.topXpCol')}</th></tr></thead>
+          <tbody>${topXpRows}</tbody>
+        </table>
+      </div>
+    </div>
     <div class="card" style="margin-bottom:16px">
       <div class="section-title">${t('scout.scorersTitle', { gw: gwLabel(nextGw) })}</div>
       <div class="table-wrap">

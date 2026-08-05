@@ -283,6 +283,9 @@ const STRINGS = {
   'players.showMore': ['Show {n} more', 'הצג עוד {n}'],
 
   /* ---- scout ---- */
+  'scout.topXpTitle': ['Expected points - the model\'s top picks for {gw}', 'נקודות צפויות - הבחירות המובילות של המודל ל{gw}'],
+  'scout.topXpCol': ['xP', 'צפי נק׳'],
+  'scout.topXpColTitle': ['Expected points in the upcoming gameweek (amitfpl model)', 'נקודות צפויות במחזור הקרוב (מודל amitfpl)'],
   'scout.scorersTitle': ['Scoring chances - most likely to find the net in {gw}', 'סיכויי הבקעה - הסבירים ביותר לכבוש ב{gw}'],
   'scout.creatorsTitle': ['Creators - most likely to assist in {gw}', 'יוצרי מצבים - הסבירים ביותר לבשל ב{gw}'],
   'scout.toScore': ['To score', 'להבקיע'],
