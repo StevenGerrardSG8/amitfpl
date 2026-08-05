@@ -28,7 +28,8 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Noto Sans Hebrew covers the Hebrew UI; Inter has no Hebrew glyphs. */
+  font-family: 'Inter', 'Noto Sans Hebrew', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
@@ -240,7 +241,7 @@ body {
   color: var(--text-soft);
   cursor: pointer;
 }
-.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+.seg-btn + .seg-btn { border-inline-start: 1px solid var(--border); }
 .seg-btn.on { background: var(--accent); color: #fff; }
 .result-count { font-size: 12px; color: var(--text-faint); }
 
@@ -255,7 +256,7 @@ table.data {
 
 table.data th, table.data td {
   padding: 8px 12px;
-  text-align: left;
+  text-align: start; /* follows dir: left in LTR, right in RTL */
   white-space: nowrap;
 }
 
@@ -274,22 +275,30 @@ table.data thead th {
 }
 table.data thead th:hover { color: var(--accent); }
 table.data thead th.sorted { color: var(--accent); }
-table.data thead th .arrow { font-size: 9px; margin-left: 3px; }
+table.data thead th .arrow { font-size: 9px; margin-inline-start: 3px; }
 table.data thead th.no-sort { cursor: default; }
 table.data thead th.no-sort:hover { color: var(--text-soft); }
 
 table.data tbody tr { border-bottom: 1px solid #f0f2f7; }
 table.data tbody tr:hover { background: #f8f9ff; }
 
+/* Numeric columns keep physical right alignment in both directions -
+   digits line up by place value regardless of text direction. */
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
-/* First column stays visible while scrolling wide tables sideways */
+/* First column stays visible while scrolling wide tables sideways.
+   In RTL the first column renders on the right, so it pins there. */
 .sticky-first th:first-child,
 .sticky-first td:first-child {
   position: sticky;
   left: 0;
   background: var(--surface);
   z-index: 2;
+}
+[dir="rtl"] .sticky-first th:first-child,
+[dir="rtl"] .sticky-first td:first-child {
+  left: auto;
+  right: 0;
 }
 .sticky-first thead th:first-child { z-index: 3; background: #fafbfe; }
 [data-theme="dark"] .sticky-first thead th:first-child { background: #1a2135; }
@@ -300,7 +309,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .cmp-slot .cmp-input { width: 100%; }
 .cmp-x {
   position: absolute;
-  right: 6px;
+  inset-inline-end: 6px;
   border: none;
   background: none;
   color: var(--text-faint);
@@ -326,7 +335,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .pos-MID { background: #e3ecfd; color: #1d4fb8; }
 .pos-FWD { background: #fde5ec; color: #b01048; }
 
-.status-flag { font-size: 11px; font-weight: 700; margin-left: 5px; cursor: help; }
+.status-flag { font-size: 11px; font-weight: 700; margin-inline-start: 5px; cursor: help; }
 .status-d { color: var(--amber); }
 .status-i, .status-s, .status-u, .status-n { color: var(--red); }
 
@@ -411,6 +420,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .theme-btn:hover { border-color: var(--accent); }
 
+/* Language toggle: same pill as the theme button, sized for text */
+.lang-btn {
+  width: auto;
+  min-width: 30px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
 /* ---------- Player row extras ---------- */
 .player-flex { display: flex; align-items: center; gap: 8px; }
 .row-photo {
@@ -425,7 +444,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 [data-theme="dark"] .row-photo { background: #26304a; }
 .sp-tag {
   display: inline-block;
-  margin-left: 4px;
+  margin-inline-start: 4px;
   font-size: 9px;
   font-weight: 800;
   padding: 1px 5px;
@@ -608,7 +627,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-faint);
-  margin-right: 4px;
+  margin-inline-end: 4px;
 }
 
 .build-hint {
@@ -695,7 +714,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .side-xp { font-weight: 800; font-size: 12px; color: var(--accent); font-variant-numeric: tabular-nums; }
 .side-fx { display: flex; gap: 3px; margin-top: 3px; flex-wrap: wrap; }
 .side-fx .fdr-chip { font-size: 9px; padding: 2px 5px; }
-.side-fx .chip-badge { width: 10px; height: 10px; margin-right: 2px; }
+.side-fx .chip-badge { width: 10px; height: 10px; margin-inline-end: 2px; }
 .side-add {
   font: inherit;
   font-weight: 800;
@@ -818,7 +837,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: none;
   color: var(--text-faint);
   cursor: pointer;
-  padding: 0 0 0 2px;
+  padding: 0;
+  padding-inline-start: 2px;
 }
 .tr-x:hover { color: var(--red); }
 .pc-btn.pc-out { width: auto; padding: 0 6px; font-size: 9px; }
@@ -931,7 +951,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   height: 18px;
   object-fit: contain;
   vertical-align: -4px;
-  margin-right: 2px;
+  margin-inline-end: 2px;
 }
 .meta-badge {
   width: 13px;
@@ -954,7 +974,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   height: 12px;
   object-fit: contain;
   vertical-align: -2px;
-  margin-right: 3px;
+  margin-inline-end: 3px;
 }
 .inline-photo {
   width: 20px;
@@ -1014,10 +1034,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   animation: drawer-in 0.18s ease-out;
 }
 @keyframes drawer-in { from { transform: translateX(40px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+/* RTL: the overlay's flex-end puts the drawer on the LEFT, so it slides
+   in from the left with the border/shadow on its right edge. */
+[dir="rtl"] .drawer {
+  border-left: none;
+  border-right: 1px solid var(--border);
+  box-shadow: 8px 0 40px rgba(0, 0, 0, 0.25);
+  animation: drawer-in-rtl 0.18s ease-out;
+}
+@keyframes drawer-in-rtl { from { transform: translateX(-40px); opacity: 0.4; } to { transform: none; opacity: 1; } }
 .drawer-close {
   position: absolute;
   top: 14px;
-  right: 14px;
+  inset-inline-end: 14px;
   font: inherit;
   width: 30px;
   height: 30px;
@@ -1061,7 +1090,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .hero-gw { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
 .hero-count {
-  margin-left: auto;
+  margin-inline-start: auto;
   background: rgba(255, 255, 255, 0.18);
   padding: 3px 12px;
   border-radius: 999px;
@@ -1151,7 +1180,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   width: 100%;
   font: inherit;
   font-weight: 600;
-  text-align: left;
+  text-align: start;
   padding: 12px 14px;
   margin-top: 6px;
   border-radius: 10px;
@@ -1299,7 +1328,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding: 2px 0;
 }
 .mt-event-label { font-weight: 700; color: var(--text-faint); font-size: 11px; }
-.mt-event-side:last-child { text-align: right; }
+.mt-event-side:last-child { text-align: end; }
 @media (max-width: 640px) {
   .mt-side { font-size: 12px; }
   .mt-side strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1317,7 +1346,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .myteam-setup h2 { margin: 0 0 6px; font-size: 18px; }
 .myteam-setup p { color: var(--text-soft); margin: 6px 0; }
-.myteam-setup ol { color: var(--text-soft); padding-left: 20px; }
+.myteam-setup ol { color: var(--text-soft); padding-inline-start: 20px; }
 .myteam-setup .id-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .myteam-setup input {
   font: inherit;
@@ -1388,7 +1417,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   width: 16px; height: 16px;
   line-height: 16px;
   text-align: center;
-  margin-left: 5px;
+  margin-inline-start: 5px;
 }
 .captain-badge.vice { background: var(--text-faint); }
 
@@ -1443,6 +1472,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .planner-side { min-height: 300px; max-height: 420px; }
 
   .drawer { width: 100vw; border-left: none; }
+  [dir="rtl"] .drawer { border-right: none; }
   .drawer .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
   .assistant-card { margin: 10px 12px 0; padding: 10px 12px; }

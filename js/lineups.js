@@ -5,6 +5,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge } from './ui.js';
 import { loadBaseline, baselinePlayer } from './model.js';
+import { t, locale, haMark } from './i18n.js';
 
 const FORMATIONS = [];
 for (let d = 3; d <= 5; d++)
@@ -56,7 +57,7 @@ function predictXI(squad) {
 
 function playerChip(p) {
   const doubt = p.status === 'd'
-    ? `<span class="lu-doubt-dot" title="${escapeHtml(p.news || 'Doubtful')}">${p.chance_of_playing_next_round ?? 75}%</span>`
+    ? `<span class="lu-doubt-dot" title="${escapeHtml(p.news || t('lu.doubtful'))}">${p.chance_of_playing_next_round ?? 75}%</span>`
     : '';
   return `<div class="lu-p clickable" data-pid="${p.id}">
     <div class="lu-photo-wrap">
@@ -73,16 +74,16 @@ function teamCard(team, squad) {
   const pred = predictXI(squad);
   if (!pred) return '';
   const nextFx = (state.upcomingByTeam[team.id] || [])[0];
-  let fxLine = 'no fixture scheduled';
+  let fxLine = t('lu.noFixture');
   if (nextFx) {
     const opp = state.teamsById[nextFx.opponent];
     const raw = state.fixtures.find(
       (f) => f.event === nextFx.event && (nextFx.isHome ? f.team_h === team.id : f.team_a === team.id)
     );
     const ko = raw?.kickoff_time
-      ? new Date(raw.kickoff_time).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      ? new Date(raw.kickoff_time).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
       : '';
-    fxLine = `vs ${escapeHtml(opp.short_name)} (${nextFx.isHome ? 'H' : 'A'}) · ${ko}`;
+    fxLine = `${t('common.vs')} ${escapeHtml(opp.short_name)} (${haMark(nextFx.isHome)}) · ${ko}`;
   }
 
   const rows = [4, 3, 2, 1].map((pos) => {
@@ -105,13 +106,13 @@ function teamCard(team, squad) {
   return `<div class="lu-card">
     <div class="lu-head">
       <div class="lu-team">${teamBadge(team.id)} <strong>${escapeHtml(team.name)}</strong>
-        ${state.elo?.[team.id] ? `<span class="muted" style="font-size:10px" title="ClubElo rating">${Math.round(state.elo[team.id])}</span>` : ''}</div>
+        ${state.elo?.[team.id] ? `<span class="muted" style="font-size:10px" title="${t('lu.eloTitle')}">${Math.round(state.elo[team.id])}</span>` : ''}</div>
       <span class="lu-formation">${pred.formation}</span>
     </div>
     <div class="lu-fx muted">${fxLine}</div>
     <div class="lu-pitch">${rows}</div>
     ${doubtful.length || out.length
-      ? `<div class="lu-flags">${doubtful.join('')}${out.length ? `<span class="lu-flag-label">Out:</span>${out.join('')}` : ''}</div>`
+      ? `<div class="lu-flags">${doubtful.join('')}${out.length ? `<span class="lu-flag-label">${t('lu.out')}</span>${out.join('')}` : ''}</div>`
       : ''}
   </div>`;
 }
@@ -133,10 +134,6 @@ export async function renderLineups(root) {
   const teams = [...state.bootstrap.teams].sort((a, b) => nextKo(a).localeCompare(nextKo(b)));
   const cards = teams.map((t) => teamCard(t, byTeam[t.id] || [])).join('');
   root.innerHTML = `
-    <div class="note" style="padding:0 4px 12px">
-      amitfpl projection - from last season's starts, squad pricing and availability flags.
-      Chip on each player = FPL ownership. Expect this to sharpen as real minutes come in;
-      it can't know preseason friendlies or press conferences (yet).
-    </div>
+    <div class="note" style="padding:0 4px 12px">${t('lu.note')}</div>
     <div class="lu-grid">${cards}</div>`;
 }

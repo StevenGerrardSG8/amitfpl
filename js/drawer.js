@@ -4,6 +4,7 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, spBadges, fixtureDifficulty } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
+import { t, haMark, gwLabel } from './i18n.js';
 
 let overlay = null;
 const summaryCache = new Map();
@@ -40,7 +41,7 @@ async function fetchTrends() {
 // muted text. Handles a single sample (history starts accumulating
 // the day the tracker went live).
 function sparkline(points, fmt) {
-  if (!points.length) return '<span class="muted">no data yet</span>';
+  if (!points.length) return `<span class="muted">${t('dw.noData')}</span>`;
   const w = 150;
   const h = 34;
   const pad = 3;
@@ -57,7 +58,7 @@ function sparkline(points, fmt) {
       <circle cx="${x(points.length - 1)}" cy="${y(last)}" r="3" fill="var(--accent)"/>
     </svg>
     <span class="spark-val">${fmt(last)}</span>
-    ${points.length > 1 ? `<span class="muted spark-range">${fmt(min)} – ${fmt(max)}</span>` : '<span class="muted spark-range">tracking since today</span>'}
+    ${points.length > 1 ? `<span class="muted spark-range">${fmt(min)} – ${fmt(max)}</span>` : `<span class="muted spark-range">${t('dw.trackingToday')}</span>`}
   </div>`;
 }
 
@@ -76,10 +77,10 @@ async function trendSection(id) {
   }
   if (!price.length) return '';
   return `
-    <div class="section-title" style="padding-left:0">Trends <span class="muted" style="font-weight:500">· daily since Aug 2026</span></div>
+    <div class="section-title" style="padding-inline-start:0">${t('dw.trends')} <span class="muted" style="font-weight:500">${t('dw.trendsSince')}</span></div>
     <div class="trend-grid">
-      <div><div class="k-label">Price</div>${sparkline(price, (v) => '£' + v.toFixed(1))}</div>
-      <div><div class="k-label">Ownership</div>${sparkline(own, (v) => v.toFixed(1) + '%')}</div>
+      <div><div class="k-label">${t('dw.price')}</div>${sparkline(price, (v) => '£' + v.toFixed(1))}</div>
+      <div><div class="k-label">${t('dw.ownership')}</div>${sparkline(own, (v) => v.toFixed(1) + '%')}</div>
     </div>`;
 }
 
@@ -111,11 +112,11 @@ function upcomingRows(model, p) {
     .map((e) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e);
       const opp = fx.length
-        ? fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})</span>`).join(' ')
-        : '<span class="fdr-chip fdr-blank">blank</span>';
+        ? fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})</span>`).join(' ')
+        : `<span class="fdr-chip fdr-blank">${t('common.blank')}</span>`;
       const xp = model.xp(p.id, e);
       return `<tr>
-        <td>GW${e}</td>
+        <td>${gwLabel(e)}</td>
         <td><div class="fdr-cell" style="flex-direction:row">${opp}</div></td>
         <td class="num ${xp >= 5 ? 'hi' : ''}">${xp.toFixed(1)}</td>
       </tr>`;
@@ -130,8 +131,8 @@ function gwLogRows(history) {
     .map((h) => {
       const opp = state.teamsById[h.opponent_team];
       return `<tr>
-        <td>GW${h.round}</td>
-        <td>${opp ? `${teamBadge(opp.id, 'meta-badge')} ${opp.short_name}` : '-'} (${h.was_home ? 'H' : 'A'})</td>
+        <td>${gwLabel(h.round)}</td>
+        <td>${opp ? `${teamBadge(opp.id, 'meta-badge')} ${opp.short_name}` : '-'} (${haMark(h.was_home)})</td>
         <td class="num" style="font-weight:700">${h.total_points}</td>
         <td class="num">${h.minutes}'</td>
         <td class="num">${h.goals_scored}</td>
@@ -170,32 +171,32 @@ export async function openDrawer(id) {
   overlay.hidden = false;
   overlay.innerHTML = `
     <div class="drawer" role="dialog">
-      <button class="drawer-close" title="Close">✕</button>
+      <button class="drawer-close" title="${t('common.close')}">✕</button>
       <div class="drawer-head">
         ${playerPhoto(p, 'drawer-photo')}
         <div>
           <div class="drawer-name">${escapeHtml(p.first_name)} <strong>${escapeHtml(p.second_name)}</strong>${spBadges(p)}</div>
           <div class="drawer-meta">
             ${teamBadge(p.team)} ${escapeHtml(team.name)} · <span class="pos-badge pos-${pos.singular_name_short}">${pos.singular_name_short}</span>
-            · ${fmtPrice(p.now_cost)} · owned ${p.selected_by_percent}%
+            · ${fmtPrice(p.now_cost)} · ${t('dw.owned', { pct: p.selected_by_percent })}
           </div>
           ${st ? `<div class="drawer-news ${st.cls}">${escapeHtml(st.label)}</div>` : ''}
           <div class="drawer-actions">
-            <button class="chip-btn ${isWatched(id) ? 'on' : ''}" id="dw-watch">${isWatched(id) ? 'Watching' : '☆ Watch'}</button>
-            <button class="chip-btn" id="dw-compare">Compare</button>
+            <button class="chip-btn ${isWatched(id) ? 'on' : ''}" id="dw-watch">${isWatched(id) ? t('dw.watching') : t('dw.watch')}</button>
+            <button class="chip-btn" id="dw-compare">${t('dw.compare')}</button>
           </div>
         </div>
       </div>
       <div class="summary-grid" style="padding:12px 0">
-        ${statTile('Pts (last szn)', p.total_points)}
+        ${statTile(t('dw.ptsLastSzn'), p.total_points)}
         ${statTile('PPG', p.points_per_game)}
         ${statTile('xG', p.expected_goals)}
         ${statTile('xA', p.expected_assists)}
-        ${statTile('Minutes', p.minutes)}
-        ${statTile('Bonus', p.bonus)}
-        ${statTile('DefCon', p.defensive_contribution)}
-        ${statTile('Yellows', p.yellow_cards)}
-        ${statTile('Starts', p.starts)}
+        ${statTile(t('dw.minutes'), p.minutes)}
+        ${statTile(t('dw.bonus'), p.bonus)}
+        ${statTile(t('dw.defcon'), p.defensive_contribution)}
+        ${statTile(t('dw.yellows'), p.yellow_cards)}
+        ${statTile(t('dw.starts'), p.starts)}
       </div>
       <div id="drawer-body"><div class="loading" style="padding:20px 0"><div class="spinner"></div></div></div>
     </div>`;
@@ -204,7 +205,7 @@ export async function openDrawer(id) {
   overlay.querySelector('#dw-watch').addEventListener('click', (e) => {
     toggleWatch(id);
     e.target.classList.toggle('on', isWatched(id));
-    e.target.textContent = isWatched(id) ? 'Watching' : '☆ Watch';
+    e.target.textContent = isWatched(id) ? t('dw.watching') : t('dw.watch');
   });
   overlay.querySelector('#dw-compare').addEventListener('click', () => {
     let slots;
@@ -227,35 +228,35 @@ export async function openDrawer(id) {
   const sections = [];
   sections.push(await trendSection(id));
   sections.push(`
-    <div class="section-title" style="padding-left:0">Upcoming - model forecast
-      <span class="muted" style="font-weight:600">· next ${model.gws.length}: ${model.gws.reduce((s, e) => s + model.xp(p.id, e), 0).toFixed(1)} xP</span></div>
+    <div class="section-title" style="padding-inline-start:0">${t('dw.upcoming')}
+      <span class="muted" style="font-weight:600">${t('dw.nextN', { n: model.gws.length, xp: model.gws.reduce((s, e) => s + model.xp(p.id, e), 0).toFixed(1) })}</span></div>
     <div class="table-wrap"><table class="data">
-      <thead><tr><th class="no-sort">GW</th><th class="no-sort">Fixture</th><th class="num no-sort">xP</th></tr></thead>
+      <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('common.fixture')}</th><th class="num no-sort">xP</th></tr></thead>
       <tbody>${upcomingRows(model, p)}</tbody>
     </table></div>`);
 
   if (summary?.history?.length) {
     sections.push(`
-      <div class="section-title" style="padding-left:0">This season - last ${Math.min(10, summary.history.length)} GWs</div>
+      <div class="section-title" style="padding-inline-start:0">${t('dw.thisSeason', { n: Math.min(10, summary.history.length) })}</div>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th class="no-sort">GW</th><th class="no-sort">Opp</th><th class="num no-sort">Pts</th>
-        <th class="num no-sort">Min</th><th class="num no-sort">G</th><th class="num no-sort">A</th>
-        <th class="num no-sort">Bonus</th><th class="num no-sort">xGI</th></tr></thead>
+        <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('dw.opp')}</th><th class="num no-sort">${t('common.pts')}</th>
+        <th class="num no-sort">${t('common.min')}</th><th class="num no-sort">${t('dw.g')}</th><th class="num no-sort">${t('dw.a')}</th>
+        <th class="num no-sort">${t('dw.bonus')}</th><th class="num no-sort">xGI</th></tr></thead>
         <tbody>${gwLogRows(summary.history)}</tbody>
       </table></div>`);
   }
 
   if (summary?.history_past?.length) {
     sections.push(`
-      <div class="section-title" style="padding-left:0">Past seasons</div>
+      <div class="section-title" style="padding-inline-start:0">${t('dw.pastSeasons')}</div>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th class="no-sort">Season</th><th class="num no-sort">Pts</th><th class="num no-sort">Min</th>
-        <th class="num no-sort">G</th><th class="num no-sort">A</th><th class="num no-sort">CS</th>
-        <th class="num no-sort">Bonus</th><th class="num no-sort">Price</th></tr></thead>
+        <thead><tr><th class="no-sort">${t('dw.season')}</th><th class="num no-sort">${t('common.pts')}</th><th class="num no-sort">${t('common.min')}</th>
+        <th class="num no-sort">${t('dw.g')}</th><th class="num no-sort">${t('dw.a')}</th><th class="num no-sort">${t('dw.cs')}</th>
+        <th class="num no-sort">${t('dw.bonus')}</th><th class="num no-sort">${t('common.price')}</th></tr></thead>
         <tbody>${pastSeasonRows(summary.history_past)}</tbody>
       </table></div>`);
   } else if (!summary) {
-    sections.push('<div class="note" style="padding-left:0">Detailed history needs the live API - available when running locally.</div>');
+    sections.push(`<div class="note" style="padding-inline-start:0">${t('dw.historyNote')}</div>`);
   }
 
   body.innerHTML = sections.join('');

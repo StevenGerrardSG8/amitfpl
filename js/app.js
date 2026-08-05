@@ -13,6 +13,7 @@ import { renderMatches } from './matches.js';
 import { renderSetPieces } from './setpieces.js';
 import { renderMyTeam } from './myteam.js';
 import { initDrawer } from './drawer.js';
+import { t, getLang, setLang, applyDir, applyStaticI18n, locale, gwName } from './i18n.js';
 
 const CORE = ['bootstrap', 'fixtures'];
 // Refresh in the background whenever the cached copy is older than this.
@@ -62,17 +63,17 @@ function renderDeadline() {
   const dl = new Date(ev.deadline_time);
   const left = dl - Date.now();
   let count;
-  if (left <= 0) count = 'locked';
+  if (left <= 0) count = t('chrome.locked');
   else {
     const d = Math.floor(left / 86400000);
     const h = Math.floor((left % 86400000) / 3600000);
     const m = Math.floor((left % 3600000) / 60000);
-    count = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+    count = d > 0 ? t('time.dh', { d, h }) : h > 0 ? t('time.hm', { h, m }) : t('time.m', { m });
   }
-  document.getElementById('deadline-gw').textContent = `${ev.name} deadline`;
+  document.getElementById('deadline-gw').textContent = t('chrome.deadline', { gw: gwName(ev.name) });
   document.getElementById('deadline-time').textContent =
-    dl.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) +
-    ` · in ${count}`;
+    dl.toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) +
+    ` · ${left <= 0 ? count : t('chrome.inTime', { count })}`;
   chip.hidden = false;
 }
 
@@ -87,18 +88,18 @@ function dataTimestamp() {
 function renderUpdatedChip(failed = false) {
   const chip = document.getElementById('updated-chip');
   const text = document.getElementById('updated-text');
-  const t = dataTimestamp();
-  if (!t) { chip.hidden = true; return; }
+  const ts = dataTimestamp();
+  if (!ts) { chip.hidden = true; return; }
   chip.hidden = false;
   if (failed) {
-    text.textContent = 'refresh failed';
+    text.textContent = t('chrome.refreshFailed');
     return;
   }
-  const mins = Math.floor((Date.now() - t) / 60000);
+  const mins = Math.floor((Date.now() - ts) / 60000);
   text.textContent =
-    mins < 1 ? 'Updated just now'
-    : mins < 60 ? `Updated ${mins}m ago`
-    : `Updated ${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+    mins < 1 ? t('chrome.updatedNow')
+    : mins < 60 ? t('chrome.updatedMin', { m: mins })
+    : t('chrome.updatedHr', { h: Math.floor(mins / 60), m: mins % 60 });
 }
 
 function rerenderAll() {
@@ -154,6 +155,8 @@ async function refresh(manual = false) {
 
 async function main() {
   window.__appStarted = true; // disarms the stuck-spinner guard in index.html
+  applyDir();
+  applyStaticI18n();
   const loading = document.getElementById('loading');
   const errorBox = document.getElementById('error');
 
@@ -171,7 +174,7 @@ async function main() {
     } catch (e) {
       loading.hidden = true;
       errorBox.hidden = false;
-      errorBox.textContent = `Couldn't load FPL data (${e.message}). Refresh to retry.`;
+      errorBox.textContent = t('chrome.loadError', { msg: e.message });
       return;
     }
   }
@@ -194,6 +197,16 @@ async function main() {
   });
   helpOverlay.addEventListener('click', (e) => {
     if (e.target === helpOverlay || e.target.closest('.drawer-close')) helpOverlay.hidden = true;
+  });
+
+  // Language toggle: swap EN <-> HE, flip direction, re-translate the
+  // static chrome and re-render every view in place.
+  document.getElementById('lang-btn').addEventListener('click', () => {
+    setLang(getLang() === 'he' ? 'en' : 'he');
+    applyStaticI18n();
+    renderDeadline();
+    renderUpdatedChip();
+    rerenderAll();
   });
 
   const themeBtn = document.getElementById('theme-btn');
@@ -238,7 +251,7 @@ async function main() {
   // keeps working thanks to the service worker).
   const offlineBar = document.createElement('div');
   offlineBar.className = 'offline-bar';
-  offlineBar.textContent = 'Offline - showing saved data';
+  offlineBar.textContent = t('chrome.offline');
   offlineBar.hidden = navigator.onLine;
   document.querySelector('.topbar').appendChild(offlineBar);
   addEventListener('online', () => { offlineBar.hidden = true; refresh(); });

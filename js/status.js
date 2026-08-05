@@ -1,6 +1,7 @@
 // Status tab: injuries & doubts, suspension watch.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, posBadge, playerCell } from './ui.js';
+import { t } from './i18n.js';
 
 // FPL bans: 5 yellows by GW19, 10 by GW32, 15 all season.
 function yellowThreshold(gw) {
@@ -9,13 +10,7 @@ function yellowThreshold(gw) {
   return 15;
 }
 
-const STATUS_LABEL = {
-  d: 'Doubtful',
-  i: 'Injured',
-  s: 'Suspended',
-  u: 'Unavailable',
-  n: 'Not in squad',
-};
+const statusLabel = (s) => (['d', 'i', 's', 'u', 'n'].includes(s) ? t(`status.${s}`) : s);
 
 let onlyDoubtful = false;
 
@@ -37,7 +32,7 @@ export function renderStatus(root) {
         <td>${posBadge(p)}</td>
         <td class="num">${fmtPrice(p.now_cost)}</td>
         <td class="num">${p.selected_by_percent}%</td>
-        <td><span class="status-flag status-${p.status}" style="margin:0">${STATUS_LABEL[p.status] || p.status}</span>
+        <td><span class="status-flag status-${p.status}" style="margin:0">${statusLabel(p.status)}</span>
             ${chance != null ? `<span class="muted"> · ${chance}%</span>` : ''}</td>
         <td class="news-cell">${escapeHtml(p.news || '')}</td>
       </tr>`;
@@ -55,9 +50,9 @@ export function renderStatus(root) {
   const bookingRows = bookings
     .map((p) => {
       const left = threshold - p.yellow_cards;
-      const risk = left <= 0 ? '<span class="lo">Banned</span>'
-        : left === 1 ? '<span class="lo">1 away!</span>'
-        : `${left} away`;
+      const risk = left <= 0 ? `<span class="lo">${t('statusTab.banned')}</span>`
+        : left === 1 ? `<span class="lo">${t('statusTab.oneAway')}</span>`
+        : t('statusTab.nAway', { n: left });
       return `<tr>
         <td>${playerCell(p)}</td>
         <td>${posBadge(p)}</td>
@@ -72,32 +67,32 @@ export function renderStatus(root) {
   root.innerHTML = `
     <div class="card">
       <div class="toolbar" style="border-bottom:none">
-        <span class="section-title" style="padding:0">Injuries &amp; doubts - official FPL flags, sorted by ownership</span>
+        <span class="section-title" style="padding:0">${t('statusTab.title')}</span>
         <span class="spacer"></span>
-        <label class="chk"><input type="checkbox" id="st-doubt" ${onlyDoubtful ? 'checked' : ''}/> Doubtful only</label>
+        <label class="chk"><input type="checkbox" id="st-doubt" ${onlyDoubtful ? 'checked' : ''}/> ${t('statusTab.doubtOnly')}</label>
       </div>
       <div class="table-wrap" style="max-height: 45vh; overflow-y: auto;">
         <table class="data">
           <thead><tr>
-            <th class="no-sort">Player</th><th class="no-sort">Pos</th>
-            <th class="num no-sort">Price</th><th class="num no-sort">Sel %</th>
-            <th class="no-sort">Status</th><th class="no-sort">News</th>
+            <th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
+            <th class="num no-sort">${t('common.price')}</th><th class="num no-sort">${t('common.sel')}</th>
+            <th class="no-sort">${t('statusTab.status')}</th><th class="no-sort">${t('statusTab.news')}</th>
           </tr></thead>
-          <tbody>${flaggedRows || '<tr><td colspan="6" class="note">No flagged players right now - everyone\'s fit. </td></tr>'}</tbody>
+          <tbody>${flaggedRows || `<tr><td colspan="6" class="note">${t('statusTab.noneFlagged')}</td></tr>`}</tbody>
         </table>
       </div>
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="section-title">Suspension watch - ${threshold} yellows = 1-match ban (through GW${threshold === 5 ? 19 : threshold === 10 ? 32 : 38})</div>
+      <div class="section-title">${t('statusTab.suspTitle', { n: threshold, gw: threshold === 5 ? 19 : threshold === 10 ? 32 : 38 })}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>
-            <th class="no-sort">Player</th><th class="no-sort">Pos</th>
-            <th class="num no-sort">Yellows</th><th class="no-sort">Ban distance</th>
-            <th class="num no-sort">Sel %</th><th class="no-sort">Next 3</th>
+            <th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
+            <th class="num no-sort">${t('statusTab.yellows')}</th><th class="no-sort">${t('statusTab.banDistance')}</th>
+            <th class="num no-sort">${t('common.sel')}</th><th class="no-sort">${t('common.next3')}</th>
           </tr></thead>
-          <tbody>${bookingRows || `<tr><td colspan="6" class="note">${seasonLive ? 'Nobody near a ban yet.' : 'Card counts reset when the season kicks off - this fills up as yellows pile up.'}</td></tr>`}</tbody>
+          <tbody>${bookingRows || `<tr><td colspan="6" class="note">${seasonLive ? t('statusTab.nobodyNear') : t('statusTab.cardsReset')}</td></tr>`}</tbody>
         </table>
       </div>
     </div>`;

@@ -1,17 +1,18 @@
 // Market tab: price changes and transfer momentum.
 import { state, fmtPrice, num } from './state.js';
 import { fixtureChips, posBadge, playerCell, signed, fmtCount } from './ui.js';
+import { t } from './i18n.js';
 
 const COLUMNS = [
-  { key: 'web_name', label: 'Player', numeric: false },
-  { key: 'position', label: 'Pos', numeric: false },
-  { key: 'now_cost', label: 'Price', numeric: true },
-  { key: 'cost_change_event', label: 'Δ GW', numeric: true, title: 'Price change this gameweek' },
-  { key: 'cost_change_start', label: 'Δ Season', numeric: true, title: 'Price change since season start' },
-  { key: 'transfers_in_event', label: 'In (GW)', numeric: true, title: 'Transfers in this gameweek' },
-  { key: 'transfers_out_event', label: 'Out (GW)', numeric: true, title: 'Transfers out this gameweek' },
-  { key: 'net_event', label: 'Net', numeric: true, title: 'Net transfers this gameweek' },
-  { key: 'selected_by_percent', label: 'Sel %', numeric: true },
+  { key: 'web_name', label: () => t('common.player'), numeric: false },
+  { key: 'position', label: () => t('common.pos'), numeric: false },
+  { key: 'now_cost', label: () => t('common.price'), numeric: true },
+  { key: 'cost_change_event', label: () => t('market.dGw'), numeric: true, title: () => t('market.dGwTitle') },
+  { key: 'cost_change_start', label: () => t('market.dSeason'), numeric: true, title: () => t('market.dSeasonTitle') },
+  { key: 'transfers_in_event', label: () => t('market.in'), numeric: true, title: () => t('market.inTitle') },
+  { key: 'transfers_out_event', label: () => t('market.out'), numeric: true, title: () => t('market.outTitle') },
+  { key: 'net_event', label: () => t('market.net'), numeric: true, title: () => t('market.netTitle') },
+  { key: 'selected_by_percent', label: () => t('common.sel'), numeric: true },
 ];
 
 const view = { sortKey: 'transfers_in_event', sortDir: 'desc', limit: 50 };
@@ -36,8 +37,8 @@ function moversCard(trends) {
   const days = Object.keys(trends).sort();
   if (days.length < 2) {
     return `<div class="card" style="margin-bottom:16px">
-      <div class="section-title">Movers</div>
-      <div class="note">Daily price &amp; ownership tracking started ${days[0] || 'today'} - risers and fallers appear here from tomorrow.</div>
+      <div class="section-title">${t('market.movers')}</div>
+      <div class="note">${t('market.trackingNote', { date: days[0] || t('market.today') })}</div>
     </div>`;
   }
   const first = trends[days[0]];
@@ -57,18 +58,18 @@ function moversCard(trends) {
   const priceMoves = moves.filter((m) => m.dPrice !== 0).sort((a, b) => b.dPrice - a.dPrice);
   const ownMoves = [...moves].sort((a, b) => b.dOwn - a.dOwn);
   const section = (title, rows) => `<div>
-    <div class="section-title" style="padding-left:0">${title}</div>
-    <table class="data">${rows || '<tr><td class="note">none yet</td></tr>'}</table>
+    <div class="section-title" style="padding-inline-start:0">${title}</div>
+    <table class="data">${rows || `<tr><td class="note">${t('market.noneYet')}</td></tr>`}</table>
   </div>`;
   return `<div class="card" style="margin-bottom:16px">
     <div class="toolbar" style="border-bottom:none;padding-bottom:0">
-      <span class="section-title" style="padding:0">Movers - since ${days[0]}</span>
+      <span class="section-title" style="padding:0">${t('market.moversSince', { date: days[0] })}</span>
     </div>
     <div class="trend-grid" style="padding:4px 16px 14px">
-      ${section('Price risers', priceMoves.slice(0, 5).map((m) => row(m, signed(m.dPrice, 1))).join(''))}
-      ${section('Price fallers', priceMoves.slice(-5).reverse().filter((m) => m.dPrice < 0).map((m) => row(m, signed(m.dPrice, 1))).join(''))}
-      ${section('Ownership climbers', ownMoves.slice(0, 5).map((m) => row(m, signed(m.dOwn, 1, 'pp'))).join(''))}
-      ${section('Ownership drops', ownMoves.slice(-5).reverse().filter((m) => m.dOwn < 0).map((m) => row(m, signed(m.dOwn, 1, 'pp'))).join(''))}
+      ${section(t('market.priceRisers'), priceMoves.slice(0, 5).map((m) => row(m, signed(m.dPrice, 1))).join(''))}
+      ${section(t('market.priceFallers'), priceMoves.slice(-5).reverse().filter((m) => m.dPrice < 0).map((m) => row(m, signed(m.dPrice, 1))).join(''))}
+      ${section(t('market.ownClimbers'), ownMoves.slice(0, 5).map((m) => row(m, signed(m.dOwn, 1, 'pp'))).join(''))}
+      ${section(t('market.ownDrops'), ownMoves.slice(-5).reverse().filter((m) => m.dOwn < 0).map((m) => row(m, signed(m.dOwn, 1, 'pp'))).join(''))}
     </div>
   </div>`;
 }
@@ -99,7 +100,7 @@ export async function renderMarket(root) {
   const header = COLUMNS.map((c) => {
     const sorted = view.sortKey === c.key;
     const arrow = sorted ? `<span class="arrow">${view.sortDir === 'asc' ? '▲' : '▼'}</span>` : '';
-    return `<th class="${c.numeric ? 'num' : ''} ${sorted ? 'sorted' : ''}" data-key="${c.key}" title="${c.title || ''}">${c.label}${arrow}</th>`;
+    return `<th class="${c.numeric ? 'num' : ''} ${sorted ? 'sorted' : ''}" data-key="${c.key}" title="${c.title ? c.title() : ''}">${c.label()}${arrow}</th>`;
   }).join('');
 
   const rows = shown
@@ -120,8 +121,8 @@ export async function renderMarket(root) {
     ${moversCard(trends)}
     <div class="card">
       <div class="toolbar">
-        <span class="result-count">Price moves and transfer momentum - spot rises before they happen. Click headers to sort.</span>
-        ${anyMovement ? '' : '<span class="spacer"></span><span class="result-count">All zeros for now - this comes alive once the season starts.</span>'}
+        <span class="result-count">${t('market.blurb')}</span>
+        ${anyMovement ? '' : `<span class="spacer"></span><span class="result-count">${t('market.allZeros')}</span>`}
       </div>
       <div class="table-wrap" style="max-height: 75vh; overflow-y: auto;">
         <table class="data">
@@ -129,7 +130,7 @@ export async function renderMarket(root) {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      ${list.length > view.limit ? `<div class="note" style="text-align:center"><button class="link-btn" id="mk-more">Show more</button></div>` : ''}
+      ${list.length > view.limit ? `<div class="note" style="text-align:center"><button class="link-btn" id="mk-more">${t('common.showMore')}</button></div>` : ''}
     </div>`;
 
   root.querySelectorAll('thead th[data-key]').forEach((th) => {

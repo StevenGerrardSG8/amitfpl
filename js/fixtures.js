@@ -1,6 +1,7 @@
 import { state, escapeHtml } from './state.js';
 import { teamBadge, fixtureDifficulty } from './ui.js';
 import { teamForecast } from './model.js';
+import { t, haMark, gwLabel } from './i18n.js';
 
 const view = { horizon: 6, sortByEase: true, forecastGw: null };
 
@@ -18,7 +19,7 @@ function forecastCard() {
     .map((r) => ({ ...r, total: r.xg + (xgByTeam[r.opp.id] || 0) }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 3)
-    .map((r) => `<span class="fdr-chip fdr-3" title="Combined expected goals">
+    .map((r) => `<span class="fdr-chip fdr-3" title="${t('fx.shootoutTitle')}">
       ${teamBadge(r.team.id, 'chip-badge')}${r.team.short_name} - ${teamBadge(r.opp.id, 'chip-badge')}${r.opp.short_name}
       <strong>${r.total.toFixed(1)}</strong></span>`)
     .join(' ');
@@ -28,7 +29,7 @@ function forecastCard() {
       const csPct = Math.round(cs * 100);
       return `<tr>
         <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.name)}</td>
-        <td>${teamBadge(opp.id, 'meta-badge')} ${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
+        <td>${teamBadge(opp.id, 'meta-badge')} ${escapeHtml(opp.short_name)} (${haMark(isHome)})</td>
         <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
         <td class="num"><span class="cs-pill ${csPct >= 40 ? 'cs-hi' : csPct <= 20 ? 'cs-lo' : ''}">${csPct}%</span></td>
       </tr>`;
@@ -38,20 +39,20 @@ function forecastCard() {
   return `
     <div class="card" style="margin-bottom:16px">
       <div class="toolbar">
-        <span class="section-title" style="padding:0">Goals &amp; clean sheet forecast</span>
+        <span class="section-title" style="padding:0">${t('fx.forecastTitle')}</span>
         <select id="fx-fc-gw">
-          ${gws.map((e) => `<option value="${e}" ${e === gw ? 'selected' : ''}>GW${e}</option>`).join('')}
+          ${gws.map((e) => `<option value="${e}" ${e === gw ? 'selected' : ''}>${gwLabel(e)}</option>`).join('')}
         </select>
         <span class="spacer"></span>
-        <span class="result-count">amitfpl model · sorted by expected goals</span>
+        <span class="result-count">${t('fx.modelNote')}</span>
       </div>
-      ${shootouts ? `<div class="toolbar" style="border-bottom:none;padding-top:0"><span class="chips-label">Shootout watch</span> ${shootouts}</div>` : ''}
+      ${shootouts ? `<div class="toolbar" style="border-bottom:none;padding-top:0"><span class="chips-label">${t('fx.shootout')}</span> ${shootouts}</div>` : ''}
       <div class="table-wrap" style="max-height:50vh;overflow-y:auto">
         <table class="data">
           <thead><tr>
-            <th class="no-sort">Team</th><th class="no-sort">Fixture</th>
-            <th class="num no-sort" title="Expected goals scored">Goals</th>
-            <th class="num no-sort" title="Clean sheet probability">Clean sheet</th>
+            <th class="no-sort">${t('common.team')}</th><th class="no-sort">${t('common.fixture')}</th>
+            <th class="num no-sort" title="${t('fx.goalsTitle')}">${t('fx.goals')}</th>
+            <th class="num no-sort" title="${t('fx.csTitle')}">${t('fx.cleanSheet')}</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -82,7 +83,7 @@ function blanksDoublesCard() {
     if (blanks.length >= state.bootstrap.teams.length) continue;
     if (blanks.length || doubles.length) {
       rows.push(`<tr>
-        <td class="team-cell">GW${e}</td>
+        <td class="team-cell">${gwLabel(e)}</td>
         <td>${doubles.length ? doubles.map(({ t, c }) => `<span class="fdr-chip fdr-1">${teamBadge(t.id, 'chip-badge')}${t.short_name} ×${c}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
         <td>${blanks.length ? blanks.map((t) => `<span class="fdr-chip fdr-blank">${teamBadge(t.id, 'chip-badge')}${t.short_name}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
       </tr>`);
@@ -90,11 +91,11 @@ function blanksDoublesCard() {
   }
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">Blanks &amp; doubles - chip planning radar</div>
+      <div class="section-title">${t('fx.blanksTitle')}</div>
       <div class="table-wrap" style="max-height:40vh;overflow-y:auto">
         <table class="data">
-          <thead><tr><th class="no-sort">GW</th><th class="no-sort">Double gameweek</th><th class="no-sort">Blank gameweek</th></tr></thead>
-          <tbody>${rows.join('') || '<tr><td colspan="3" class="note">None detected yet - blanks and doubles usually appear mid-season when cup games force postponements.</td></tr>'}</tbody>
+          <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('fx.doubleGw')}</th><th class="no-sort">${t('fx.blankGw')}</th></tr></thead>
+          <tbody>${rows.join('') || `<tr><td colspan="3" class="note">${t('fx.noneDetected')}</td></tr>`}</tbody>
         </table>
       </div>
     </div>`;
@@ -130,19 +131,19 @@ function swingsCard() {
   </tr>`;
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">Fixture swings - when to buy in / sell out</div>
+      <div class="section-title">${t('fx.swingsTitle')}</div>
       <div class="swing-grid">
         <div>
-          <div class="note" style="padding:8px 16px 0"><strong class="hi">↗ Gets easier</strong> after the next 3 GWs - buy their assets early</div>
+          <div class="note" style="padding:8px 16px 0"><strong class="hi">${t('fx.easier')}</strong>${t('fx.easierNote')}</div>
           <div class="table-wrap"><table class="data">
-            <thead><tr><th class="no-sort">Team</th><th class="num no-sort">Next 3</th><th class="num no-sort">GW +4–8</th></tr></thead>
+            <thead><tr><th class="no-sort">${t('common.team')}</th><th class="num no-sort">${t('common.next3')}</th><th class="num no-sort">${t('fx.gw48')}</th></tr></thead>
             <tbody>${easing.map(row).join('')}</tbody>
           </table></div>
         </div>
         <div>
-          <div class="note" style="padding:8px 16px 0"><strong class="lo">↘ Gets harder</strong> - enjoy them now, plan the exit</div>
+          <div class="note" style="padding:8px 16px 0"><strong class="lo">${t('fx.harder')}</strong>${t('fx.harderNote')}</div>
           <div class="table-wrap"><table class="data">
-            <thead><tr><th class="no-sort">Team</th><th class="num no-sort">Next 3</th><th class="num no-sort">GW +4–8</th></tr></thead>
+            <thead><tr><th class="no-sort">${t('common.team')}</th><th class="num no-sort">${t('common.next3')}</th><th class="num no-sort">${t('fx.gw48')}</th></tr></thead>
             <tbody>${toughening.map(row).join('')}</tbody>
           </table></div>
         </div>
@@ -185,11 +186,11 @@ function rotationCard() {
     .join('');
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">Rotation pairs - always play the easier fixture (next 8 GWs)</div>
-      <div class="note" style="padding-top:2px">Best duos for budget goalkeepers and defenders: pick one of each, start whoever has the friendlier match.</div>
+      <div class="section-title">${t('fx.rotationTitle')}</div>
+      <div class="note" style="padding-top:2px">${t('fx.rotationNote')}</div>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr><th class="no-sort">Pair</th><th class="num no-sort" title="Average difficulty when always choosing the easier fixture">Avg best FDR</th></tr></thead>
+          <thead><tr><th class="no-sort">${t('fx.pair')}</th><th class="num no-sort" title="${t('fx.avgBestFdrTitle')}">${t('fx.avgBestFdr')}</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -220,18 +221,18 @@ export function renderFixtures(root) {
   if (view.sortByEase) rows.sort((a, b) => a.avg - b.avg);
   else rows.sort((a, b) => a.team.name.localeCompare(b.team.name));
 
-  const head = gws.map((e) => `<th style="text-align:center">GW${e}</th>`).join('');
+  const head = gws.map((e) => `<th style="text-align:center">${gwLabel(e)}</th>`).join('');
 
   const body = rows
     .map(({ team, byGw, avg }) => {
       const cells = gws
         .map((e) => {
           const fx = byGw[e] || [];
-          if (!fx.length) return `<td><div class="fdr-cell"><span class="fdr-chip fdr-blank">blank</span></div></td>`;
+          if (!fx.length) return `<td><div class="fdr-cell"><span class="fdr-chip fdr-blank">${t('common.blank')}</span></div></td>`;
           const chips = fx
             .map((f) => {
               const opp = state.teamsById[f.opponent].short_name;
-              return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${f.isHome ? 'H' : 'A'})</span>`;
+              return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${haMark(f.isHome)})</span>`;
             })
             .join('');
           return `<td><div class="fdr-cell">${chips}</div></td>`;
@@ -249,17 +250,17 @@ export function renderFixtures(root) {
     ${forecastCard()}
     <div class="card">
       <div class="toolbar">
-        <label>Horizon</label>
+        <label>${t('common.horizon')}</label>
         <select id="fx-horizon">
-          ${[3, 4, 5, 6, 8, 10].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${n} GWs</option>`).join('')}
+          ${[3, 4, 5, 6, 8, 10].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${t('common.nGws', { n })}</option>`).join('')}
         </select>
         <select id="fx-sort">
-          <option value="ease" ${view.sortByEase ? 'selected' : ''}>Sort: easiest run first</option>
-          <option value="name" ${!view.sortByEase ? 'selected' : ''}>Sort: team name</option>
+          <option value="ease" ${view.sortByEase ? 'selected' : ''}>${t('fx.sortEase')}</option>
+          <option value="name" ${!view.sortByEase ? 'selected' : ''}>${t('fx.sortName')}</option>
         </select>
         <span class="spacer"></span>
         <div class="legend">
-          <span>Difficulty:</span>
+          <span>${t('fx.difficulty')}</span>
           <span class="fdr-chip fdr-1">1</span>
           <span class="fdr-chip fdr-2">2</span>
           <span class="fdr-chip fdr-3">3</span>
@@ -269,7 +270,7 @@ export function renderFixtures(root) {
       </div>
       <div class="table-wrap" style="max-height: 75vh; overflow-y: auto;">
         <table class="data">
-          <thead><tr><th class="no-sort">Team</th><th class="num no-sort" title="Average difficulty over horizon (blanks count as 5)">Avg</th>${head}</tr></thead>
+          <thead><tr><th class="no-sort">${t('common.team')}</th><th class="num no-sort" title="${t('fx.avgTitle')}">${t('fx.avg')}</th>${head}</tr></thead>
           <tbody>${body}</tbody>
         </table>
       </div>

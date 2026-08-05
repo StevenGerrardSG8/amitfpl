@@ -3,6 +3,7 @@
 // full season schedule browser.
 import { state, escapeHtml } from './state.js';
 import { teamBadge } from './ui.js';
+import { t, locale, gwName, isHe } from './i18n.js';
 
 const view = { gw: null };
 
@@ -31,16 +32,16 @@ function matchRow(f) {
   const a = state.teamsById[f.team_a];
   if (!h || !a) return '';
   const ko = f.kickoff_time
-    ? new Date(f.kickoff_time).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-    : 'TBC';
+    ? new Date(f.kickoff_time).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : t('mt.tbc');
   const played = f.started || f.finished;
-  const score = played ? `${f.team_h_score ?? 0} - ${f.team_a_score ?? 0}` : 'vs';
-  const status = f.finished ? 'FT' : f.started ? 'LIVE' : ko;
+  const score = played ? `${f.team_h_score ?? 0} - ${f.team_a_score ?? 0}` : t('common.vs');
+  const status = f.finished ? t('mt.ft') : f.started ? t('mt.live') : ko;
   const events = played
     ? [
-        eventLine('goals_scored', f, 'Goals', ''),
-        eventLine('assists', f, 'Assists', ''),
-        eventLine('bonus', f, 'Bonus', ''),
+        eventLine('goals_scored', f, t('mt.goals'), ''),
+        eventLine('assists', f, t('mt.assists'), ''),
+        eventLine('bonus', f, t('mt.bonus'), ''),
       ].join('')
     : '';
   return `<div class="mt-match">
@@ -64,21 +65,21 @@ export function renderMatches(root) {
     .sort((x, y) => (x.kickoff_time || '').localeCompare(y.kickoff_time || ''));
 
   const gwOptions = state.bootstrap.events
-    .map((e) => `<option value="${e.id}" ${e.id === gw ? 'selected' : ''}>${e.name}</option>`)
+    .map((e) => `<option value="${e.id}" ${e.id === gw ? 'selected' : ''}>${escapeHtml(gwName(e.name))}</option>`)
     .join('');
 
   root.innerHTML = `
     <div class="card">
       <div class="toolbar">
-        <label>Gameweek</label>
-        <button class="link-btn" id="mt-prev" ${gw <= 1 ? 'disabled' : ''}>‹</button>
+        <label>${t('mt.gameweek')}</label>
+        <button class="link-btn" id="mt-prev" ${gw <= 1 ? 'disabled' : ''}>${isHe() ? '›' : '‹'}</button>
         <select id="mt-gw">${gwOptions}</select>
-        <button class="link-btn" id="mt-next" ${gw >= 38 ? 'disabled' : ''}>›</button>
+        <button class="link-btn" id="mt-next" ${gw >= 38 ? 'disabled' : ''}>${isHe() ? '‹' : '›'}</button>
         <span class="spacer"></span>
-        <span class="result-count">Scores and FPL events (goals, assists, bonus) appear as games are played - data refreshes every 30 min.</span>
+        <span class="result-count">${t('mt.blurb')}</span>
       </div>
       <div class="mt-list">
-        ${fixtures.map(matchRow).join('') || '<div class="note">No fixtures scheduled for this gameweek yet.</div>'}
+        ${fixtures.map(matchRow).join('') || `<div class="note">${t('mt.noFixtures')}</div>`}
       </div>
     </div>`;
 

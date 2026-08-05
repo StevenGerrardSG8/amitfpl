@@ -5,6 +5,7 @@ import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { teamBadge, playerCell } from './ui.js';
 import { loadBaseline, buildModel, teamForecast } from './model.js';
 import { watchlist } from './drawer.js';
+import { t, locale, haMark, gwName, gwLabel, isHe } from './i18n.js';
 
 function fixtureCards() {
   const nxt = state.nextEvent;
@@ -16,10 +17,10 @@ function fixtureCards() {
     const h = state.teamsById[f.team_h];
     const a = state.teamsById[f.team_a];
     const ko = new Date(f.kickoff_time);
-    const when = ko.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const when = ko.toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return `<div class="fx-card">
       <div class="fx-team">${teamBadge(h.id)}<span>${escapeHtml(h.short_name)}</span></div>
-      <div class="fx-mid"><span class="fx-vs">vs</span><span class="fx-time">${when}</span></div>
+      <div class="fx-mid"><span class="fx-vs">${t('common.vs')}</span><span class="fx-time">${when}</span></div>
       <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(a.short_name)}</span></div>
     </div>`;
   }).join('');
@@ -29,13 +30,13 @@ function fixtureCards() {
   const h = Math.floor((left % 86400000) / 3600000);
   return `
     <div class="hero-strip">
-      <span class="hero-gw">${escapeHtml(nxt.name)}</span>
-      <span>${fx.length} fixtures</span>
-      <span>deadline ${dl.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-      <span class="hero-count">${left > 0 ? `${d}d ${h}h to go` : 'locked'}</span>
+      <span class="hero-gw">${escapeHtml(gwName(nxt.name))}</span>
+      <span>${t('home.fixtures', { n: fx.length })}</span>
+      <span>${t('home.deadline', { when: dl.toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>
+      <span class="hero-count">${left > 0 ? t('home.toGo', { d, h }) : t('chrome.locked')}</span>
     </div>
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">${escapeHtml(nxt.name)} fixtures - your local time</div>
+      <div class="section-title">${t('home.fixturesTitle', { gw: escapeHtml(gwName(nxt.name)) })}</div>
       <div class="fx-grid">${cards}</div>
     </div>`;
 }
@@ -44,7 +45,7 @@ function widget(title, rowsHtml, gotoTab, gotoLabel) {
   return `<div class="card widget">
     <div class="widget-head">
       <span class="section-title" style="padding:0">${title}</span>
-      <button class="link-btn" data-goto="${gotoTab}">${gotoLabel} →</button>
+      <button class="link-btn" data-goto="${gotoTab}">${gotoLabel} ${isHe() ? '←' : '→'}</button>
     </div>
     ${rowsHtml}
   </div>`;
@@ -61,13 +62,13 @@ export async function renderHome(root) {
 
   const goalsRows = mini(forecast.slice(0, 4).map(({ team, opp, isHome, xg }) => `<tr>
       <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.short_name)}</td>
-      <td class="muted">vs ${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
+      <td class="muted">${t('common.vs')} ${escapeHtml(opp.short_name)} (${haMark(isHome)})</td>
       <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
     </tr>`).join(''));
 
   const csRows = mini([...forecast].sort((a, b) => b.cs - a.cs).slice(0, 4).map(({ team, opp, isHome, cs }) => `<tr>
       <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.short_name)}</td>
-      <td class="muted">vs ${escapeHtml(opp.short_name)} (${isHome ? 'H' : 'A'})</td>
+      <td class="muted">${t('common.vs')} ${escapeHtml(opp.short_name)} (${haMark(isHome)})</td>
       <td class="num"><span class="cs-pill ${cs >= 0.4 ? 'cs-hi' : ''}">${Math.round(cs * 100)}%</span></td>
     </tr>`).join(''));
 
@@ -98,16 +99,16 @@ export async function renderHome(root) {
         <td class="num">${fmtPrice(p.now_cost)}</td>
         <td class="num"><span class="pp-xp" style="margin:0">${model.xp(p.id, gw).toFixed(1)}</span></td>
       </tr>`).join(''))
-    : '<div class="note">Star players from their profile (open any player, tap Watch) and they\'ll show up here.</div>';
+    : `<div class="note">${t('home.watchEmpty')}</div>`;
 
   root.innerHTML = `
     ${fixtureCards()}
     <div class="widget-grid">
-      ${widget('Expected goals - GW' + gw, goalsRows, 'fixtures', 'Full forecast')}
-      ${widget('Clean sheet chances', csRows, 'fixtures', 'Full forecast')}
-      ${widget('Captain picks', capRows, 'scout', 'Scout')}
-      ${widget('Likely scorers', scorerRows, 'scout', 'Scout')}
-      ${widget('My watchlist', watchRows, 'players', 'Players')}
+      ${widget(t('home.xgTitle', { gw: gwLabel(gw) }), goalsRows, 'fixtures', t('home.fullForecast'))}
+      ${widget(t('home.csTitle'), csRows, 'fixtures', t('home.fullForecast'))}
+      ${widget(t('home.capTitle'), capRows, 'scout', t('home.gotoScout'))}
+      ${widget(t('home.scorersTitle'), scorerRows, 'scout', t('home.gotoScout'))}
+      ${widget(t('home.watchTitle'), watchRows, 'players', t('home.gotoPlayers'))}
     </div>`;
 
   root.querySelectorAll('[data-goto]').forEach((b) =>

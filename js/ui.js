@@ -1,5 +1,6 @@
 // Small shared rendering helpers used across tabs.
 import { state, statusInfo, escapeHtml } from './state.js';
+import { t, haMark, gwLabel } from './i18n.js';
 
 // Fixture difficulty 1-5. When ClubElo ratings are loaded the buckets
 // come from the opponent's venue-adjusted Elo (sharper than the flat
@@ -21,8 +22,8 @@ export function fixtureChips(teamId, count = 3) {
   return fx
     .map((f) => {
       const opp = state.teamsById[f.opponent].short_name;
-      const ha = f.isHome ? 'H' : 'A';
-      return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}" title="GW${f.event}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${ha})</span>`;
+      const ha = haMark(f.isHome);
+      return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}" title="${gwLabel(f.event)}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${ha})</span>`;
     })
     .join(' ');
 }
@@ -51,7 +52,7 @@ export function playerCell(p) {
   const flag = st
     ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>`
     : '';
-  return `<div class="player-flex clickable" data-pid="${p.id}" title="Player profile">
+  return `<div class="player-flex clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">
     ${playerPhoto(p, 'row-photo')}
     <div class="player-cell">
       <span class="player-name">${escapeHtml(p.web_name)}${flag}</span>
@@ -61,11 +62,12 @@ export function playerCell(p) {
 }
 
 // Signed number with color, e.g. +0.2 in green / -0.3 in red.
+// dir="ltr" keeps the sign in front of the number in RTL layouts too.
 export function signed(n, digits = 1, suffix = '') {
   if (!n) return '<span class="muted">0</span>';
   const cls = n > 0 ? 'hi' : 'lo';
   const sign = n > 0 ? '+' : '';
-  return `<span class="${cls}">${sign}${n.toFixed(digits)}${suffix}</span>`;
+  return `<span class="${cls}" dir="ltr">${sign}${n.toFixed(digits)}${suffix}</span>`;
 }
 
 export const fmtCount = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : String(n));
@@ -73,9 +75,9 @@ export const fmtCount = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3
 // Set-piece duty badges: first-choice penalty / free-kick / corner taker.
 export function spBadges(p) {
   let out = '';
-  if (p.penalties_order === 1) out += '<span class="sp-tag" title="First-choice penalty taker">P</span>';
-  if (p.direct_freekicks_order === 1) out += '<span class="sp-tag" title="First-choice direct free kicks">FK</span>';
-  if (p.corners_and_indirect_freekicks_order === 1) out += '<span class="sp-tag" title="First-choice corners &amp; indirect FKs">C</span>';
+  if (p.penalties_order === 1) out += `<span class="sp-tag" title="${t('sp.penTitle')}">P</span>`;
+  if (p.direct_freekicks_order === 1) out += `<span class="sp-tag" title="${t('sp.fkTitle')}">FK</span>`;
+  if (p.corners_and_indirect_freekicks_order === 1) out += `<span class="sp-tag" title="${t('sp.cornerTitle')}">C</span>`;
   return out;
 }
 

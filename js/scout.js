@@ -2,6 +2,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
+import { t, haMark, gwLabel } from './i18n.js';
 
 const view = { diffMax: 10 };
 
@@ -25,9 +26,9 @@ function rowsHtml(players, extraCols) {
     .join('');
 }
 
-const HEAD = `<th class="no-sort">Player</th><th class="no-sort">Pos</th>
-  <th class="num no-sort">Price</th><th class="num no-sort">Sel %</th>
-  <th class="num no-sort" title="FPL expected points, next GW">xP</th>`;
+const HEAD = () => `<th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
+  <th class="num no-sort">${t('common.price')}</th><th class="num no-sort">${t('common.sel')}</th>
+  <th class="num no-sort" title="${t('scout.xpTitle')}">xP</th>`;
 
 export async function renderScout(root) {
   const els = state.bootstrap.elements;
@@ -45,13 +46,13 @@ export async function renderScout(root) {
       const cells = top
         .map(({ p, xp }, i) => {
           const opp = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e)
-            .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
+            .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})`)
             .join(', ');
           return `<td><span class="clickable" data-pid="${p.id}">${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}</span>
             <span class="muted">${xp.toFixed(1)} · ${opp || '-'}</span></td>`;
         })
         .join('');
-      return `<tr><td class="team-cell">GW${e}</td>${cells}</tr>`;
+      return `<tr><td class="team-cell">${gwLabel(e)}</td>${cells}</tr>`;
     })
     .join('');
 
@@ -80,7 +81,7 @@ export async function renderScout(root) {
   const creatorRows = creators
     .map(({ p, prob }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
-        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
+        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})`)
         .join(', ');
       const pct = Math.round(prob * 100);
       return `<tr>
@@ -96,7 +97,7 @@ export async function renderScout(root) {
   const scorerRows = scorers
     .map(({ p, prob }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
-        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})`)
+        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})`)
         .join(', ');
       const pct = Math.round(prob * 100);
       return `<tr>
@@ -111,34 +112,34 @@ export async function renderScout(root) {
 
   root.innerHTML = `
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">Scoring chances - most likely to find the net in GW${nextGw}</div>
+      <div class="section-title">${t('scout.scorersTitle', { gw: gwLabel(nextGw) })}</div>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr><th class="num no-sort">#</th><th class="no-sort">Player</th>
-          <th class="num no-sort">Price</th><th class="no-sort">Fixture</th>
-          <th class="num no-sort" title="Chance of scoring at least once">To score</th></tr></thead>
+          <thead><tr><th class="num no-sort">#</th><th class="no-sort">${t('common.player')}</th>
+          <th class="num no-sort">${t('common.price')}</th><th class="no-sort">${t('common.fixture')}</th>
+          <th class="num no-sort" title="${t('scout.toScoreTitle')}">${t('scout.toScore')}</th></tr></thead>
           <tbody>${scorerRows}</tbody>
         </table>
       </div>
     </div>
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">Creators - most likely to assist in GW${nextGw}</div>
+      <div class="section-title">${t('scout.creatorsTitle', { gw: gwLabel(nextGw) })}</div>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr><th class="num no-sort">#</th><th class="no-sort">Player</th>
-          <th class="num no-sort">Price</th><th class="no-sort">Fixture</th>
-          <th class="num no-sort" title="Chance of at least one assist">To assist</th></tr></thead>
+          <thead><tr><th class="num no-sort">#</th><th class="no-sort">${t('common.player')}</th>
+          <th class="num no-sort">${t('common.price')}</th><th class="no-sort">${t('common.fixture')}</th>
+          <th class="num no-sort" title="${t('scout.toAssistTitle')}">${t('scout.toAssist')}</th></tr></thead>
           <tbody>${creatorRows}</tbody>
         </table>
       </div>
     </div>
     <div class="card">
-      <div class="section-title">Captaincy planner - best armband pick per gameweek (amitfpl model v2 · Elo-powered)</div>
+      <div class="section-title">${t('scout.capTitle')}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>
-            <th class="no-sort">GW</th><th class="no-sort">Top pick</th>
-            <th class="no-sort">Backup</th><th class="no-sort">Punt</th>
+            <th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('scout.topPick')}</th>
+            <th class="no-sort">${t('scout.backup')}</th><th class="no-sort">${t('scout.punt')}</th>
           </tr></thead>
           <tbody>${capRows}</tbody>
         </table>
@@ -147,27 +148,27 @@ export async function renderScout(root) {
 
     <div class="card" style="margin-top:16px">
       <div class="toolbar">
-        <span class="section-title" style="padding:0">Differentials - high xP, low ownership</span>
+        <span class="section-title" style="padding:0">${t('scout.diffTitle')}</span>
         <span class="spacer"></span>
-        <label>Owned by less than</label>
+        <label>${t('scout.ownedLess')}</label>
         <select id="sc-diff">
           ${[5, 10, 15, 20].map((n) => `<option value="${n}" ${view.diffMax === n ? 'selected' : ''}>${n}%</option>`).join('')}
         </select>
       </div>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr>${HEAD}<th class="num no-sort">Form</th><th class="no-sort">Next 3</th></tr></thead>
+          <thead><tr>${HEAD()}<th class="num no-sort">${t('common.form')}</th><th class="no-sort">${t('common.next3')}</th></tr></thead>
           <tbody>${rowsHtml(diffs, (p) => `<td class="num">${p.form}</td>`)}</tbody>
         </table>
       </div>
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="section-title">Best value - points per £1M</div>
-      <div class="note" style="padding-top:2px">Based on total points (last season's, until this season gets going).</div>
+      <div class="section-title">${t('scout.valueTitle')}</div>
+      <div class="note" style="padding-top:2px">${t('scout.valueNote')}</div>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr>${HEAD}<th class="num no-sort" title="Total points per £1M">Pts/£M</th><th class="no-sort">Next 3</th></tr></thead>
+          <thead><tr>${HEAD()}<th class="num no-sort" title="${t('scout.ptsPerMTitle')}">${t('scout.ptsPerM')}</th><th class="no-sort">${t('common.next3')}</th></tr></thead>
           <tbody>${rowsHtml(value, (p) => `<td class="num hi">${p.value_season}</td>`)}</tbody>
         </table>
       </div>

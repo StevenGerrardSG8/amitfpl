@@ -2,6 +2,7 @@ import { getEntry, getPicks, fetchTeamSnapshot, fetchConfig } from './api.js';
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, fixtureDifficulty } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
+import { t, haMark, gwLabel } from './i18n.js';
 
 let model = null;
 const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
@@ -15,18 +16,18 @@ const clearTeamId = () => localStorage.removeItem(STORAGE_KEY);
 function renderSetup(root, message = '') {
   root.innerHTML = `
     <div class="card myteam-setup">
-      <h2>Connect your FPL team</h2>
+      <h2>${t('myteam.connectTitle')}</h2>
       ${message ? `<div class="error-box">${escapeHtml(message)}</div>` : ''}
-      <p>All it takes is your <strong>Team ID</strong> - no password needed. To find it:</p>
+      <p>${t('myteam.intro')}</p>
       <ol>
-        <li>Log in at <strong>fantasy.premierleague.com</strong></li>
-        <li>Go to the <strong>Points</strong> page</li>
-        <li>Look at the address bar: <code>…/entry/<strong>1234567</strong>/event/1</code> - that number is your Team ID</li>
+        <li>${t('myteam.step1')}</li>
+        <li>${t('myteam.step2')}</li>
+        <li>${t('myteam.step3')}</li>
       </ol>
-      <p class="note" style="padding:0">Season hasn't started yet? Create your squad on the official site first, then come back here after the GW1 deadline - your ID appears once the season kicks off.</p>
+      <p class="note" style="padding:0">${t('myteam.preseason')}</p>
       <div class="id-row">
-        <input type="text" id="mt-id" inputmode="numeric" placeholder="e.g. 1234567" value="${escapeHtml(getTeamId())}" />
-        <button class="btn" id="mt-save">Connect</button>
+        <input type="text" id="mt-id" inputmode="numeric" placeholder="${t('myteam.placeholder')}" value="${escapeHtml(getTeamId())}" />
+        <button class="btn" id="mt-save">${t('myteam.connect')}</button>
       </div>
     </div>`;
 
@@ -52,12 +53,12 @@ function pickRow(pick) {
     ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>`
     : '';
   const cap = pick.is_captain
-    ? '<span class="captain-badge" title="Captain">C</span>'
+    ? `<span class="captain-badge" title="${t('common.captain')}">C</span>`
     : pick.is_vice_captain
-      ? '<span class="captain-badge vice" title="Vice captain">V</span>'
+      ? `<span class="captain-badge vice" title="${t('common.viceCaptain')}">V</span>`
       : '';
   const fx = (state.upcomingByTeam[p.team] || []).slice(0, 3)
-    .map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${state.teamsById[f.opponent].short_name} (${f.isHome ? 'H' : 'A'})</span>`)
+    .map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})</span>`)
     .join(' ') || '-';
   return `<tr>
     <td><div class="player-flex">
@@ -95,7 +96,7 @@ export async function renderMyTeam(root) {
     }
   }
 
-  root.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading your team…</p></div>';
+  root.innerHTML = `<div class="loading"><div class="spinner"></div><p>${t('myteam.loading')}</p></div>`;
 
   // Snapshot first (works on GitHub Pages), live API as fallback
   // (works locally through dev-server.py's proxy).
@@ -111,11 +112,9 @@ export async function renderMyTeam(root) {
     } catch (e) {
       if (e.status === 404) {
         clearTeamId();
-        renderSetup(root, `Team ID ${teamId} was not found. Double-check the number and try again.`);
+        renderSetup(root, t('myteam.notFound', { id: teamId }));
       } else {
-        renderSetup(root,
-          `Live team lookup isn't available on the hosted site. Set "teamId": ${teamId} in config.json ` +
-          `in the GitHub repo - the data refresher will pick it up within 30 minutes.`);
+        renderSetup(root, t('myteam.noLive', { id: teamId }));
       }
       return;
     }
@@ -129,12 +128,12 @@ export async function renderMyTeam(root) {
   }
 
   const stats = [
-    { k: 'Overall points', v: entry.summary_overall_points ?? '-' },
-    { k: 'Overall rank', v: entry.summary_overall_rank?.toLocaleString() ?? '-' },
-    { k: `GW${gw ?? '–'} points`, v: entry.summary_event_points ?? '-' },
-    { k: 'Team value', v: entry.last_deadline_value ? fmtPrice(entry.last_deadline_value) : '-' },
-    { k: 'In the bank', v: entry.last_deadline_bank != null ? fmtPrice(entry.last_deadline_bank) : '-' },
-    { k: 'Total transfers', v: entry.last_deadline_total_transfers ?? '-' },
+    { k: t('myteam.overallPts'), v: entry.summary_overall_points ?? '-' },
+    { k: t('myteam.overallRank'), v: entry.summary_overall_rank?.toLocaleString() ?? '-' },
+    { k: t('myteam.gwPts', { gw: gw != null ? gwLabel(gw) : '–' }), v: entry.summary_event_points ?? '-' },
+    { k: t('myteam.teamValue'), v: entry.last_deadline_value ? fmtPrice(entry.last_deadline_value) : '-' },
+    { k: t('myteam.inBank'), v: entry.last_deadline_bank != null ? fmtPrice(entry.last_deadline_bank) : '-' },
+    { k: t('myteam.transfers'), v: entry.last_deadline_total_transfers ?? '-' },
   ];
 
   let squadHtml = '';
@@ -142,30 +141,30 @@ export async function renderMyTeam(root) {
     const starters = picks.picks.filter((p) => p.position <= 11);
     const bench = picks.picks.filter((p) => p.position > 11);
     squadHtml = `
-      <div class="section-title">Squad - GW${gw}</div>
+      <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw) })}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>
-            <th class="no-sort">Player</th><th class="no-sort">Pos</th>
-            <th class="num no-sort">Price</th><th class="num no-sort" title="amitfpl model - expected points next GW">xP Next</th>
-            <th class="num no-sort">Form</th><th class="num no-sort">GW Pts</th><th class="no-sort">Next 3</th>
+            <th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
+            <th class="num no-sort">${t('common.price')}</th><th class="num no-sort" title="${t('common.xpNextTitle')}">${t('common.xpNext')}</th>
+            <th class="num no-sort">${t('common.form')}</th><th class="num no-sort">${t('myteam.gwPtsCol')}</th><th class="no-sort">${t('common.next3')}</th>
           </tr></thead>
           <tbody>
             ${starters.map(pickRow).join('')}
-            <tr class="bench-divider"><td colspan="7">Bench</td></tr>
+            <tr class="bench-divider"><td colspan="7">${t('common.bench')}</td></tr>
             ${bench.map(pickRow).join('')}
           </tbody>
         </table>
       </div>`;
   } else {
-    squadHtml = `<div class="note">Your squad will appear here once the season starts (picks are public after the GW1 deadline, Aug 21).</div>`;
+    squadHtml = `<div class="note">${t('myteam.squadSoon')}</div>`;
   }
 
   root.innerHTML = `
     <div class="card">
       <div class="mt-header">
         <h2>${escapeHtml(entry.name)} <span class="player-meta" style="font-weight:500">· ${escapeHtml(entry.player_first_name)} ${escapeHtml(entry.player_last_name)}</span></h2>
-        <button class="link-btn" id="mt-change">Change team ID</button>
+        <button class="link-btn" id="mt-change">${t('myteam.changeId')}</button>
       </div>
       <div class="summary-grid">
         ${stats.map((s) => `<div class="stat-tile"><div class="k">${s.k}</div><div class="v">${s.v}</div></div>`).join('')}

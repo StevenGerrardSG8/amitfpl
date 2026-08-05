@@ -1,24 +1,27 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { fixtureChips, playerPhoto, teamBadge, spBadges, isNewSigning } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
+import { t } from './i18n.js';
 
 let model = null; // built once in renderPlayers, reused on every re-render
 
+// Labels/titles resolve at render time so a language switch re-renders
+// with the right strings. xG/xA/xGI/PPG stay Latin in both languages.
 const COLUMNS = [
-  { key: 'web_name', label: 'Player', numeric: false },
-  { key: 'position', label: 'Pos', numeric: false },
-  { key: 'now_cost', label: 'Price', numeric: true },
-  { key: 'selected_by_percent', label: 'Sel %', numeric: true },
-  { key: 'ep_next', label: 'xP Next', numeric: true, title: 'amitfpl model - expected points next gameweek' },
-  { key: 'form', label: 'Form', numeric: true },
-  { key: 'total_points', label: 'Pts', numeric: true },
-  { key: 'points_per_game', label: 'PPG', numeric: true },
-  { key: 'expected_goals', label: 'xG', numeric: true },
-  { key: 'expected_assists', label: 'xA', numeric: true },
-  { key: 'expected_goal_involvements', label: 'xGI', numeric: true },
-  { key: 'defensive_contribution', label: 'DC', numeric: true, title: 'Defensive contribution points (tackles, blocks, interceptions, clearances)' },
-  { key: 'minutes', label: 'Min', numeric: true },
-  { key: 'fixtures', label: 'Next 3', numeric: false, noSort: true },
+  { key: 'web_name', label: () => t('common.player'), numeric: false },
+  { key: 'position', label: () => t('common.pos'), numeric: false },
+  { key: 'now_cost', label: () => t('common.price'), numeric: true },
+  { key: 'selected_by_percent', label: () => t('common.sel'), numeric: true },
+  { key: 'ep_next', label: () => t('common.xpNext'), numeric: true, title: () => t('common.xpNextTitle') },
+  { key: 'form', label: () => t('common.form'), numeric: true },
+  { key: 'total_points', label: () => t('common.pts'), numeric: true },
+  { key: 'points_per_game', label: () => 'PPG', numeric: true },
+  { key: 'expected_goals', label: () => 'xG', numeric: true },
+  { key: 'expected_assists', label: () => 'xA', numeric: true },
+  { key: 'expected_goal_involvements', label: () => 'xGI', numeric: true },
+  { key: 'defensive_contribution', label: () => 'DC', numeric: true, title: () => t('players.dcTitle') },
+  { key: 'minutes', label: () => t('common.min'), numeric: true },
+  { key: 'fixtures', label: () => t('common.next3'), numeric: false, noSort: true },
 ];
 
 const view = {
@@ -75,7 +78,7 @@ function render(root) {
     const sorted = view.sortKey === c.key;
     const arrow = sorted ? `<span class="arrow">${view.sortDir === 'asc' ? '▲' : '▼'}</span>` : '';
     const cls = [c.numeric ? 'num' : '', sorted ? 'sorted' : '', c.noSort ? 'no-sort' : ''].join(' ');
-    return `<th class="${cls}" data-key="${c.noSort ? '' : c.key}" title="${c.title || ''}">${c.label}${arrow}</th>`;
+    return `<th class="${cls}" data-key="${c.noSort ? '' : c.key}" title="${c.title ? c.title() : ''}">${c.label()}${arrow}</th>`;
   }).join('');
 
   const rows = shown
@@ -88,11 +91,11 @@ function render(root) {
         : '';
       const ep = modelXp(p);
       return `<tr>
-        <td><div class="player-flex clickable" data-pid="${p.id}" title="Player profile">
+        <td><div class="player-flex clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">
           ${playerPhoto(p, 'row-photo')}
           <div class="player-cell">
             <span class="player-name">${escapeHtml(p.web_name)}${flag}${spBadges(p)}</span>
-            <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}${isNewSigning(p) ? ' <span class="new-tag">NEW</span>' : ''}</span>
+            <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}${isNewSigning(p) ? ` <span class="new-tag">${t('players.newTag')}</span>` : ''}</span>
           </div>
         </div></td>
         <td><span class="pos-badge pos-${pos}">${pos}</span></td>
@@ -119,20 +122,20 @@ function render(root) {
   root.innerHTML = `
     <div class="card">
       <div class="toolbar">
-        <input type="search" id="pl-search" placeholder="Search player…" value="${escapeHtml(view.search)}" />
+        <input type="search" id="pl-search" placeholder="${t('common.searchPlayer')}" value="${escapeHtml(view.search)}" />
         <div class="seg" id="pl-pos">
-          <button class="seg-btn ${view.position === 'all' ? 'on' : ''}" data-v="all">All</button>
+          <button class="seg-btn ${view.position === 'all' ? 'on' : ''}" data-v="all">${t('common.all')}</button>
           ${state.bootstrap.element_types.map((et) => `<button class="seg-btn ${view.position == et.id ? 'on' : ''}" data-v="${et.id}">${et.plural_name_short}</button>`).join('')}
         </div>
         <select id="pl-team">
-          <option value="all">All teams</option>
+          <option value="all">${t('players.allTeams')}</option>
           ${teamOptions}
         </select>
-        <input type="number" id="pl-price" placeholder="Max £" step="0.5" min="3.5" max="16" style="width:90px" value="${view.maxPrice}" />
-        <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> New signings</label>
+        <input type="number" id="pl-price" placeholder="${t('common.maxPrice')}" step="0.5" min="3.5" max="16" style="width:90px" value="${view.maxPrice}" />
+        <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> ${t('players.newSignings')}</label>
         <span class="spacer"></span>
-        <button class="link-btn" id="pl-csv" title="Download the current filtered list as CSV">Export CSV</button>
-        <span class="result-count">${list.length} players${list.length > view.limit ? ` · showing top ${view.limit}` : ''}</span>
+        <button class="link-btn" id="pl-csv" title="${t('players.exportTitle')}">${t('players.exportCsv')}</button>
+        <span class="result-count">${t('players.count', { n: list.length })}${list.length > view.limit ? t('players.showingTop', { n: view.limit }) : ''}</span>
       </div>
       <div class="table-wrap" style="max-height: 70vh; overflow-y: auto;">
         <table class="data sticky-first">
@@ -140,7 +143,7 @@ function render(root) {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      ${list.length > view.limit ? `<div class="note" style="text-align:center"><button class="link-btn" id="pl-more">Show ${Math.min(100, list.length - view.limit)} more</button></div>` : ''}
+      ${list.length > view.limit ? `<div class="note" style="text-align:center"><button class="link-btn" id="pl-more">${t('players.showMore', { n: Math.min(100, list.length - view.limit) })}</button></div>` : ''}
     </div>`;
 
   root.querySelector('#pl-search').addEventListener('input', (e) => {
