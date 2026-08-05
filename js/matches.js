@@ -3,7 +3,7 @@
 // full season schedule browser.
 import { state, escapeHtml } from './state.js';
 import { teamBadge } from './ui.js';
-import { t, locale, gwName, isHe } from './i18n.js';
+import { t, locale, gwName, isHe, playerName, teamName } from './i18n.js';
 
 const view = { gw: null };
 
@@ -14,7 +14,7 @@ function eventLine(stat, fixture, label, icon) {
     (entry[side] || [])
       .map((e) => {
         const p = state.playersById[e.element];
-        return p ? `${escapeHtml(p.web_name)}${e.value > 1 ? ` ×${e.value}` : ''}` : '';
+        return p ? `${escapeHtml(playerName(p))}${e.value > 1 ? ` ×${e.value}` : ''}` : '';
       })
       .filter(Boolean)
       .join(', ');
@@ -46,12 +46,12 @@ function matchRow(f) {
     : '';
   return `<div class="mt-match">
     <div class="mt-score-row">
-      <div class="mt-side">${teamBadge(h.id)} <strong>${escapeHtml(h.name)}</strong></div>
+      <div class="mt-side">${teamBadge(h.id)} <strong>${escapeHtml(teamName(h))}</strong></div>
       <div class="mt-score ${f.started && !f.finished ? 'mt-live' : ''}">
         <div class="mt-score-num">${score}</div>
         <div class="mt-status">${status}</div>
       </div>
-      <div class="mt-side mt-side-a"><strong>${escapeHtml(a.name)}</strong> ${teamBadge(a.id)}</div>
+      <div class="mt-side mt-side-a"><strong>${escapeHtml(teamName(a))}</strong> ${teamBadge(a.id)}</div>
     </div>
     ${events ? `<div class="mt-events">${events}</div>` : ''}
   </div>`;

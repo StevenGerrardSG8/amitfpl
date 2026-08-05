@@ -1,6 +1,6 @@
 import { state, escapeHtml, statusInfo } from './state.js';
 import { teamBadge, inlinePhoto, fixtureChips } from './ui.js';
-import { t } from './i18n.js';
+import { t, playerName, teamName } from './i18n.js';
 
 function takers(players, orderKey) {
   return players
@@ -12,11 +12,11 @@ function takerCell(list) {
   if (!list.length) return '<span class="sp-alt">-</span>';
   const [first, ...rest] = list;
   const alt = rest.length
-    ? `<div class="sp-alt">${t('sp.then', { names: rest.slice(0, 2).map((p) => escapeHtml(p.web_name)).join(', ') })}</div>`
+    ? `<div class="sp-alt">${t('sp.then', { names: rest.slice(0, 2).map((p) => escapeHtml(playerName(p))).join(', ') })}</div>`
     : '';
   const st = statusInfo(first);
   const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
-  return `<div><span class="sp-primary clickable" data-pid="${first.id}">${inlinePhoto(first)} ${escapeHtml(first.web_name)}</span>${flag}${alt}</div>`;
+  return `<div><span class="sp-primary clickable" data-pid="${first.id}">${inlinePhoto(first)} ${escapeHtml(playerName(first))}</span>${flag}${alt}</div>`;
 }
 
 export function renderSetPieces(root) {
@@ -29,7 +29,7 @@ export function renderSetPieces(root) {
     .map((t) => {
       const squad = byTeam[t.id] || [];
       return `<tr>
-        <td class="team-cell">${teamBadge(t.id)} ${escapeHtml(t.name)}</td>
+        <td class="team-cell">${teamBadge(t.id)} ${escapeHtml(teamName(t))}</td>
         <td>${takerCell(takers(squad, 'penalties_order'))}</td>
         <td>${takerCell(takers(squad, 'direct_freekicks_order'))}</td>
         <td>${takerCell(takers(squad, 'corners_and_indirect_freekicks_order'))}</td>

@@ -1,7 +1,8 @@
 // i18n: EN/HE strings dictionary + language state.
 // Every value is [english, hebrew]. t(key, params) picks by the active
-// language and interpolates {name} params. Player and club names stay
-// in English everywhere (they're API data, not UI text).
+// language and interpolates {name} params. In Hebrew, player and club
+// names are localised too (js/names-he.js + the team maps below).
+import { PLAYER_NAMES_HE } from './names-he.js';
 
 const LANG_KEY = 'amitfpl:lang';
 
@@ -41,6 +42,29 @@ export const gwLabel = (n) => (isHe() ? `מחזור ${n}` : `GW${n}`);
 // Home/away marker used inside fixture chips: (H)/(A) or (ב)/(ח).
 export const haMark = (isHome) => (isHe() ? (isHome ? 'ב' : 'ח') : (isHome ? 'H' : 'A'));
 
+// Player display name: Hebrew when active (mapped by web_name; new
+// signings that miss the map fall back to English).
+export const playerName = (p) => (isHe() ? PLAYER_NAMES_HE[p.web_name] || p.web_name : p.web_name);
+
+// Club names, full and compact (keyed by API name / short_name).
+const TEAM_NAMES_HE = {
+  'Arsenal': 'ארסנל', 'Aston Villa': 'אסטון וילה', 'Bournemouth': 'בורנמות׳',
+  'Brentford': 'ברנטפורד', 'Brighton': 'ברייטון', 'Chelsea': 'צ׳לסי',
+  'Coventry City': 'קובנטרי סיטי', 'Crystal Palace': 'קריסטל פאלאס',
+  'Everton': 'אברטון', 'Fulham': 'פולהאם', 'Hull City': 'האל סיטי',
+  'Ipswich Town': 'איפסוויץ׳ טאון', 'Leeds': 'לידס', 'Liverpool': 'ליברפול',
+  'Man City': 'מנצ׳סטר סיטי', 'Man Utd': 'מנצ׳סטר יונייטד', 'Newcastle': 'ניוקאסל',
+  "Nott'm Forest": 'נוטינגהאם פורסט', 'Spurs': 'טוטנהאם', 'Sunderland': 'סאנדרלנד',
+};
+const TEAM_SHORT_HE = {
+  ARS: 'ארסנל', AVL: 'וילה', BOU: 'בורנמות׳', BRE: 'ברנטפורד', BHA: 'ברייטון',
+  CHE: 'צ׳לסי', COV: 'קובנטרי', CRY: 'פאלאס', EVE: 'אברטון', FUL: 'פולהאם',
+  HUL: 'האל', IPS: 'איפסוויץ׳', LEE: 'לידס', LIV: 'ליברפול', MCI: 'מנ׳ סיטי',
+  MUN: 'מנ׳ יונייטד', NEW: 'ניוקאסל', NFO: 'פורסט', TOT: 'טוטנהאם', SUN: 'סאנדרלנד',
+};
+export const teamName = (team) => (isHe() ? TEAM_NAMES_HE[team.name] || team.name : team.name);
+export const teamShort = (team) => (isHe() ? TEAM_SHORT_HE[team.short_name] || team.short_name : team.short_name);
+
 // Position labels. The API's GKP/DEF/MID/FWD codes stay as CSS class
 // names; only the visible text is localised.
 const POS_SHORT = { GKP: 'שוער', DEF: 'מגן', MID: 'קשר', FWD: 'חלוץ' };
@@ -64,6 +88,17 @@ const NEWS_MONTHS = {
   Jul: 'יולי', Aug: 'אוג׳', Sep: 'ספט׳', Oct: 'אוק׳', Nov: 'נוב׳', Dec: 'דצמ׳',
 };
 const heDate = (d, mo) => `${d} ב${NEWS_MONTHS[mo] || mo}`;
+// Destination clubs mentioned in loan/transfer news (non-PL sides too).
+const NEWS_CLUBS = {
+  'Getafe CF': 'חטאפה',
+  'Grimsby Town': 'גרימסבי טאון',
+  'KVC Westerlo': 'וסטרלו',
+  'Leicester City': 'לסטר סיטי',
+  'New England Revolution': 'ניו אינגלנד רבולושן',
+  'Sheffield Wednesday': 'שפילד וונסדיי',
+  'Sheffield United': 'שפילד יונייטד',
+};
+const newsClub = (c) => NEWS_CLUBS[c] || TEAM_NAMES_HE[c] || c;
 export function translateNews(news) {
   if (!isHe() || !news) return news;
   let s = news;
@@ -80,10 +115,11 @@ export function translateNews(news) {
   s = s.replace(/ - (\d+)% chance of playing/i, ' - $1% סיכוי לשחק');
   s = s.replace(/^Suspended until (\d+) ([A-Za-z]{3})\w*/i, (m, d, mo) => `מורחק עד ${heDate(d, mo)}`);
   s = s.replace(/^Suspended/i, 'מורחק');
-  s = s.replace(/^Has joined (.+?) on loan for the rest of the season\.?$/i, 'הושאל ל-$1 עד סוף העונה');
-  s = s.replace(/^Has joined (.+?) on loan\.?$/i, 'הושאל ל-$1');
-  s = s.replace(/^Has joined (.+?)\.?$/i, 'הצטרף ל-$1');
-  s = s.replace(/^has returned to (.+?)\.?$/i, 'חזר ל-$1');
+  s = s.replace(/^Has joined (.+?) on loan for the rest of the season\.?$/i, (m, c) => `הושאל ל-${newsClub(c)} עד סוף העונה`);
+  s = s.replace(/^Has joined (.+?) on loan\.?$/i, (m, c) => `הושאל ל-${newsClub(c)}`);
+  s = s.replace(/^Has joined (.+?) permanently\.?$/i, (m, c) => `הצטרף ל-${newsClub(c)} באופן קבוע`);
+  s = s.replace(/^Has joined (.+?)\.?$/i, (m, c) => `הצטרף ל-${newsClub(c)}`);
+  s = s.replace(/^has returned to (.+?)\.?$/i, (m, c) => `חזר ל-${newsClub(c)}`);
   s = s.replace(/^has departed the club as a free agent\.?$/i, 'עזב את המועדון כשחקן חופשי');
   s = s.replace(/^Has left the club(?: by mutual consent)?\.?$/i, 'עזב את המועדון');
   s = s.replace(/^Transferred to (.+?)\.?$/i, 'הועבר ל-$1');
@@ -163,11 +199,42 @@ const STRINGS = {
   'common.nGws': ['{n} GWs', '{n} מחזורים'],
   'common.showMore': ['Show more', 'הצג עוד'],
   'common.horizon': ['Horizon', 'טווח תכנון'],
-  'common.xpNext': ['xP Next', 'xP הבא'],
+  'common.xpNext': ['xP Next', 'צפי הבא'],
   'common.xpNextTitle': ['amitfpl model - expected points next gameweek', 'מודל amitfpl - נקודות צפויות במחזור הבא'],
   'common.captain': ['Captain', 'קפטן'],
   'common.viceCaptain': ['Vice captain', 'סגן קפטן'],
   'common.noFixture': ['no fixture', 'אין משחק'],
+
+  /* ---- stat codes & compact badges ---- */
+  'stat.xp': ['xP', 'צפי'],
+  'stat.xg': ['xG', 'צפי שערים'],
+  'stat.xa': ['xA', 'צפי בישולים'],
+  'stat.xgi': ['xGI', 'צפי מעורבות'],
+  'stat.ppg': ['PPG', 'נק׳/משחק'],
+  'stat.dc': ['DC', 'הגנה'],
+  'stat.xg90': ['xG per 90', 'צפי שערים ל-90'],
+  'badge.c': ['C', 'ק'],
+  'badge.v': ['V', 'ס'],
+  'badge.in': ['IN', 'נכנס'],
+  'badge.out': ['OUT', 'הוצא'],
+  'badge.gk': ['GK', 'שוער'],
+  'badge.sub': ['S', 'ס'],
+  'badge.pen': ['P', 'פ'],
+  'badge.fk': ['FK', 'ח'],
+  'badge.corner': ['C', 'ק'],
+  'badge.ft': ['FT', 'חינם'],
+  'unit.pp': ['pp', ' נק׳ אחוז'],
+  'draft.A': ['A', 'א'],
+  'draft.B': ['B', 'ב'],
+  'draft.C': ['C', 'ג'],
+  'chipShort.WC': ['WC', 'וויילד'],
+  'chipShort.FH': ['FH', 'פרי'],
+  'chipShort.BB': ['BB', 'בנץ׳'],
+  'chipShort.TC': ['TC', 'טריפל'],
+  'pl.capLabel': ['C', 'ק'],
+  'pl.copyHead': ['amitfpl plan · {gw} squad · {cost}', 'תוכנית amitfpl · סגל {gw} · {cost}'],
+  'pl.copyXi': ['XI:', 'הרכב:'],
+  'pl.copyTransfers': ['Transfers:', 'העברות:'],
 
   /* ---- status flags (state.js) ---- */
   'status.chance': ['{chance}% chance of playing', '{chance}% סיכוי לשחק'],
@@ -220,7 +287,7 @@ const STRINGS = {
   'scout.topPick': ['Top pick', 'בחירה ראשונה'],
   'scout.backup': ['Backup', 'גיבוי'],
   'scout.punt': ['Punt', 'הימור'],
-  'scout.diffTitle': ['Differentials - high xP, low ownership', 'דיפרנציאלים - xP גבוה, בעלות נמוכה'],
+  'scout.diffTitle': ['Differentials - high xP, low ownership', 'דיפרנציאלים - צפי גבוה, בעלות נמוכה'],
   'scout.ownedLess': ['Owned by less than', 'בבעלות פחות מ-'],
   'scout.valueTitle': ['Best value - points per £1M', 'התמורה הטובה ביותר - נקודות לכל מיליון £'],
   'scout.valueNote': ["Based on total points (last season's, until this season gets going).", 'מבוסס על סך הנקודות (של העונה שעברה, עד שהעונה הנוכחית תתקדם).'],
@@ -342,15 +409,15 @@ const STRINGS = {
 
   /* ---- my team ---- */
   'myteam.connectTitle': ['Connect your FPL team', 'חיבור קבוצת ה-FPL שלך'],
-  'myteam.intro': ['All it takes is your <strong>Team ID</strong> - no password needed. To find it:', 'כל מה שצריך זה <strong>Team ID</strong> - בלי סיסמה. איך מוצאים אותו:'],
+  'myteam.intro': ['All it takes is your <strong>Team ID</strong> - no password needed. To find it:', 'כל מה שצריך זה את <strong>מזהה הקבוצה (Team ID)</strong> - בלי סיסמה. איך מוצאים אותו:'],
   'myteam.step1': ['Log in at <strong>fantasy.premierleague.com</strong>', 'היכנסו ל-<strong>fantasy.premierleague.com</strong>'],
   'myteam.step2': ['Go to the <strong>Points</strong> page', 'עברו לעמוד ה-<strong>Points</strong>'],
-  'myteam.step3': ['Look at the address bar: <code>…/entry/<strong>1234567</strong>/event/1</code> - that number is your Team ID', 'הביטו בשורת הכתובת: <code>…/entry/<strong>1234567</strong>/event/1</code> - המספר הזה הוא ה-Team ID שלכם'],
-  'myteam.preseason': ["Season hasn't started yet? Create your squad on the official site first, then come back here after the GW1 deadline - your ID appears once the season kicks off.", 'העונה עוד לא התחילה? צרו סגל באתר הרשמי קודם, וחזרו לכאן אחרי דדליין מחזור 1 - ה-ID יופיע ברגע שהעונה תצא לדרך.'],
+  'myteam.step3': ['Look at the address bar: <code>…/entry/<strong>1234567</strong>/event/1</code> - that number is your Team ID', 'הביטו בשורת הכתובת: <code>…/entry/<strong>1234567</strong>/event/1</code> - המספר הזה הוא מזהה הקבוצה שלכם'],
+  'myteam.preseason': ["Season hasn't started yet? Create your squad on the official site first, then come back here after the GW1 deadline - your ID appears once the season kicks off.", 'העונה עוד לא התחילה? צרו סגל באתר הרשמי קודם, וחזרו לכאן אחרי דדליין מחזור 1 - המזהה יופיע ברגע שהעונה תצא לדרך.'],
   'myteam.placeholder': ['e.g. 1234567', 'למשל 1234567'],
   'myteam.connect': ['Connect', 'חיבור'],
   'myteam.loading': ['Loading your team…', 'טוען את הקבוצה שלך…'],
-  'myteam.notFound': ['Team ID {id} was not found. Double-check the number and try again.', 'Team ID {id} לא נמצא. בדקו שוב את המספר ונסו שנית.'],
+  'myteam.notFound': ['Team ID {id} was not found. Double-check the number and try again.', 'מזהה הקבוצה {id} לא נמצא. בדקו שוב את המספר ונסו שנית.'],
   'myteam.noLive': ['Live team lookup isn\'t available on the hosted site. Set "teamId": {id} in config.json in the GitHub repo - the data refresher will pick it up within 30 minutes.', 'שליפת קבוצה חיה לא זמינה באתר המתארח. הגדירו ‎"teamId": {id}‎ בקובץ config.json בריפו של GitHub - מרענן הנתונים יקלוט את זה תוך 30 דקות.'],
   'myteam.overallPts': ['Overall points', 'נקודות כולל'],
   'myteam.overallRank': ['Overall rank', 'דירוג כללי'],
@@ -361,7 +428,7 @@ const STRINGS = {
   'myteam.squadGw': ['Squad - {gw}', 'סגל - {gw}'],
   'myteam.gwPtsCol': ['GW Pts', 'נק׳ מחזור'],
   'myteam.squadSoon': ['Your squad will appear here once the season starts (picks are public after the GW1 deadline, Aug 21).', 'הסגל שלך יופיע כאן כשהעונה תתחיל (הסגלים נחשפים אחרי דדליין מחזור 1, ‏21 באוגוסט).'],
-  'myteam.changeId': ['Change team ID', 'החלפת Team ID'],
+  'myteam.changeId': ['Change team ID', 'החלפת מזהה קבוצה'],
 
   /* ---- player drawer ---- */
   'dw.noData': ['no data yet', 'אין נתונים עדיין'],
@@ -381,7 +448,7 @@ const STRINGS = {
   'dw.yellows': ['Yellows', 'צהובים'],
   'dw.starts': ['Starts', 'הרכבים'],
   'dw.upcoming': ['Upcoming - model forecast', 'המשחקים הבאים - תחזית המודל'],
-  'dw.nextN': ['· next {n}: {xp} xP', '· {n} הבאים: {xp} xP'],
+  'dw.nextN': ['· next {n}: {xp} xP', '· {n} הבאים: {xp} צפי'],
   'dw.thisSeason': ['This season - last {n} GWs', 'העונה - {n} המחזורים האחרונים'],
   'dw.opp': ['Opp', 'יריבה'],
   'dw.g': ['G', 'ש׳'],
@@ -401,7 +468,7 @@ const STRINGS = {
   'pl.optimizing': ['Optimizing…', 'מבצע אופטימיזציה…'],
   'pl.assistant': ['Assistant', 'עוזר'],
   'pl.bank': ['Bank', 'בנק'],
-  'pl.planXp': ['Plan xP', 'xP לתוכנית'],
+  'pl.planXp': ['Plan xP', 'צפי לתוכנית'],
   'pl.hits': ['(-{n} hits)', '(-{n} קנסות)'],
   'pl.share': ['Share', 'שיתוף'],
   'pl.shareTitle': ['Copy a link that opens this exact plan on any device', 'העתקת קישור שפותח בדיוק את התוכנית הזו בכל מכשיר'],
@@ -436,7 +503,7 @@ const STRINGS = {
   'pl.sheetSwap': ['⇄ Swap with bench/pitch', '⇄ החלפה עם הספסל/המגרש'],
   'pl.sheetRemove': ['✕ Remove from squad', '✕ הסרה מהסגל'],
   'pl.swapMode': ['Swap mode: pick a highlighted player, or click ⇄ again to cancel.', 'מצב החלפה: בחרו שחקן מודגש, או לחצו ⇄ שוב לביטול.'],
-  'pl.sortXp': ['Sort: xP', 'מיון: xP'],
+  'pl.sortXp': ['Sort: xP', 'מיון: צפי'],
   'pl.priceDesc': ['Price ↓', 'מחיר ↓'],
   'pl.priceAsc': ['Price ↑', 'מחיר ↑'],
   'pl.ownedPct': ['Owned %', '% בעלות'],
@@ -448,7 +515,7 @@ const STRINGS = {
   'pl.transferInto': ['Transfer into the {gw} squad', 'העברה פנימה לסגל של {gw}'],
   'pl.sideXpTitle': ['Expected points over the plan horizon', 'נקודות צפויות על פני טווח התכנון'],
   'pl.asIncomplete': ["Your squad has {n}/15 players - hit <strong>Auto-build squad</strong> and I'll take it from there.", 'בסגל שלכם {n}/15 שחקנים - לחצו על <strong>בנייה אוטומטית</strong> ומשם אני ממשיך.'],
-  'pl.asSubtitle': ['· amitfpl xP model · {n}-GW plan incl. transfer hits', '· מודל xP של amitfpl · תוכנית ל-{n} מחזורים כולל קנסות העברה'],
+  'pl.asSubtitle': ['· amitfpl xP model · {n}-GW plan incl. transfer hits', '· מודל הצפי של amitfpl · תוכנית ל-{n} מחזורים כולל קנסות העברה'],
   'pl.asInFor': ['<strong>{in}</strong> in for <strong>{out}</strong>', '<strong>{in}</strong> נכנס במקום <strong>{out}</strong>'],
   'pl.asBaseChange': ['base squad change', 'שינוי בסגל הבסיס'],
   'pl.asGwTransfer': ['as a {gw} transfer', 'כהעברה ב{gw}'],
@@ -475,21 +542,21 @@ const STRINGS = {
   'help.lineups': ['<strong>{tab}</strong> - our projected starting XI for every club.', '<strong>{tab}</strong> - ההרכב הצפוי שלנו לכל מועדון.'],
   'help.matches': ["<strong>{tab}</strong> - every gameweek's games; scores and point events fill in live.", '<strong>{tab}</strong> - המשחקים של כל מחזור; תוצאות ואירועי נקודות מתמלאים בזמן אמת.'],
   'help.setpieces': ['<strong>{tab}</strong> - penalty, free-kick and corner takers.', '<strong>{tab}</strong> - בועטי פנדלים, בעיטות חופשיות וקרנות.'],
-  'help.myteam': ['<strong>{tab}</strong> - connect your real FPL squad with your Team ID.', '<strong>{tab}</strong> - חיבור הסגל האמיתי שלכם ב-FPL עם ה-Team ID.'],
+  'help.myteam': ['<strong>{tab}</strong> - connect your real FPL squad with your Team ID.', '<strong>{tab}</strong> - חיבור הסגל האמיתי שלכם ב-FPL עם מזהה הקבוצה.'],
   'help.whatsNew': ["What's new", 'מה חדש'],
   'help.new1': ['<strong>Elo-powered model v2</strong> - team strength from daily ClubElo ratings, defensive-contribution and card modelling, penalty-taker boost.', '<strong>מודל v2 מבוסס Elo</strong> - חוזק קבוצות מדירוגי ClubElo יומיים, מידול תרומה הגנתית וכרטיסים, בונוס לבועטי פנדלים.'],
   'help.new2': ['<strong>Season planner</strong> - per-GW transfers with free-transfer banking and -4 hits, chips, share links between devices.', '<strong>מתכנן עונה</strong> - העברות לכל מחזור עם צבירת העברות חינם וקנסות 4-, צ׳יפים וקישורי שיתוף בין מכשירים.'],
   'help.new3': ['<strong>Predicted lineups</strong>, <strong>scoring & assist chances</strong>, <strong>market movers</strong> and <strong>price trend charts</strong> in player profiles.', '<strong>הרכבים צפויים</strong>, <strong>סיכויי הבקעה ובישול</strong>, <strong>תזוזות שוק</strong> ו<strong>גרפי מגמת מחיר</strong> בפרופילי שחקנים.'],
   'help.new4': ['<strong>Telegram alerts</strong> - deadline reminders and watchlist news, sent from the cloud.', '<strong>התראות טלגרם</strong> - תזכורות דדליין וחדשות על שחקני המעקב, נשלחות מהענן.'],
   'help.glossary': ['Glossary', 'מילון מונחים'],
-  'help.g1': ["<strong>xP</strong> - expected points (our model's forecast).", '<strong>xP</strong> - נקודות צפויות (התחזית של המודל שלנו).'],
-  'help.g2': ['<strong>xG / xA</strong> - expected goals / assists, quality of chances involved in.', '<strong>xG / xA</strong> - שערים / בישולים צפויים, איכות המצבים שהשחקן מעורב בהם.'],
-  'help.g3': ['<strong>xGI</strong> - expected goal involvements (xG + xA).', '<strong>xGI</strong> - מעורבות צפויה בשערים (xG + xA).'],
-  'help.g4': ['<strong>DC</strong> - defensive contribution points (tackles, blocks, interceptions, clearances).', '<strong>DC</strong> - נקודות תרומה הגנתית (תיקולים, חסימות, חטיפות, הרחקות).'],
-  'help.g5': ['<strong>FDR</strong> - fixture difficulty rating, 1 (easiest) to 5 (hardest).', '<strong>FDR</strong> - דירוג קושי משחק, מ-1 (הקל ביותר) עד 5 (הקשה ביותר).'],
+  'help.g1': ["<strong>xP</strong> - expected points (our model's forecast).", '<strong>צפי (xP)</strong> - נקודות צפויות (התחזית של המודל שלנו).'],
+  'help.g2': ['<strong>xG / xA</strong> - expected goals / assists, quality of chances involved in.', '<strong>צפי שערים / צפי בישולים (xG / xA)</strong> - איכות המצבים שהשחקן מעורב בהם.'],
+  'help.g3': ['<strong>xGI</strong> - expected goal involvements (xG + xA).', '<strong>צפי מעורבות (xGI)</strong> - מעורבות צפויה בשערים (שערים + בישולים).'],
+  'help.g4': ['<strong>DC</strong> - defensive contribution points (tackles, blocks, interceptions, clearances).', '<strong>הגנה (DC)</strong> - נקודות תרומה הגנתית (תיקולים, חסימות, חטיפות, הרחקות).'],
+  'help.g5': ['<strong>FDR</strong> - fixture difficulty rating, 1 (easiest) to 5 (hardest).', '<strong>דירוג קושי (FDR)</strong> - קושי המשחק, מ-1 (הקל ביותר) עד 5 (הקשה ביותר).'],
   'help.g6': ['<strong>Sel %</strong> - how many FPL managers own the player.', '<strong>% בעלות</strong> - כמה מנג׳רים ב-FPL מחזיקים בשחקן.'],
-  'help.g7': ['<strong>FT</strong> - free transfers available (bank up to 5; extra moves cost -4 points).', '<strong>FT</strong> - העברות חינם זמינות (נצברות עד 5; מהלכים נוספים עולים 4- נקודות).'],
-  'help.g8': ['<strong>TC / BB / WC / FH</strong> - Triple Captain, Bench Boost, Wildcard, Free Hit chips.', '<strong>TC / BB / WC / FH</strong> - הצ׳יפים טריפל קפטן, בנץ׳ בוסט, וויילדקארד ופרי היט.'],
+  'help.g7': ['<strong>FT</strong> - free transfers available (bank up to 5; extra moves cost -4 points).', '<strong>העברות חינם (FT)</strong> - נצברות עד 5; מהלכים נוספים עולים 4- נקודות.'],
+  'help.g8': ['<strong>TC / BB / WC / FH</strong> - Triple Captain, Bench Boost, Wildcard, Free Hit chips.', '<strong>הצ׳יפים</strong> - טריפל קפטן (TC), בנץ׳ בוסט (BB), וויילדקארד (WC) ופרי היט (FH).'],
 };
 
 // Rebuilds every static (non-view) piece of the page in the active

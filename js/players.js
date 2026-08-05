@@ -1,7 +1,7 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { fixtureChips, playerPhoto, teamBadge, spBadges, isNewSigning } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t, posShort, posPlural } from './i18n.js';
+import { t, posShort, posPlural, playerName, teamName, teamShort, isHe } from './i18n.js';
 
 let model = null; // built once in renderPlayers, reused on every re-render
 
@@ -15,11 +15,11 @@ const COLUMNS = [
   { key: 'ep_next', label: () => t('common.xpNext'), numeric: true, title: () => t('common.xpNextTitle') },
   { key: 'form', label: () => t('common.form'), numeric: true },
   { key: 'total_points', label: () => t('common.pts'), numeric: true },
-  { key: 'points_per_game', label: () => 'PPG', numeric: true },
-  { key: 'expected_goals', label: () => 'xG', numeric: true },
-  { key: 'expected_assists', label: () => 'xA', numeric: true },
-  { key: 'expected_goal_involvements', label: () => 'xGI', numeric: true },
-  { key: 'defensive_contribution', label: () => 'DC', numeric: true, title: () => t('players.dcTitle') },
+  { key: 'points_per_game', label: () => t('stat.ppg'), numeric: true },
+  { key: 'expected_goals', label: () => t('stat.xg'), numeric: true },
+  { key: 'expected_assists', label: () => t('stat.xa'), numeric: true },
+  { key: 'expected_goal_involvements', label: () => t('stat.xgi'), numeric: true },
+  { key: 'defensive_contribution', label: () => t('stat.dc'), numeric: true, title: () => t('players.dcTitle') },
   { key: 'minutes', label: () => t('common.min'), numeric: true },
   { key: 'fixtures', label: () => t('common.next3'), numeric: false, noSort: true },
 ];
@@ -54,7 +54,8 @@ function filtered() {
     if (view.newOnly && !isNewSigning(p)) return false;
     if (q) {
       const team = state.teamsById[p.team];
-      const hay = `${p.first_name} ${p.second_name} ${p.web_name} ${team.name} ${team.short_name}`.toLowerCase();
+      // Hebrew names join the haystack so search works in both languages.
+      const hay = `${p.first_name} ${p.second_name} ${p.web_name} ${team.name} ${team.short_name}${isHe() ? ` ${playerName(p)} ${teamName(team)} ${teamShort(team)}` : ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -94,8 +95,8 @@ function render(root) {
         <td><div class="player-flex clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">
           ${playerPhoto(p, 'row-photo')}
           <div class="player-cell">
-            <span class="player-name">${escapeHtml(p.web_name)}${flag}${spBadges(p)}</span>
-            <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}${isNewSigning(p) ? ` <span class="new-tag">${t('players.newTag')}</span>` : ''}</span>
+            <span class="player-name">${escapeHtml(playerName(p))}${flag}${spBadges(p)}</span>
+            <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${teamShort(team)}${isNewSigning(p) ? ` <span class="new-tag">${t('players.newTag')}</span>` : ''}</span>
           </div>
         </div></td>
         <td><span class="pos-badge pos-${pos}">${posShort(pos)}</span></td>
@@ -116,7 +117,7 @@ function render(root) {
     .join('');
 
   const teamOptions = state.bootstrap.teams
-    .map((t) => `<option value="${t.id}" ${view.team == t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`)
+    .map((tm) => `<option value="${tm.id}" ${view.team == tm.id ? 'selected' : ''}>${escapeHtml(teamName(tm))}</option>`)
     .join('');
 
   root.innerHTML = `

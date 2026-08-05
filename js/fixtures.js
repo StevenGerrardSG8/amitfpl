@@ -1,7 +1,7 @@
 import { state, escapeHtml } from './state.js';
 import { teamBadge, fixtureDifficulty } from './ui.js';
 import { teamForecast } from './model.js';
-import { t, haMark, gwLabel } from './i18n.js';
+import { t, haMark, gwLabel, teamName, teamShort } from './i18n.js';
 
 const view = { horizon: 6, sortByEase: true, forecastGw: null };
 
@@ -20,7 +20,7 @@ function forecastCard() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 3)
     .map((r) => `<span class="fdr-chip fdr-3" title="${t('fx.shootoutTitle')}">
-      ${teamBadge(r.team.id, 'chip-badge')}${r.team.short_name} - ${teamBadge(r.opp.id, 'chip-badge')}${r.opp.short_name}
+      ${teamBadge(r.team.id, 'chip-badge')}${teamShort(r.team)} - ${teamBadge(r.opp.id, 'chip-badge')}${teamShort(r.opp)}
       <strong>${r.total.toFixed(1)}</strong></span>`)
     .join(' ');
 
@@ -28,8 +28,8 @@ function forecastCard() {
     .map(({ team, opp, isHome, xg, cs }) => {
       const csPct = Math.round(cs * 100);
       return `<tr>
-        <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.name)}</td>
-        <td>${teamBadge(opp.id, 'meta-badge')} ${escapeHtml(opp.short_name)} (${haMark(isHome)})</td>
+        <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamName(team))}</td>
+        <td>${teamBadge(opp.id, 'meta-badge')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</td>
         <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
         <td class="num"><span class="cs-pill ${csPct >= 40 ? 'cs-hi' : csPct <= 20 ? 'cs-lo' : ''}">${csPct}%</span></td>
       </tr>`;
@@ -84,8 +84,8 @@ function blanksDoublesCard() {
     if (blanks.length || doubles.length) {
       rows.push(`<tr>
         <td class="team-cell">${gwLabel(e)}</td>
-        <td>${doubles.length ? doubles.map(({ t, c }) => `<span class="fdr-chip fdr-1">${teamBadge(t.id, 'chip-badge')}${t.short_name} ×${c}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
-        <td>${blanks.length ? blanks.map((t) => `<span class="fdr-chip fdr-blank">${teamBadge(t.id, 'chip-badge')}${t.short_name}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
+        <td>${doubles.length ? doubles.map(({ t, c }) => `<span class="fdr-chip fdr-1">${teamBadge(t.id, 'chip-badge')}${teamShort(t)} ×${c}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
+        <td>${blanks.length ? blanks.map((t) => `<span class="fdr-chip fdr-blank">${teamBadge(t.id, 'chip-badge')}${teamShort(t)}</span>`).join(' ') : '<span class="muted">-</span>'}</td>
       </tr>`);
     }
   }
@@ -125,7 +125,7 @@ function swingsCard() {
   const easing = [...scored].sort((a, b) => a.delta - b.delta).slice(0, 5);
   const toughening = [...scored].sort((a, b) => b.delta - a.delta).slice(0, 5);
   const row = ({ t, early, later }) => `<tr>
-    <td class="team-cell">${teamBadge(t.id)} ${escapeHtml(t.name)}</td>
+    <td class="team-cell">${teamBadge(t.id)} ${escapeHtml(teamName(t))}</td>
     <td class="num">${early.toFixed(2)}</td>
     <td class="num">${later.toFixed(2)}</td>
   </tr>`;
@@ -180,7 +180,7 @@ function rotationCard() {
   pairs.sort((x, y) => x.score - y.score);
   const rows = pairs.slice(0, 8)
     .map(({ a, b, score }) => `<tr>
-      <td class="team-cell">${teamBadge(a.id)} ${escapeHtml(a.name)} + ${teamBadge(b.id)} ${escapeHtml(b.name)}</td>
+      <td class="team-cell">${teamBadge(a.id)} ${escapeHtml(teamName(a))} + ${teamBadge(b.id)} ${escapeHtml(teamName(b))}</td>
       <td class="num"><span class="avg-pill">${score.toFixed(2)}</span></td>
     </tr>`)
     .join('');
@@ -219,7 +219,7 @@ export function renderFixtures(root) {
   });
 
   if (view.sortByEase) rows.sort((a, b) => a.avg - b.avg);
-  else rows.sort((a, b) => a.team.name.localeCompare(b.team.name));
+  else rows.sort((a, b) => teamName(a.team).localeCompare(teamName(b.team)));
 
   const head = gws.map((e) => `<th style="text-align:center">${gwLabel(e)}</th>`).join('');
 
@@ -231,7 +231,7 @@ export function renderFixtures(root) {
           if (!fx.length) return `<td><div class="fdr-cell"><span class="fdr-chip fdr-blank">${t('common.blank')}</span></div></td>`;
           const chips = fx
             .map((f) => {
-              const opp = state.teamsById[f.opponent].short_name;
+              const opp = teamShort(state.teamsById[f.opponent]);
               return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${haMark(f.isHome)})</span>`;
             })
             .join('');
@@ -239,7 +239,7 @@ export function renderFixtures(root) {
         })
         .join('');
       return `<tr>
-        <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.name)}</td>
+        <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamName(team))}</td>
         <td class="num"><span class="avg-pill">${avg.toFixed(2)}</span></td>
         ${cells}
       </tr>`;

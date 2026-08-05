@@ -1,6 +1,6 @@
 // Small shared rendering helpers used across tabs.
 import { state, statusInfo, escapeHtml } from './state.js';
-import { t, haMark, gwLabel, posShort } from './i18n.js';
+import { t, haMark, gwLabel, posShort, playerName, teamShort } from './i18n.js';
 
 // Fixture difficulty 1-5. When ClubElo ratings are loaded the buckets
 // come from the opponent's venue-adjusted Elo (sharper than the flat
@@ -21,7 +21,7 @@ export function fixtureChips(teamId, count = 3) {
   if (!fx.length) return '<span class="fdr-chip fdr-blank">-</span>';
   return fx
     .map((f) => {
-      const opp = state.teamsById[f.opponent].short_name;
+      const opp = teamShort(state.teamsById[f.opponent]);
       const ha = haMark(f.isHome);
       return `<span class="fdr-chip fdr-${fixtureDifficulty(f)}" title="${gwLabel(f.event)}">${teamBadge(f.opponent, 'chip-badge')}${opp} (${ha})</span>`;
     })
@@ -55,8 +55,8 @@ export function playerCell(p) {
   return `<div class="player-flex clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">
     ${playerPhoto(p, 'row-photo')}
     <div class="player-cell">
-      <span class="player-name">${escapeHtml(p.web_name)}${flag}</span>
-      <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}</span>
+      <span class="player-name">${escapeHtml(playerName(p))}${flag}</span>
+      <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${teamShort(team)}</span>
     </div>
   </div>`;
 }
@@ -75,9 +75,9 @@ export const fmtCount = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3
 // Set-piece duty badges: first-choice penalty / free-kick / corner taker.
 export function spBadges(p) {
   let out = '';
-  if (p.penalties_order === 1) out += `<span class="sp-tag" title="${t('sp.penTitle')}">P</span>`;
-  if (p.direct_freekicks_order === 1) out += `<span class="sp-tag" title="${t('sp.fkTitle')}">FK</span>`;
-  if (p.corners_and_indirect_freekicks_order === 1) out += `<span class="sp-tag" title="${t('sp.cornerTitle')}">C</span>`;
+  if (p.penalties_order === 1) out += `<span class="sp-tag" title="${t('sp.penTitle')}">${t('badge.pen')}</span>`;
+  if (p.direct_freekicks_order === 1) out += `<span class="sp-tag" title="${t('sp.fkTitle')}">${t('badge.fk')}</span>`;
+  if (p.corners_and_indirect_freekicks_order === 1) out += `<span class="sp-tag" title="${t('sp.cornerTitle')}">${t('badge.corner')}</span>`;
   return out;
 }
 
@@ -90,7 +90,7 @@ export const isNewSigning = (p) =>
 // watchdog also catches requests that hang without firing onerror.
 export function playerPhoto(p, cls = 'pp-photo') {
   const shirt = `${p.team_code}${p.element_type === 1 ? '_1' : ''}`;
-  const attrs = `loading="lazy" alt="" data-shirt="${shirt}" data-init="${escapeHtml((p.web_name || '?')[0].toUpperCase())}"`;
+  const attrs = `loading="lazy" alt="" data-shirt="${shirt}" data-init="${escapeHtml((playerName(p) || '?')[0].toUpperCase())}"`;
   const faceId = state.faces?.[p.id];
   if (faceId) {
     // Proper face image (transparent background, face-cropped).

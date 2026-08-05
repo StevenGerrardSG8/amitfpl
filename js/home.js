@@ -5,7 +5,7 @@ import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { teamBadge, playerCell } from './ui.js';
 import { loadBaseline, buildModel, teamForecast } from './model.js';
 import { watchlist } from './drawer.js';
-import { t, locale, haMark, gwName, gwLabel, isHe } from './i18n.js';
+import { t, locale, haMark, gwName, gwLabel, isHe, teamShort } from './i18n.js';
 
 function fixtureCards() {
   const nxt = state.nextEvent;
@@ -19,9 +19,9 @@ function fixtureCards() {
     const ko = new Date(f.kickoff_time);
     const when = ko.toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return `<div class="fx-card">
-      <div class="fx-team">${teamBadge(h.id)}<span>${escapeHtml(h.short_name)}</span></div>
+      <div class="fx-team">${teamBadge(h.id)}<span>${escapeHtml(teamShort(h))}</span></div>
       <div class="fx-mid"><span class="fx-vs">${t('common.vs')}</span><span class="fx-time">${when}</span></div>
-      <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(a.short_name)}</span></div>
+      <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(teamShort(a))}</span></div>
     </div>`;
   }).join('');
   const dl = new Date(nxt.deadline_time);
@@ -61,14 +61,14 @@ export async function renderHome(root) {
   const forecast = teamForecast(gw);
 
   const goalsRows = mini(forecast.slice(0, 4).map(({ team, opp, isHome, xg }) => `<tr>
-      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.short_name)}</td>
-      <td class="muted">${t('common.vs')} ${escapeHtml(opp.short_name)} (${haMark(isHome)})</td>
+      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</td>
+      <td class="muted">${t('common.vs')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</td>
       <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
     </tr>`).join(''));
 
   const csRows = mini([...forecast].sort((a, b) => b.cs - a.cs).slice(0, 4).map(({ team, opp, isHome, cs }) => `<tr>
-      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(team.short_name)}</td>
-      <td class="muted">${t('common.vs')} ${escapeHtml(opp.short_name)} (${haMark(isHome)})</td>
+      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</td>
+      <td class="muted">${t('common.vs')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</td>
       <td class="num"><span class="cs-pill ${cs >= 0.4 ? 'cs-hi' : ''}">${Math.round(cs * 100)}%</span></td>
     </tr>`).join(''));
 

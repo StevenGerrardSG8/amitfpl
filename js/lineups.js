@@ -5,7 +5,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge } from './ui.js';
 import { loadBaseline, baselinePlayer } from './model.js';
-import { t, locale, haMark, translateNews } from './i18n.js';
+import { t, locale, haMark, translateNews, playerName, teamName, teamShort } from './i18n.js';
 
 const FORMATIONS = [];
 for (let d = 3; d <= 5; d++)
@@ -65,7 +65,7 @@ function playerChip(p) {
       ${doubt}
       <span class="lu-own">${p.selected_by_percent}%</span>
     </div>
-    <div class="lu-name">${escapeHtml(p.web_name)}</div>
+    <div class="lu-name">${escapeHtml(playerName(p))}</div>
     <div class="lu-meta">${fmtPrice(p.now_cost)}</div>
   </div>`;
 }
@@ -83,7 +83,7 @@ function teamCard(team, squad) {
     const ko = raw?.kickoff_time
       ? new Date(raw.kickoff_time).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
       : '';
-    fxLine = `${t('common.vs')} ${escapeHtml(opp.short_name)} (${haMark(nextFx.isHome)}) · ${ko}`;
+    fxLine = `${t('common.vs')} ${escapeHtml(teamShort(opp))} (${haMark(nextFx.isHome)}) · ${ko}`;
   }
 
   const rows = [4, 3, 2, 1].map((pos) => {
@@ -96,16 +96,16 @@ function teamCard(team, squad) {
     .filter((p) => p.status === 'd')
     .sort((a, b) => b.now_cost - a.now_cost)
     .slice(0, 3)
-    .map((p) => `<span class="lu-flag lu-doubt clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(p.web_name)} ${p.chance_of_playing_next_round ?? 75}%</span>`);
+    .map((p) => `<span class="lu-flag lu-doubt clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(playerName(p))} ${p.chance_of_playing_next_round ?? 75}%</span>`);
   const out = squad
     .filter((p) => ['i', 's', 'u'].includes(p.status) && !inXI.has(p.id))
     .sort((a, b) => b.now_cost - a.now_cost)
     .slice(0, 3)
-    .map((p) => `<span class="lu-flag lu-out clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(p.web_name)}</span>`);
+    .map((p) => `<span class="lu-flag lu-out clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(playerName(p))}</span>`);
 
   return `<div class="lu-card">
     <div class="lu-head">
-      <div class="lu-team">${teamBadge(team.id)} <strong>${escapeHtml(team.name)}</strong>
+      <div class="lu-team">${teamBadge(team.id)} <strong>${escapeHtml(teamName(team))}</strong>
         ${state.elo?.[team.id] ? `<span class="muted" style="font-size:10px" title="${t('lu.eloTitle')}">${Math.round(state.elo[team.id])}</span>` : ''}</div>
       <span class="lu-formation">${pred.formation}</span>
     </div>

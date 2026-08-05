@@ -4,7 +4,7 @@
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, spBadges, fixtureDifficulty } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t, haMark, gwLabel, posShort } from './i18n.js';
+import { t, haMark, gwLabel, posShort, playerName, teamName, teamShort, isHe } from './i18n.js';
 
 let overlay = null;
 const summaryCache = new Map();
@@ -112,7 +112,7 @@ function upcomingRows(model, p) {
     .map((e) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e);
       const opp = fx.length
-        ? fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})</span>`).join(' ')
+        ? fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamBadge(f.opponent, 'chip-badge')}${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})</span>`).join(' ')
         : `<span class="fdr-chip fdr-blank">${t('common.blank')}</span>`;
       const xp = model.xp(p.id, e);
       return `<tr>
@@ -132,7 +132,7 @@ function gwLogRows(history) {
       const opp = state.teamsById[h.opponent_team];
       return `<tr>
         <td>${gwLabel(h.round)}</td>
-        <td>${opp ? `${teamBadge(opp.id, 'meta-badge')} ${opp.short_name}` : '-'} (${haMark(h.was_home)})</td>
+        <td>${opp ? `${teamBadge(opp.id, 'meta-badge')} ${teamShort(opp)}` : '-'} (${haMark(h.was_home)})</td>
         <td class="num" style="font-weight:700">${h.total_points}</td>
         <td class="num">${h.minutes}'</td>
         <td class="num">${h.goals_scored}</td>
@@ -175,9 +175,9 @@ export async function openDrawer(id) {
       <div class="drawer-head">
         ${playerPhoto(p, 'drawer-photo')}
         <div>
-          <div class="drawer-name">${escapeHtml(p.first_name)} <strong>${escapeHtml(p.second_name)}</strong>${spBadges(p)}</div>
+          <div class="drawer-name">${isHe() ? `<strong>${escapeHtml(playerName(p))}</strong>` : `${escapeHtml(p.first_name)} <strong>${escapeHtml(p.second_name)}</strong>`}${spBadges(p)}</div>
           <div class="drawer-meta">
-            ${teamBadge(p.team)} ${escapeHtml(team.name)} · <span class="pos-badge pos-${pos.singular_name_short}">${posShort(pos.singular_name_short)}</span>
+            ${teamBadge(p.team)} ${escapeHtml(teamName(team))} · <span class="pos-badge pos-${pos.singular_name_short}">${posShort(pos.singular_name_short)}</span>
             · ${fmtPrice(p.now_cost)} · ${t('dw.owned', { pct: p.selected_by_percent })}
           </div>
           ${st ? `<div class="drawer-news ${st.cls}">${escapeHtml(st.label)}</div>` : ''}
@@ -189,9 +189,9 @@ export async function openDrawer(id) {
       </div>
       <div class="summary-grid" style="padding:12px 0">
         ${statTile(t('dw.ptsLastSzn'), p.total_points)}
-        ${statTile('PPG', p.points_per_game)}
-        ${statTile('xG', p.expected_goals)}
-        ${statTile('xA', p.expected_assists)}
+        ${statTile(t('stat.ppg'), p.points_per_game)}
+        ${statTile(t('stat.xg'), p.expected_goals)}
+        ${statTile(t('stat.xa'), p.expected_assists)}
         ${statTile(t('dw.minutes'), p.minutes)}
         ${statTile(t('dw.bonus'), p.bonus)}
         ${statTile(t('dw.defcon'), p.defensive_contribution)}
@@ -231,7 +231,7 @@ export async function openDrawer(id) {
     <div class="section-title" style="padding-inline-start:0">${t('dw.upcoming')}
       <span class="muted" style="font-weight:600">${t('dw.nextN', { n: model.gws.length, xp: model.gws.reduce((s, e) => s + model.xp(p.id, e), 0).toFixed(1) })}</span></div>
     <div class="table-wrap"><table class="data">
-      <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('common.fixture')}</th><th class="num no-sort">xP</th></tr></thead>
+      <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('common.fixture')}</th><th class="num no-sort">${t('stat.xp')}</th></tr></thead>
       <tbody>${upcomingRows(model, p)}</tbody>
     </table></div>`);
 
@@ -241,7 +241,7 @@ export async function openDrawer(id) {
       <div class="table-wrap"><table class="data">
         <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('dw.opp')}</th><th class="num no-sort">${t('common.pts')}</th>
         <th class="num no-sort">${t('common.min')}</th><th class="num no-sort">${t('dw.g')}</th><th class="num no-sort">${t('dw.a')}</th>
-        <th class="num no-sort">${t('dw.bonus')}</th><th class="num no-sort">xGI</th></tr></thead>
+        <th class="num no-sort">${t('dw.bonus')}</th><th class="num no-sort">${t('stat.xgi')}</th></tr></thead>
         <tbody>${gwLogRows(summary.history)}</tbody>
       </table></div>`);
   }

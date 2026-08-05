@@ -2,7 +2,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, playerPhoto, teamBadge } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t, posShort } from './i18n.js';
+import { t, posShort, playerName, teamName, teamShort } from './i18n.js';
 
 let model = null;
 const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
@@ -11,7 +11,7 @@ const STORAGE_KEY = 'amitfpl:compare';
 const SLOTS = 3;
 
 const METRICS = [
-  { label: () => t('common.team'), fn: (p) => `${teamBadge(p.team, 'meta-badge')} ${escapeHtml(state.teamsById[p.team].name)}` },
+  { label: () => t('common.team'), fn: (p) => `${teamBadge(p.team, 'meta-badge')} ${escapeHtml(teamName(state.teamsById[p.team]))}` },
   { label: () => t('cmp.position'), fn: (p) => posShort(state.positionsById[p.element_type].singular_name_short) },
   { label: () => t('common.price'), fn: (p) => fmtPrice(p.now_cost) },
   { label: () => t('cmp.selectedBy'), fn: (p) => `${p.selected_by_percent}%` },
@@ -22,10 +22,10 @@ const METRICS = [
   { label: () => t('cmp.minutes'), fn: (p) => p.minutes, best: (p) => p.minutes },
   { label: () => t('cmp.goals'), fn: (p) => p.goals_scored, best: (p) => p.goals_scored },
   { label: () => t('cmp.assists'), fn: (p) => p.assists, best: (p) => p.assists },
-  { label: () => 'xG', fn: (p) => p.expected_goals, best: (p) => num(p.expected_goals) },
-  { label: () => 'xA', fn: (p) => p.expected_assists, best: (p) => num(p.expected_assists) },
-  { label: () => 'xGI', fn: (p) => p.expected_goal_involvements, best: (p) => num(p.expected_goal_involvements) },
-  { label: () => t('cmp.xgPer90'), fn: (p) => p.expected_goals_per_90, best: (p) => num(p.expected_goals_per_90) },
+  { label: () => t('stat.xg'), fn: (p) => p.expected_goals, best: (p) => num(p.expected_goals) },
+  { label: () => t('stat.xa'), fn: (p) => p.expected_assists, best: (p) => num(p.expected_assists) },
+  { label: () => t('stat.xgi'), fn: (p) => p.expected_goal_involvements, best: (p) => num(p.expected_goal_involvements) },
+  { label: () => t('stat.xg90'), fn: (p) => p.expected_goals_per_90, best: (p) => num(p.expected_goals_per_90) },
   { label: () => t('cmp.bonus'), fn: (p) => p.bonus, best: (p) => p.bonus },
   { label: () => t('cmp.value'), fn: (p) => p.value_season, best: (p) => num(p.value_season) },
   { label: () => t('cmp.next5'), fn: (p) => `<div class="fdr-cell">${fixtureChips(p.team, 5)}</div>` },
@@ -47,10 +47,14 @@ function findPlayer(text) {
   const q = text.trim().toLowerCase();
   if (!q) return null;
   const els = state.bootstrap.elements;
+  // Matches both the localised display name and the English API name,
+  // so typing in either language works.
+  const disp = (p) => playerName(p).toLowerCase();
   return (
+    els.find((p) => `${disp(p)} (${teamShort(state.teamsById[p.team]).toLowerCase()})` === q) ||
     els.find((p) => `${p.web_name} (${state.teamsById[p.team].short_name})`.toLowerCase() === q) ||
-    els.find((p) => p.web_name.toLowerCase() === q) ||
-    els.find((p) => p.web_name.toLowerCase().startsWith(q)) ||
+    els.find((p) => disp(p) === q || p.web_name.toLowerCase() === q) ||
+    els.find((p) => disp(p).startsWith(q) || p.web_name.toLowerCase().startsWith(q)) ||
     els.find((p) => `${p.first_name} ${p.second_name}`.toLowerCase().includes(q)) ||
     null
   );
@@ -66,13 +70,13 @@ export async function renderCompare(root) {
   const chosen = players.filter(Boolean);
 
   const datalist = `<datalist id="cmp-players">${state.bootstrap.elements
-    .map((p) => `<option value="${escapeHtml(p.web_name)} (${state.teamsById[p.team].short_name})"></option>`)
+    .map((p) => `<option value="${escapeHtml(playerName(p))} (${teamShort(state.teamsById[p.team])})"></option>`)
     .join('')}</datalist>`;
 
   const inputs = players
     .map((p, i) => `<span class="cmp-slot"><input type="text" list="cmp-players" data-slot="${i}" class="cmp-input"
         placeholder="${t('cmp.playerN', { n: i + 1 })}${i === 2 ? t('cmp.optional') : ''}"
-        value="${p ? `${escapeHtml(p.web_name)} (${state.teamsById[p.team].short_name})` : ''}" />${p ? `<button class="cmp-x" data-slot="${i}" title="${t('common.clear')}">✕</button>` : ''}</span>`)
+        value="${p ? `${escapeHtml(playerName(p))} (${teamShort(state.teamsById[p.team])})` : ''}" />${p ? `<button class="cmp-x" data-slot="${i}" title="${t('common.clear')}">✕</button>` : ''}</span>`)
     .join('');
 
   let table = '';
@@ -80,8 +84,8 @@ export async function renderCompare(root) {
     const head = chosen
       .map((p) => `<th class="num cmp-head clickable" data-pid="${p.id}">
         ${playerPhoto(p, 'cmp-photo')}<br>
-        ${escapeHtml(p.web_name)}<br>
-        <span class="muted" style="font-weight:500">${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name}</span>
+        ${escapeHtml(playerName(p))}<br>
+        <span class="muted" style="font-weight:500">${teamBadge(p.team, 'meta-badge')} ${teamShort(state.teamsById[p.team])}</span>
       </th>`)
       .join('');
     const rows = METRICS.map((m) => {

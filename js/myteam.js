@@ -2,7 +2,7 @@ import { getEntry, getPicks, fetchTeamSnapshot, fetchConfig } from './api.js';
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, fixtureDifficulty } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t, haMark, gwLabel, posShort } from './i18n.js';
+import { t, haMark, gwLabel, posShort, playerName, teamShort } from './i18n.js';
 
 let model = null;
 const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
@@ -53,19 +53,19 @@ function pickRow(pick) {
     ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>`
     : '';
   const cap = pick.is_captain
-    ? `<span class="captain-badge" title="${t('common.captain')}">C</span>`
+    ? `<span class="captain-badge" title="${t('common.captain')}">${t('badge.c')}</span>`
     : pick.is_vice_captain
-      ? `<span class="captain-badge vice" title="${t('common.viceCaptain')}">V</span>`
+      ? `<span class="captain-badge vice" title="${t('common.viceCaptain')}">${t('badge.v')}</span>`
       : '';
   const fx = (state.upcomingByTeam[p.team] || []).slice(0, 3)
-    .map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})</span>`)
+    .map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})</span>`)
     .join(' ') || '-';
   return `<tr>
     <td><div class="player-flex">
       ${playerPhoto(p, 'row-photo')}
       <div class="player-cell">
-        <span class="player-name">${escapeHtml(p.web_name)}${cap}${flag}</span>
-        <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${team.short_name}</span>
+        <span class="player-name">${escapeHtml(playerName(p))}${cap}${flag}</span>
+        <span class="player-meta">${teamBadge(p.team, 'meta-badge')} ${teamShort(team)}</span>
       </div>
     </div></td>
     <td><span class="pos-badge pos-${pos}">${posShort(pos)}</span></td>

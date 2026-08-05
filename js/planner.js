@@ -7,7 +7,7 @@ import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, inlinePhoto, fixtureChips } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
-import { t, haMark, gwLabel, posShort, posPlural } from './i18n.js';
+import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort } from './i18n.js';
 
 // On phones the per-card action buttons become a bottom action sheet.
 const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
@@ -425,7 +425,7 @@ function assistantPanel(model, gw) {
       <div class="note" style="padding:0">${t('pl.asIncomplete', { n: view.baseSquad.length })}</div>
     </div>`;
   }
-  const name = (id) => `<span class="clickable" data-pid="${id}">${inlinePhoto(state.playersById[id])} ${escapeHtml(state.playersById[id].web_name)}</span>`;
+  const name = (id) => `<span class="clickable" data-pid="${id}">${inlinePhoto(state.playersById[id])} ${escapeHtml(playerName(state.playersById[id]))}</span>`;
   const isFirst = gw === firstGw(model);
   const items = [];
 
@@ -433,7 +433,7 @@ function assistantPanel(model, gw) {
   for (const { outId, inId, gain } of upgrades) {
     items.push(`<div class="as-item">
       <span>${t('pl.asInFor', { in: name(inId), out: name(outId) })}
-      <span class="hi">+${gain.toFixed(1)} xP</span>
+      <span class="hi">+${gain.toFixed(1)} ${t('stat.xp')}</span>
       <span class="muted">${isFirst ? t('pl.asBaseChange') : t('pl.asGwTransfer', { gw: gwLabel(gw) })} · ${fmtPrice(state.playersById[inId].now_cost)}</span></span>
       <button class="as-apply" data-act="transfer" data-out="${outId}" data-in="${inId}">${t('pl.asApply')}</button>
     </div>`);
@@ -507,7 +507,7 @@ function openSheet(model, root, id, gw) {
   const sheet = document.createElement('div');
   sheet.className = 'sheet-overlay';
   sheet.innerHTML = `<div class="sheet">
-    <div class="sheet-head">${escapeHtml(p.web_name)} <span class="muted">· ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span></div>
+    <div class="sheet-head">${escapeHtml(playerName(p))} <span class="muted">· ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span></div>
     ${actions.map(([label], i) => `<button class="sheet-btn" data-i="${i}">${label}</button>`).join('')}
     <button class="sheet-btn sheet-cancel">${t('common.cancel')}</button>
   </div>`;
@@ -530,7 +530,7 @@ function playerCard(model, id, gw, isStarter, opts) {
   const xp = model.xp(id, gw);
   const opp = (state.upcomingByTeam[p.team] || [])
     .filter((f) => f.event === gw)
-    .map((f) => `${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})`)
+    .map((f) => `${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
     .join(', ');
   const isSwapSource = view.swapId === id;
   let swapTarget = false;
@@ -546,12 +546,12 @@ function playerCard(model, id, gw, isStarter, opts) {
     ? '' // phones: tap the card for a bottom action sheet instead
     : opts.editable
       ? `<div class="pc-actions">
-          ${isStarter ? `<button class="pc-btn pc-cap ${view.captain === id ? 'on' : ''}" data-id="${id}" title="${t('pl.makeCaptain')}">C</button>` : ''}
+          ${isStarter ? `<button class="pc-btn pc-cap ${view.captain === id ? 'on' : ''}" data-id="${id}" title="${t('pl.makeCaptain')}">${t('badge.c')}</button>` : ''}
           <button class="pc-btn pc-swap" data-id="${id}" title="${t('pl.swapTitle')}">⇄</button>
           <button class="pc-btn pc-remove" data-id="${id}" title="${t('pl.removeTitle')}">✕</button>
         </div>`
       : `<div class="pc-actions">
-          <button class="pc-btn pc-out" data-id="${id}" title="${t('pl.transferOutGw', { gw: gwLabel(gw) })}">OUT</button>
+          <button class="pc-btn pc-out" data-id="${id}" title="${t('pl.transferOutGw', { gw: gwLabel(gw) })}">${t('badge.out')}</button>
         </div>`;
   // When no swap/transfer is in progress: desktop click on photo/name
   // opens the profile; on phones the whole card opens the action sheet.
@@ -563,13 +563,13 @@ function playerCard(model, id, gw, isStarter, opts) {
     <div class="pp-photo-wrap" ${calm && !mobileSheet ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}">
       ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
-      ${opts.captain === id && isStarter ? `<span class="pp-cap" title="${t('common.captain')}">C</span>` : ''}
-      ${opts.vice === id && isStarter ? `<span class="pp-cap pp-vice" title="${t('common.viceCaptain')}">V</span>` : ''}
-      ${isIn ? `<span class="pp-in" title="${t('pl.transferredIn')}">IN</span>` : ''}
+      ${opts.captain === id && isStarter ? `<span class="pp-cap" title="${t('common.captain')}">${t('badge.c')}</span>` : ''}
+      ${opts.vice === id && isStarter ? `<span class="pp-cap pp-vice" title="${t('common.viceCaptain')}">${t('badge.v')}</span>` : ''}
+      ${isIn ? `<span class="pp-in" title="${t('pl.transferredIn')}">${t('badge.in')}</span>` : ''}
       ${opts.benchOrd ? `<span class="bench-ord">${opts.benchOrd}</span>` : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
-    <div class="pp-name" ${pid}>${escapeHtml(p.web_name)}</div>
+    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}</div>
     ${isStarter ? `<div class="pp-fix">${opp || t('common.noFixture')}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${buttons}
@@ -598,7 +598,7 @@ function buildModeHtml(model, gw) {
           <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
           <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
         </div>
-        <div class="pp-name ${mob ? '' : 'clickable'}" ${mob ? '' : `data-pid="${id}"`}>${escapeHtml(p.web_name)}</div>
+        <div class="pp-name ${mob ? '' : 'clickable'}" ${mob ? '' : `data-pid="${id}"`}>${escapeHtml(playerName(p))}</div>
         <span class="pp-xp">${model.horizonTotal(id).toFixed(1)}</span>
         ${mob ? '' : `<div class="pc-actions"><button class="pc-btn pc-remove" data-id="${id}" title="${t('pl.removeTitle')}">✕</button></div>`}
       </div>`;
@@ -645,7 +645,7 @@ function pitchHtml(model, gw) {
     .sort((a, b) => (posOf(a) === 1 ? -1 : posOf(b) === 1 ? 1 : model.xp(b, gw) - model.xp(a, gw)));
   let subN = 0;
   const benchCards = benchIds.map((id) => {
-    const ord = posOf(id) === 1 ? 'GK' : `S${++subN}`;
+    const ord = posOf(id) === 1 ? t('badge.gk') : `${t('badge.sub')}${++subN}`;
     return playerCard(model, id, gw, false, { ...opts, benchOrd: ord });
   });
   // The bench is always exactly 4 spots - pad with generic slots while
@@ -670,22 +670,22 @@ function transfersBar(model, gw, ft) {
   const info = ft[gw];
   const list = view.transfers[gw] || [];
   const chips = list.map((tr, i) => `<span class="tr-chip">
-      ${inlinePhoto(state.playersById[tr.out])} ${escapeHtml(state.playersById[tr.out].web_name)}
+      ${inlinePhoto(state.playersById[tr.out])} ${escapeHtml(playerName(state.playersById[tr.out]))}
       <span class="tr-arrow">➜</span>
-      ${inlinePhoto(state.playersById[tr.in])} ${escapeHtml(state.playersById[tr.in].web_name)}
+      ${inlinePhoto(state.playersById[tr.in])} ${escapeHtml(playerName(state.playersById[tr.in]))}
       <button class="tr-x" data-gw="${gw}" data-idx="${i}" title="${t('common.cancel')}">✕</button>
     </span>`).join('');
   const pendingNote = view.pending
     ? `<span class="muted">${view.pending.type === 'in'
-        ? t('pl.pendingIn', { name: escapeHtml(state.playersById[view.pending.id].web_name) })
-        : t('pl.pendingOut', { name: escapeHtml(state.playersById[view.pending.id].web_name) })}
+        ? t('pl.pendingIn', { name: escapeHtml(playerName(state.playersById[view.pending.id])) })
+        : t('pl.pendingOut', { name: escapeHtml(playerName(state.playersById[view.pending.id])) })}
       <button class="link-btn" id="tr-cancel">${t('pl.cancelLower')}</button></span>`
     : '';
   return `<div class="transfers-bar">
     <span class="chips-label">${t('pl.gwTransfers', { gw: gwLabel(gw) })}</span>
-    <span class="ft-pill" title="${t('pl.ftTitle')}">FT: ${info.avail}</span>
+    <span class="ft-pill" title="${t('pl.ftTitle')}">${t('badge.ft')}: ${info.avail}</span>
     ${info.hits ? `<span class="ft-pill ft-hit">${t('pl.hit', { n: info.hits })}</span>` : ''}
-    ${info.free ? `<span class="ft-pill ft-free">${t('pl.movesFree', { chip: view.chips[gw] })}</span>` : ''}
+    ${info.free ? `<span class="ft-pill ft-free">${t('pl.movesFree', { chip: t(`chipShort.${view.chips[gw]}`) })}</span>` : ''}
     ${chips || `<span class="muted">${t('pl.noMoves')}</span>`}
     ${pendingNote}
   </div>`;
@@ -720,7 +720,7 @@ function sideList(model, gw) {
     if (pendingOut && p.element_type !== pendingOut.element_type) return false;
     if (view.filterPos !== 'all' && p.element_type !== +view.filterPos) return false;
     if (view.maxPrice && p.now_cost / 10 > +view.maxPrice) return false;
-    if (q && !`${p.first_name} ${p.second_name} ${p.web_name}`.toLowerCase().includes(q)) return false;
+    if (q && !`${p.first_name} ${p.second_name} ${p.web_name} ${playerName(p)}`.toLowerCase().includes(q)) return false;
     return true;
   });
   const sorters = {
@@ -740,12 +740,12 @@ function sideList(model, gw) {
     const title = clubFull ? t('pl.max3')
       : tooDear ? t('pl.overBudget')
       : isFirst ? t('pl.addToSquad')
-      : pendingOut ? t('pl.transferInFor', { name: pendingOut.web_name }) : t('pl.transferInto', { gw: gwLabel(gw) });
+      : pendingOut ? t('pl.transferInFor', { name: playerName(pendingOut) }) : t('pl.transferInto', { gw: gwLabel(gw) });
     return `<div class="side-row">
       <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">${playerPhoto(p, 'row-photo')}</span>
       <div class="side-info clickable" data-pid="${p.id}">
-        <span class="player-name">${escapeHtml(p.web_name)}</span>
-        <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${state.teamsById[p.team].short_name} · ${fmtPrice(p.now_cost)}</span>
+        <span class="player-name">${escapeHtml(playerName(p))}</span>
+        <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span>
         <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>
       <span class="side-xp" title="${t('pl.sideXpTitle')}">${model.horizonTotal(p.id).toFixed(1)}</span>
@@ -800,7 +800,7 @@ export async function renderPlanner(root) {
 
   const gwChips = model.gws
     .map((e) => {
-      const marks = [view.chips[e], (view.transfers[e] || []).length ? `${view.transfers[e].length}↔` : null]
+      const marks = [view.chips[e] ? t(`chipShort.${view.chips[e]}`) : null, (view.transfers[e] || []).length ? `${view.transfers[e].length}↔` : null]
         .filter(Boolean).join(' ');
       return `<button class="gw-chip ${e === gw ? 'active' : ''}" data-gw="${e}">${gwLabel(e)}${marks ? ` · ${marks}` : ''}</button>`;
     })
@@ -828,7 +828,8 @@ export async function renderPlanner(root) {
         <div class="gw-chips" id="pl-drafts" title="${t('pl.draftsTitle')}">
           ${DRAFTS.map((s) => {
             const meta = s === slot ? { n: view.baseSquad.length, xp: Math.round(horizonTotal) } : draftMeta(s);
-            const label = meta && meta.n ? `${s} · ${meta.xp ?? meta.n}` : s;
+            const letter = t(`draft.${s}`);
+            const label = meta && meta.n ? `${letter} · ${meta.xp ?? meta.n}` : letter;
             return `<button class="gw-chip ${s === slot ? 'active' : ''}" data-draft="${s}">${label}</button>`;
           }).join('')}
         </div>
@@ -836,7 +837,7 @@ export async function renderPlanner(root) {
       <div class="toolbar" style="border-bottom:none;padding-top:10px">
         <div class="gw-chips">${gwChips}</div>
         <span class="spacer"></span>
-        <span class="result-count">${formationLabel}${lineup.captain ? ` · C: <strong>${escapeHtml(state.playersById[lineup.captain].web_name)}</strong>` : ''} · ${t('pl.gwForecast', { gw: gwLabel(gw) })} <strong>${gwForecast(model, gw, ft).toFixed(1)} ${t('pl.pts')}</strong>${isFirst ? '' : ` ${t('pl.autoLineup')}`}</span>
+        <span class="result-count">${formationLabel}${lineup.captain ? ` · ${t('pl.capLabel')}: <strong>${escapeHtml(playerName(state.playersById[lineup.captain]))}</strong>` : ''} · ${t('pl.gwForecast', { gw: gwLabel(gw) })} <strong>${gwForecast(model, gw, ft).toFixed(1)} ${t('pl.pts')}</strong>${isFirst ? '' : ` ${t('pl.autoLineup')}`}</span>
       </div>
       ${chipsBar(model, gw)}
       ${transfersBar(model, gw, ft)}
@@ -917,13 +918,13 @@ export async function renderPlanner(root) {
   root.querySelector('#pl-copy')?.addEventListener('click', async (e) => {
     const label = (id) => {
       const p = state.playersById[id];
-      return `${state.positionsById[p.element_type].singular_name_short}  ${p.web_name} (${state.teamsById[p.team].short_name}) ${fmtPrice(p.now_cost)}${lineup.captain === id ? ' (C)' : ''}`;
+      return `${posShort(state.positionsById[p.element_type].singular_name_short)}  ${playerName(p)} (${teamShort(state.teamsById[p.team])}) ${fmtPrice(p.now_cost)}${lineup.captain === id ? ` (${t('badge.c')})` : ''}`;
     };
     const bench = squad.filter((id) => !lineup.starters.includes(id));
     const moves = Object.entries(view.transfers)
-      .map(([e, list]) => `GW${e}: ${list.map((t) => `${state.playersById[t.out].web_name} ➜ ${state.playersById[t.in].web_name}`).join(', ')}`)
+      .map(([e, list]) => `${gwLabel(e)}: ${list.map((tr) => `${playerName(state.playersById[tr.out])} ➜ ${playerName(state.playersById[tr.in])}`).join(', ')}`)
       .join('\n');
-    const text = `amitfpl plan · GW${gw} squad · ${fmtPrice(totalCost)}\nXI:\n${lineup.starters.map(label).join('\n')}\nBench:\n${bench.map(label).join('\n')}${moves ? `\nTransfers:\n${moves}` : ''}`;
+    const text = `${t('pl.copyHead', { gw: gwLabel(gw), cost: fmtPrice(totalCost) })}\n${t('pl.copyXi')}\n${lineup.starters.map(label).join('\n')}\n${t('common.bench')}:\n${bench.map(label).join('\n')}${moves ? `\n${t('pl.copyTransfers')}\n${moves}` : ''}`;
     try {
       await navigator.clipboard.writeText(text);
       e.target.textContent = t('pl.copied');

@@ -2,7 +2,7 @@
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
-import { t, haMark, gwLabel } from './i18n.js';
+import { t, haMark, gwLabel, playerName, teamShort } from './i18n.js';
 
 const view = { diffMax: 10 };
 
@@ -28,7 +28,7 @@ function rowsHtml(players, extraCols) {
 
 const HEAD = () => `<th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
   <th class="num no-sort">${t('common.price')}</th><th class="num no-sort">${t('common.sel')}</th>
-  <th class="num no-sort" title="${t('scout.xpTitle')}">xP</th>`;
+  <th class="num no-sort" title="${t('scout.xpTitle')}">${t('stat.xp')}</th>`;
 
 export async function renderScout(root) {
   const els = state.bootstrap.elements;
@@ -46,9 +46,9 @@ export async function renderScout(root) {
       const cells = top
         .map(({ p, xp }, i) => {
           const opp = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e)
-            .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})`)
+            .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
             .join(', ');
-          return `<td><span class="clickable" data-pid="${p.id}">${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(p.web_name)}${i === 0 ? '</strong>' : ''}</span>
+          return `<td><span class="clickable" data-pid="${p.id}">${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(playerName(p))}${i === 0 ? '</strong>' : ''}</span>
             <span class="muted">${xp.toFixed(1)} · ${opp || '-'}</span></td>`;
         })
         .join('');
@@ -81,7 +81,7 @@ export async function renderScout(root) {
   const creatorRows = creators
     .map(({ p, prob }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
-        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})`)
+        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
         .join(', ');
       const pct = Math.round(prob * 100);
       return `<tr>
@@ -97,7 +97,7 @@ export async function renderScout(root) {
   const scorerRows = scorers
     .map(({ p, prob }, i) => {
       const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
-        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${state.teamsById[f.opponent].short_name} (${haMark(f.isHome)})`)
+        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
         .join(', ');
       const pct = Math.round(prob * 100);
       return `<tr>

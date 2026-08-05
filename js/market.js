@@ -68,8 +68,8 @@ function moversCard(trends) {
     <div class="trend-grid" style="padding:4px 16px 14px">
       ${section(t('market.priceRisers'), priceMoves.slice(0, 5).map((m) => row(m, signed(m.dPrice, 1))).join(''))}
       ${section(t('market.priceFallers'), priceMoves.slice(-5).reverse().filter((m) => m.dPrice < 0).map((m) => row(m, signed(m.dPrice, 1))).join(''))}
-      ${section(t('market.ownClimbers'), ownMoves.slice(0, 5).map((m) => row(m, signed(m.dOwn, 1, 'pp'))).join(''))}
-      ${section(t('market.ownDrops'), ownMoves.slice(-5).reverse().filter((m) => m.dOwn < 0).map((m) => row(m, signed(m.dOwn, 1, 'pp'))).join(''))}
+      ${section(t('market.ownClimbers'), ownMoves.slice(0, 5).map((m) => row(m, signed(m.dOwn, 1, t('unit.pp')))).join(''))}
+      ${section(t('market.ownDrops'), ownMoves.slice(-5).reverse().filter((m) => m.dOwn < 0).map((m) => row(m, signed(m.dOwn, 1, t('unit.pp')))).join(''))}
     </div>
   </div>`;
 }
