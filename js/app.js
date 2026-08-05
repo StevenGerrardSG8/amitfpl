@@ -286,13 +286,41 @@ async function main() {
   }, 30000);
 
   // ⓘ method explainers: one delegated handler for every card's popover.
+  // The pop is fixed-positioned and clamped to the viewport so it never gets
+  // clipped by card overflow or the screen edge (flips above when needed).
+  const closeInfoPops = (except) => {
+    document.querySelectorAll('.info-wrap.open').forEach((w) => {
+      if (w === except) return;
+      w.classList.remove('open');
+      const p = w.querySelector('.info-pop');
+      if (p) p.removeAttribute('style');
+    });
+  };
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('.info-btn');
-    document.querySelectorAll('.info-wrap.open').forEach((w) => {
-      if (!btn || w !== btn.parentElement) w.classList.remove('open');
-    });
-    if (btn) btn.parentElement.classList.toggle('open');
+    closeInfoPops(btn ? btn.parentElement : null);
+    if (!btn) return;
+    const wrap = btn.parentElement;
+    const pop = wrap.querySelector('.info-pop');
+    if (wrap.classList.toggle('open') && pop) {
+      const margin = 8;
+      const r = btn.getBoundingClientRect();
+      const width = Math.min(340, window.innerWidth - margin * 2);
+      const start = document.documentElement.dir === 'rtl' ? r.right - width : r.left;
+      const left = Math.max(margin, Math.min(start, window.innerWidth - width - margin));
+      pop.style.position = 'fixed';
+      pop.style.width = `${width}px`;
+      pop.style.left = `${left}px`;
+      pop.style.top = `${r.bottom + 6}px`;
+      const h = pop.offsetHeight;
+      if (r.bottom + 6 + h > window.innerHeight - margin) {
+        pop.style.top = `${Math.max(margin, r.top - 6 - h)}px`;
+      }
+    } else if (pop) {
+      pop.removeAttribute('style');
+    }
   });
+  window.addEventListener('scroll', () => closeInfoPops(null), { capture: true, passive: true });
 
   // Power-user shortcut: "/" jumps to the Players search from anywhere.
   document.addEventListener('keydown', (e) => {
