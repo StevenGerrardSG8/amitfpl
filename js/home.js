@@ -1,26 +1,12 @@
-// Home dashboard: the at-a-glance landing view - next gameweek's
-// fixtures with kickoff times, plus quick summaries that deep-link
-// into the full tools.
-import { state, fmtPrice, num, escapeHtml } from './state.js';
+// Home dashboard: as clean as possible. One CTA, next GW at a glance,
+// and just the two most personal/actionable widgets - everything else
+// (full xG/clean-sheet forecasts, scorer odds) already lives one tap
+// away in Fixtures/Scout, so it doesn't need to be repeated here too.
+import { state, fmtPrice, escapeHtml } from './state.js';
 import { teamBadge, playerCell, infoNote } from './ui.js';
-import { loadBaseline, buildModel, teamForecast } from './model.js';
+import { loadBaseline, buildModel } from './model.js';
 import { watchlist } from './drawer.js';
-import { t, locale, haMark, gwName, gwLabel, isHe, teamShort } from './i18n.js';
-
-// One-time intro strip: what the product is, right on the page (people
-// reflexively close popups). Dismissed state persists per device.
-function introStrip() {
-  let dismissed = null;
-  try { dismissed = localStorage.getItem('amitfpl:introDismissed'); } catch { /* private mode */ }
-  if (dismissed) return '';
-  return `<div class="intro-strip" id="intro-strip">
-    <button class="intro-x" id="intro-x" title="${t('common.close')}" aria-label="${t('common.close')}">✕</button>
-    <div class="intro-name">amit<strong>fpl</strong></div>
-    <div class="intro-slogan">${t('intro.slogan')}</div>
-    <p class="intro-lines">${t('intro.line1')}</p>
-    <p class="intro-lines">${t('intro.line2')}</p>
-  </div>`;
-}
+import { t, locale, gwName, isHe, teamShort } from './i18n.js';
 
 // The one-tap path Itay asked for: upload your squad, get the AI read.
 // One friendly strip, one button - no wall of tools.
@@ -66,13 +52,20 @@ function fixtureCards() {
   const h = Math.floor((left % 86400000) / 3600000);
   // Deadline day (under 24h to go): the hero strip turns urgent.
   const deadlineDay = left > 0 && left < 86400000;
+  const count = left > 0
+    ? (deadlineDay ? t('home.hoursLeft', { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) }) : t('home.toGo', { d, h }))
+    : t('chrome.locked');
+  const when = dl.toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  // One calm line instead of a wrapped row of separate fragments: a
+  // headline (GW + countdown) and a lighter subline (deadline + fixture
+  // count) underneath it.
   return `
     <div class="hero-strip ${deadlineDay ? 'hero-urgent' : ''}">
-      ${deadlineDay ? `<span class="hero-alarm">🔥 ${t('home.deadlineDay')}</span>` : ''}
-      <span class="hero-gw">${escapeHtml(gwName(nxt.name))}</span>
-      <span>${t('home.fixtures', { n: fx.length })}</span>
-      <span>${t('home.deadline', { when: dl.toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>
-      <span class="hero-count">${left > 0 ? (deadlineDay ? t('home.hoursLeft', { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) }) : t('home.toGo', { d, h })) : t('chrome.locked')}</span>
+      <div class="hero-main">
+        <span class="hero-gw">${escapeHtml(gwName(nxt.name))}</span>
+        <span class="hero-count">${deadlineDay ? `🔥 ${count}` : count}</span>
+      </div>
+      <div class="hero-sub">${t('home.deadline', { when })} · ${t('home.fixtures', { n: fx.length })}</div>
       ${deadlineDay ? `<button class="hero-cta" data-goto="planner">${t('home.toPlanner')}</button>` : ''}
     </div>
     <div class="card" style="margin-bottom:16px">
@@ -98,19 +91,6 @@ export async function renderHome(root) {
   await loadBaseline();
   const model = buildModel(5);
   const gw = model.gws[0];
-  const forecast = teamForecast(gw);
-
-  const goalsRows = mini(forecast.slice(0, 4).map(({ team, opp, isHome, xg }) => `<tr>
-      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</td>
-      <td class="muted">${t('common.vs')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</td>
-      <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
-    </tr>`).join(''));
-
-  const csRows = mini([...forecast].sort((a, b) => b.cs - a.cs).slice(0, 4).map(({ team, opp, isHome, cs }) => `<tr>
-      <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</td>
-      <td class="muted">${t('common.vs')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</td>
-      <td class="num"><span class="cs-pill ${cs >= 0.4 ? 'cs-hi' : ''}">${Math.round(cs * 100)}%</span></td>
-    </tr>`).join(''));
 
   const captains = state.bootstrap.elements
     .filter((p) => p.status === 'a')
@@ -120,16 +100,6 @@ export async function renderHome(root) {
   const capRows = mini(captains.map(({ p, xp }) => `<tr>
       <td>${playerCell(p)}</td>
       <td class="num"><span class="pp-xp" style="margin:0">${xp.toFixed(1)}</span></td>
-    </tr>`).join(''));
-
-  const scorers = state.bootstrap.elements
-    .filter((p) => p.status === 'a')
-    .map((p) => ({ p, prob: model.goalChance(p.id, gw) }))
-    .sort((a, b) => b.prob - a.prob)
-    .slice(0, 4);
-  const scorerRows = mini(scorers.map(({ p, prob }) => `<tr>
-      <td>${playerCell(p)}</td>
-      <td class="num"><span class="cs-pill cs-hi">${Math.round(prob * 100)}%</span></td>
     </tr>`).join(''));
 
   const watched = watchlist().map((id) => state.playersById[id]).filter(Boolean);
@@ -142,14 +112,10 @@ export async function renderHome(root) {
     : `<div class="note">${t('home.watchEmpty')}</div>`;
 
   root.innerHTML = `
-    ${introStrip()}
     ${analyzeCta()}
     ${fixtureCards()}
     <div class="widget-grid">
-      ${widget(t('home.xgTitle', { gw: gwLabel(gw) }), goalsRows, 'fixtures', t('home.fullForecast'), 'info.forecast')}
-      ${widget(t('home.csTitle'), csRows, 'fixtures', t('home.fullForecast'), 'info.forecast')}
       ${widget(t('home.capTitle'), capRows, 'scout', t('home.gotoScout'), 'info.model')}
-      ${widget(t('home.scorersTitle'), scorerRows, 'scout', t('home.gotoScout'), 'info.goalChance')}
       ${widget(t('home.watchTitle'), watchRows, 'players', t('home.gotoPlayers'))}
     </div>`;
 
@@ -158,9 +124,4 @@ export async function renderHome(root) {
       document.querySelector(`.tab[data-tab="${b.dataset.goto}"]`)?.click();
     })
   );
-
-  root.querySelector('#intro-x')?.addEventListener('click', () => {
-    try { localStorage.setItem('amitfpl:introDismissed', '1'); } catch { /* private mode */ }
-    root.querySelector('#intro-strip')?.remove();
-  });
 }
