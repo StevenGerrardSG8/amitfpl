@@ -570,6 +570,29 @@ const STRINGS = {
   'pl.cmpEmpty': ['empty', 'ריקה'],
   'pl.cmpSame': ['identical squad', 'סגל זהה'],
   'pl.cmpNote': ['● marks the active draft. Switch drafts with the A/B/C buttons in the toolbar.', '● מסמן את הטיוטה הפעילה. מחליפים טיוטה עם כפתורי א/ב/ג בסרגל.'],
+  // Home: upload-your-squad strip
+  'home.acTitle': ['Upload your squad - get an instant AI read', 'העלו את הסגל שלכם - קבלו ניתוח AI מיידי'],
+  'home.acSub': ['Connect your FPL team ID once; captain call, transfer ideas and injury warnings come automatically.', 'מתחברים עם מזהה הקבוצה פעם אחת - קפטן מומלץ, רעיונות להעברות והתראות פציעה מגיעים אוטומטית.'],
+  'home.acBtn': ['Analyze my squad', 'נתחו את הסגל שלי'],
+  'home.acReadyTitle': ['Your squad analysis is ready', 'ניתוח הסגל שלכם מוכן'],
+  'home.acReadySub': ['Captain call, transfer ideas and lineup checks for the coming gameweek.', 'קפטן מומלץ, רעיונות להעברות ובדיקת הרכב למחזור הקרוב.'],
+  'home.acReadyBtn': ['See my analysis', 'לניתוח שלי'],
+
+  // My Team: AI squad analysis card
+  'an.title': ['🧠 AI squad analysis', '🧠 ניתוח AI של הסגל'],
+  'an.grade.top': ['Elite squad', 'סגל מצוין'],
+  'an.grade.good': ['Strong squad', 'סגל חזק'],
+  'an.grade.ok': ['Decent squad', 'סגל סביר'],
+  'an.grade.work': ['Needs work', 'דורש עבודה'],
+  'an.outlook': ['Your XI projects to <strong>{pts} pts</strong> in {gw} (captain counted twice).', 'ההרכב שלך צפוי להביא <strong>{pts} נק׳</strong> ב{gw} (הקפטן נספר כפול).'],
+  'an.flagged': ['<strong>{name}</strong> is flagged: {label} - have a replacement ready.', '<strong>{name}</strong> מסומן: {label} - כדאי להכין מחליף.'],
+  'an.capGood': ['Captaincy: <strong>{name}</strong> is the model\'s top pick ({xp} xP) - you\'re set.', 'קפטן: <strong>{name}</strong> הוא הבחירה המובילה של המודל ({xp} צפי) - אתם מסודרים.'],
+  'an.capSwap': ['Better captain: <strong>{rec}</strong> ({xp} xP) over {cur}.', 'קפטן עדיף: <strong>{rec}</strong> ({xp} צפי) במקום {cur}.'],
+  'an.transfer': ['Upgrade: <strong>{out} → {in}</strong> (+{gain} pts over 5 GWs, fits your bank).', 'שדרוג: <strong>{out} ← {in}</strong> (‎+{gain} נק׳ ל-5 מחזורים, נכנס בתקציב).'],
+  'an.noTransfer': ['No clear upgrade inside your budget ({bank} in the bank) - saving the transfer is fine.', 'אין שדרוג ברור בתקציב ({bank} בבנק) - אפשר לשמור את ההעברה בראש שקט.'],
+  'an.lineup': ['Lineup: start <strong>{ins}</strong> instead of {outs} (+{gain} xP this GW).', 'הרכב: הכניסו את <strong>{ins}</strong> במקום {outs} (‎+{gain} צפי במחזור).'],
+  'an.lineupOk': ['Your lineup matches the model\'s best XI - nothing to change.', 'ההרכב שלכם תואם ל-11 הטובים לפי המודל - אין מה לשנות.'],
+
   'myteam.import': ['Import to planner', 'ייבוא למתכנן'],
   'myteam.importTitle': ['Copy this squad into the planner\'s active draft (replaces its current plan)', 'העתקת הסגל הזה לטיוטה הפעילה במתכנן (מחליף את התוכנית הנוכחית בה)'],
 
@@ -644,7 +667,8 @@ const STRINGS = {
   'help.setpieces': ['<strong>{tab}</strong> - penalty, free-kick and corner takers.', '<strong>{tab}</strong> - בועטי פנדלים, בעיטות חופשיות וקרנות.'],
   'help.myteam': ['<strong>{tab}</strong> - connect your real FPL squad with your Team ID.', '<strong>{tab}</strong> - חיבור הסגל האמיתי שלכם ב-FPL עם מזהה הקבוצה.'],
   'help.whatsNew': ["What's new", 'מה חדש'],
-  'help.new1': ['<strong>Elo-powered model v2</strong> - team strength from daily ClubElo ratings, defensive-contribution and card modelling, penalty-taker boost.', '<strong>מודל v2 מבוסס Elo</strong> - חוזק קבוצות מדירוגי ClubElo יומיים, מידול תרומה הגנתית וכרטיסים, בונוס לבועטי פנדלים.'],
+  'help.new1': ['<strong>AI squad analysis</strong> - connect your team in My Team and get the captain call, transfer ideas and lineup checks automatically.', '<strong>ניתוח AI של הסגל</strong> - חברו את הקבוצה ב"הקבוצה שלי" וקבלו אוטומטית קפטן מומלץ, רעיונות להעברות ובדיקת הרכב.'],
+  'help.new5': ['<strong>Elo-powered model v2</strong> - team strength from daily ClubElo ratings, defensive-contribution and card modelling, penalty-taker boost.', '<strong>מודל v2 מבוסס Elo</strong> - חוזק קבוצות מדירוגי ClubElo יומיים, מידול תרומה הגנתית וכרטיסים, בונוס לבועטי פנדלים.'],
   'help.new2': ['<strong>Season planner</strong> - per-GW transfers with free-transfer banking and -4 hits, chips, share links between devices.', '<strong>מתכנן עונה</strong> - העברות לכל מחזור עם צבירת העברות חינם וקנסות 4-, צ׳יפים וקישורי שיתוף בין מכשירים.'],
   'help.new3': ['<strong>Predicted lineups</strong>, <strong>scoring & assist chances</strong>, <strong>market movers</strong> and <strong>price trend charts</strong> in player profiles.', '<strong>הרכבים צפויים</strong>, <strong>סיכויי הבקעה ובישול</strong>, <strong>תזוזות שוק</strong> ו<strong>גרפי מגמת מחיר</strong> בפרופילי שחקנים.'],
   'help.new4': ['<strong>Telegram alerts</strong> - deadline reminders and watchlist news, sent from the cloud.', '<strong>התראות טלגרם</strong> - תזכורות דדליין וחדשות על שחקני המעקב, נשלחות מהענן.'],
@@ -692,7 +716,7 @@ function helpHtml() {
     </div>
     <h2 style="margin:18px 0 12px">${t('help.whatsNew')}</h2>
     <div class="help-list">
-      ${[1, 2, 3, 4].map((i) => `<p>${t(`help.new${i}`)}</p>`).join('')}
+      ${[1, 2, 3, 4, 5].map((i) => `<p>${t(`help.new${i}`)}</p>`).join('')}
     </div>
     <h2 style="margin:18px 0 12px">${t('help.glossary')}</h2>
     <div class="help-list">

@@ -168,6 +168,77 @@ body {
 .more-menu .tab:hover { background: var(--bg); }
 .more-menu .tab.active { color: var(--accent); background: var(--accent-soft); }
 
+/* ---------- Upload-your-squad strip (Home) ---------- */
+.analyze-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.analyze-cta .ac-icon { font-size: 26px; }
+.analyze-cta .ac-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.analyze-cta .ac-text strong { font-size: 15px; }
+.analyze-cta .ac-text span { color: var(--text-soft); font-size: 13px; }
+.analyze-cta .btn { white-space: nowrap; }
+@media (max-width: 640px) {
+  .analyze-cta { flex-wrap: wrap; }
+  .analyze-cta .btn { width: 100%; }
+}
+
+/* ---------- AI squad analysis card (My Team) ---------- */
+.an-card {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+[data-theme="dark"] .an-card { background: #1a2135; }
+.an-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.an-grade {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.an-grade-top { background: var(--green); color: #fff; }
+.an-grade-good { background: #d9f2e4; color: var(--green); }
+.an-grade-ok { background: #fdf1d7; color: var(--amber); }
+.an-grade-work { background: #fbe3e1; color: var(--red); }
+[data-theme="dark"] .an-grade-good { background: #16351f; }
+[data-theme="dark"] .an-grade-ok { background: #37290b; }
+[data-theme="dark"] .an-grade-work { background: #3a1512; }
+.an-outlook { margin: 8px 0 4px; color: var(--text-soft); }
+.an-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.an-list li { display: flex; gap: 9px; align-items: baseline; }
+.an-list .an-ic { flex: none; }
+
 .offline-bar {
   background: #b06f00;
   color: #fff;

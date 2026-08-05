@@ -22,6 +22,22 @@ function introStrip() {
   </div>`;
 }
 
+// The one-tap path Itay asked for: upload your squad, get the AI read.
+// One friendly strip, one button - no wall of tools.
+function analyzeCta() {
+  let teamId = null;
+  try { teamId = localStorage.getItem('amitfpl:teamId'); } catch { /* private mode */ }
+  const k = teamId ? 'Ready' : '';
+  return `<div class="analyze-cta">
+    <span class="ac-icon">🧠</span>
+    <div class="ac-text">
+      <strong>${t(`home.ac${k}Title`)}</strong>
+      <span>${t(`home.ac${k}Sub`)}</span>
+    </div>
+    <button class="btn" data-goto="myteam">${t(`home.ac${k}Btn`)}</button>
+  </div>`;
+}
+
 function fixtureCards() {
   const nxt = state.nextEvent;
   if (!nxt) return '';
@@ -125,6 +141,7 @@ export async function renderHome(root) {
 
   root.innerHTML = `
     ${introStrip()}
+    ${analyzeCta()}
     ${fixtureCards()}
     <div class="widget-grid">
       ${widget(t('home.xgTitle', { gw: gwLabel(gw) }), goalsRows, 'fixtures', t('home.fullForecast'), 'info.forecast')}

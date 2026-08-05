@@ -3,6 +3,7 @@ import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, fixtureDifficulty, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { importSquad } from './planner.js';
+import { analyzeSquad, analysisHtml } from './analyze.js';
 import { t, haMark, gwLabel, posShort, playerName, teamShort } from './i18n.js';
 
 let model = null;
@@ -220,7 +221,11 @@ export async function renderMyTeam(root) {
     const starters = picks.picks.filter((p) => p.position <= 11);
     const bench = picks.picks.filter((p) => p.position > 11);
     squadHtml = `
-      <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw) })} ${infoNote('info.model')}
+      <div class="an-card" id="mt-analysis">
+        <div class="skel skel-block" style="height:120px"></div>
+      </div>`;
+    squadHtml += `
+      <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw ?? state.nextEvent?.id) })} ${infoNote('info.model')}
         <button class="link-btn" id="mt-import" title="${t('myteam.importTitle')}">${t('myteam.import')}</button>
       </div>
       <div class="table-wrap">
@@ -268,4 +273,17 @@ export async function renderMyTeam(root) {
     });
     document.querySelector('.tab[data-tab="planner"]')?.click();
   });
+
+  // The AI read of the squad - fills in async so the page never waits.
+  const anMount = root.querySelector('#mt-analysis');
+  if (anMount) {
+    analyzeSquad({
+      squad: picks.picks.map((x) => x.element),
+      starters: picks.picks.filter((x) => x.position <= 11).map((x) => x.element),
+      captain: picks.picks.find((x) => x.is_captain)?.element || null,
+      bank: entry.last_deadline_bank || 0,
+    }).then((a) => {
+      anMount.innerHTML = analysisHtml(a);
+    }).catch(() => anMount.remove());
+  }
 }

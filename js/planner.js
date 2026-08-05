@@ -242,6 +242,27 @@ function dropTransfer(gw, idx) {
 
 /* ---------------- optimizer ---------------- */
 
+// How much each squad slot is worth, best player in the position group
+// first. Roughly the chance that slot's player starts a given week: the
+// XI slots count in full, bench slots barely. Optimizing this - instead
+// of the raw sum of all 15 - keeps the budget in the starting lineup,
+// so near-zero "enabler" picks sit on the bench instead of up front.
+const SLOT_WEIGHTS = {
+  1: [1, 0.1],
+  2: [1, 1, 1, 0.7, 0.25],
+  3: [1, 1, 1, 0.7, 0.25],
+  4: [1, 0.8, 0.35],
+};
+
+function weightedSquadScore(squad, score) {
+  let total = 0;
+  for (const pos of [1, 2, 3, 4]) {
+    const vals = squad.filter((id) => posOf(id) === pos).map((id) => score[id]).sort((a, b) => b - a);
+    for (let i = 0; i < vals.length; i++) total += vals[i] * (SLOT_WEIGHTS[pos][i] ?? 0);
+  }
+  return total;
+}
+
 function buildOptimalSquad(model) {
   const score = {};
   const pools = { 1: [], 2: [], 3: [], 4: [] };
@@ -266,6 +287,7 @@ function buildOptimalSquad(model) {
       taken++;
     }
   }
+  let curScore = weightedSquadScore(squad, score);
   for (let iter = 0; iter < 300; iter++) {
     let best = null;
     for (let i = 0; i < squad.length; i++) {
@@ -275,12 +297,14 @@ function buildOptimalSquad(model) {
         if (cost(squad) - cur.now_cost + cand.now_cost > BUDGET) continue;
         const counts = clubCounts(squad.filter((id) => id !== cur.id));
         if ((counts[cand.team] || 0) >= MAX_PER_CLUB) continue;
-        const delta = score[cand.id] - score[cur.id];
-        if (delta > 0.001 && (!best || delta > best.delta)) best = { i, cand: cand.id, delta };
+        const trial = squad.map((id, j) => (j === i ? cand.id : id));
+        const s = weightedSquadScore(trial, score);
+        if (s > curScore + 0.001 && (!best || s > best.s)) best = { i, cand: cand.id, s };
       }
     }
     if (!best) break;
     squad[best.i] = best.cand;
+    curScore = best.s;
   }
   return squad;
 }
@@ -291,7 +315,7 @@ for (let d = 3; d <= 5; d++)
     for (let f = 1; f <= 3; f++)
       if (d + m + f === 10) FORMATIONS.push([d, m, f]);
 
-function bestXI(model, squadIds, eventId) {
+export function bestXI(model, squadIds, eventId) {
   const byPos = { 1: [], 2: [], 3: [], 4: [] };
   for (const id of squadIds) byPos[posOf(id)].push({ id, xp: model.xp(id, eventId) });
   for (const pos of [1, 2, 3, 4]) byPos[pos].sort((a, b) => b.xp - a.xp);
