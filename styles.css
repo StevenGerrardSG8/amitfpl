@@ -1133,23 +1133,31 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .fx-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 10px;
   padding: 14px 16px 16px;
 }
 .fx-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
   background: #fafbfe;
+  min-width: 0;
+  overflow: hidden;
 }
 [data-theme="dark"] .fx-card { background: #1a2135; }
-.fx-team { display: flex; align-items: center; gap: 6px; font-weight: 700; }
-.fx-team .team-badge { width: 22px; height: 22px; }
+/* Teams on the top row (full width for localised club names, ellipsis
+   as a last resort), kickoff time on its own line below. */
+.fx-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.fx-team { display: flex; align-items: center; gap: 6px; font-weight: 700; min-width: 0; }
+.fx-row .fx-team:last-child { justify-content: flex-end; }
+.fx-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-team .team-badge { width: 22px; height: 22px; flex: none; }
+.fx-vs { flex: none; }
+.fx-card .fx-time { text-align: center; }
 .fx-mid { display: flex; flex-direction: column; align-items: center; }
 .fx-vs { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; }
 .fx-time { font-size: 11px; color: var(--text-soft); white-space: nowrap; }

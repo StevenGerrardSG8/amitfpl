@@ -19,9 +19,12 @@ function fixtureCards() {
     const ko = new Date(f.kickoff_time);
     const when = ko.toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return `<div class="fx-card">
-      <div class="fx-team">${teamBadge(h.id)}<span>${escapeHtml(teamShort(h))}</span></div>
-      <div class="fx-mid"><span class="fx-vs">${t('common.vs')}</span><span class="fx-time">${when}</span></div>
-      <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(teamShort(a))}</span></div>
+      <div class="fx-row">
+        <div class="fx-team">${teamBadge(h.id)}<span>${escapeHtml(teamShort(h))}</span></div>
+        <span class="fx-vs">${t('common.vs')}</span>
+        <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(teamShort(a))}</span></div>
+      </div>
+      <div class="fx-time">${when}</div>
     </div>`;
   }).join('');
   const dl = new Date(nxt.deadline_time);

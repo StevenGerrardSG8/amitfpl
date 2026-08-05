@@ -153,16 +153,16 @@ const STRINGS = {
   'chrome.offline': ['Offline - showing saved data', 'אין חיבור - מוצגים נתונים שמורים'],
   'chrome.loadError': ["Couldn't load FPL data ({msg}). Refresh to retry.", 'טעינת נתוני FPL נכשלה ({msg}). רעננו כדי לנסות שוב.'],
   'chrome.updatedNow': ['Updated just now', 'עודכן ממש עכשיו'],
-  'chrome.updatedMin': ['Updated {m}m ago', 'עודכן לפני {m} דק׳'],
-  'chrome.updatedHr': ['Updated {h}h {m}m ago', 'עודכן לפני {h} שע׳ {m} דק׳'],
+  'chrome.updatedMin': ['Updated {m}m ago', 'עודכן לפני {m} דקות'],
+  'chrome.updatedHr': ['Updated {h}h {m}m ago', 'עודכן לפני {h} שעות ו-{m} דקות'],
   'chrome.refreshFailed': ['refresh failed', 'הרענון נכשל'],
   'chrome.deadline': ['{gw} deadline', 'דדליין {gw}'],
   'chrome.inTime': ['in {count}', 'בעוד {count}'],
   'chrome.locked': ['locked', 'ננעל'],
-  'time.dh': ['{d}d {h}h', '{d} ימ׳ {h} שע׳'],
-  'time.hm': ['{h}h {m}m', '{h} שע׳ {m} דק׳'],
-  'time.m': ['{m}m', '{m} דק׳'],
-  'footer.text': ['amitfpl v2 · data: official Fantasy Premier League API + ClubElo · refreshes every 30 min · ', 'amitfpl v2 · נתונים: FPL הרשמי + ClubElo · מתעדכן כל 30 דק׳ · '],
+  'time.dh': ['{d}d {h}h', '{d} ימים ו-{h} שעות'],
+  'time.hm': ['{h}h {m}m', '{h} שעות ו-{m} דקות'],
+  'time.m': ['{m}m', '{m} דקות'],
+  'footer.text': ['amitfpl v2 · data: official Fantasy Premier League API + ClubElo · refreshes every 30 min · ', 'amitfpl v2 · נתונים: FPL הרשמי + ClubElo · מתעדכן כל 30 דקות · '],
   'footer.source': ['source', 'קוד מקור'],
 
   /* ---- tabs ---- */
@@ -259,7 +259,7 @@ const STRINGS = {
   /* ---- home ---- */
   'home.fixtures': ['{n} fixtures', '{n} משחקים'],
   'home.deadline': ['deadline {when}', 'דדליין {when}'],
-  'home.toGo': ['{d}d {h}h to go', 'נותרו {d} ימ׳ {h} שע׳'],
+  'home.toGo': ['{d}d {h}h to go', 'נותרו {d} ימים ו-{h} שעות'],
   'home.fixturesTitle': ['{gw} fixtures - your local time', 'משחקי {gw} - בשעון המקומי שלך'],
   'home.xgTitle': ['Expected goals - {gw}', 'שערים צפויים - {gw}'],
   'home.csTitle': ['Clean sheet chances', 'סיכויי שער נקי'],
@@ -410,7 +410,7 @@ const STRINGS = {
   'mt.goals': ['Goals', 'שערים'],
   'mt.assists': ['Assists', 'בישולים'],
   'mt.bonus': ['Bonus', 'בונוס'],
-  'mt.blurb': ['Scores and FPL events (goals, assists, bonus) appear as games are played - data refreshes every 30 min.', 'תוצאות ואירועי FPL (שערים, בישולים, בונוס) מופיעים תוך כדי המשחקים - הנתונים מתעדכנים כל 30 דק׳.'],
+  'mt.blurb': ['Scores and FPL events (goals, assists, bonus) appear as games are played - data refreshes every 30 min.', 'תוצאות ואירועי FPL (שערים, בישולים, בונוס) מופיעים תוך כדי המשחקים - הנתונים מתעדכנים כל 30 דקות.'],
   'mt.noFixtures': ['No fixtures scheduled for this gameweek yet.', 'אין עדיין משחקים מתוכננים למחזור הזה.'],
 
   /* ---- set pieces ---- */
@@ -443,7 +443,7 @@ const STRINGS = {
   'myteam.squadSoon': ['Your squad will appear here once the season starts (picks are public after the GW1 deadline, Aug 21).', 'הסגל שלך יופיע כאן כשהעונה תתחיל (הסגלים נחשפים אחרי דדליין מחזור 1, ‏21 באוגוסט).'],
   'myteam.changeId': ['Change team ID', 'החלפת מזהה קבוצה'],
   'myteam.livePts': ['{gw} live', '{gw} בשידור חי'],
-  'myteam.liveMin': ["' played", ' דק׳ משחק'],
+  'myteam.liveMin': ["' played", ' דקות משחק'],
   'myteam.leagues': ['My leagues', 'הליגות שלי'],
   'myteam.leagueName': ['League', 'ליגה'],
   'myteam.leagueRank': ['Rank', 'דירוג'],
@@ -570,7 +570,7 @@ const STRINGS = {
 
   /* ---- deadline day & onboarding ---- */
   'home.deadlineDay': ['Deadline day!', 'יום דדליין!'],
-  'home.hoursLeft': ['{h}h {m}m left!', 'נותרו {h} שע׳ {m} דק׳!'],
+  'home.hoursLeft': ['{h}h {m}m left!', 'נותרו {h} שעות ו-{m} דקות!'],
   'home.toPlanner': ['Final touches in the planner →', 'ליטושים אחרונים במתכנן ←'],
   'ob.title': ['Welcome to amitfpl 👋', 'ברוכים הבאים ל-amitfpl 👋'],
   'ob.sub': ['Your personal FPL toolkit. The 60-second tour:', 'ערכת ה-FPL האישית שלך. סיור של 60 שניות:'],
