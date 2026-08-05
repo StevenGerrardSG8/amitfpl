@@ -1,6 +1,6 @@
 // Scout tab: captaincy shortlist, differentials, best value.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge } from './ui.js';
+import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { t, haMark, gwLabel, playerName, teamShort } from './i18n.js';
 
@@ -135,7 +135,7 @@ export async function renderScout(root) {
 
   root.innerHTML = `
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">${t('scout.topXpTitle', { gw: gwLabel(nextGw) })}</div>
+      <div class="section-title">${t('scout.topXpTitle', { gw: gwLabel(nextGw) })} ${infoNote('info.model')}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th class="num no-sort">#</th><th class="no-sort">${t('common.player')}</th>
@@ -147,7 +147,7 @@ export async function renderScout(root) {
       </div>
     </div>
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">${t('scout.scorersTitle', { gw: gwLabel(nextGw) })}</div>
+      <div class="section-title">${t('scout.scorersTitle', { gw: gwLabel(nextGw) })} ${infoNote('info.goalChance')}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th class="num no-sort">#</th><th class="no-sort">${t('common.player')}</th>
@@ -158,7 +158,7 @@ export async function renderScout(root) {
       </div>
     </div>
     <div class="card" style="margin-bottom:16px">
-      <div class="section-title">${t('scout.creatorsTitle', { gw: gwLabel(nextGw) })}</div>
+      <div class="section-title">${t('scout.creatorsTitle', { gw: gwLabel(nextGw) })} ${infoNote('info.assistChance')}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th class="num no-sort">#</th><th class="no-sort">${t('common.player')}</th>
@@ -169,7 +169,7 @@ export async function renderScout(root) {
       </div>
     </div>
     <div class="card">
-      <div class="section-title">${t('scout.capTitle')}</div>
+      <div class="section-title">${t('scout.capTitle')} ${infoNote('info.captaincy')}</div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr>
@@ -183,7 +183,7 @@ export async function renderScout(root) {
 
     <div class="card" style="margin-top:16px">
       <div class="toolbar">
-        <span class="section-title" style="padding:0">${t('scout.diffTitle')}</span>
+        <span class="section-title" style="padding:0">${t('scout.diffTitle')} ${infoNote('info.model')}</span>
         <span class="spacer"></span>
         <label>${t('scout.ownedLess')}</label>
         <select id="sc-diff">
@@ -199,7 +199,7 @@ export async function renderScout(root) {
     </div>
 
     <div class="card" style="margin-top:16px">
-      <div class="section-title">${t('scout.valueTitle')}</div>
+      <div class="section-title">${t('scout.valueTitle')} ${infoNote('info.value')}</div>
       <div class="note" style="padding-top:2px">${t('scout.valueNote')}</div>
       <div class="table-wrap">
         <table class="data">

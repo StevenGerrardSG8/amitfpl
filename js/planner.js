@@ -4,7 +4,7 @@
 // transfers per GW, free transfers bank up (max 5), extra moves cost
 // -4, Wildcard/Free Hit make a GW's moves free (FH reverts after).
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { playerPhoto, teamBadge, inlinePhoto, fixtureChips } from './ui.js';
+import { playerPhoto, teamBadge, inlinePhoto, fixtureChips, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
 import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort } from './i18n.js';
@@ -935,7 +935,7 @@ export async function renderPlanner(root) {
         <span class="result-count">
           ${squad.length}/15 · <strong>${fmtPrice(totalCost)}</strong> · ${t('pl.bank')}
           <strong class="${itb < 0 ? 'lo' : ''}">${fmtPrice(itb)}</strong> ·
-          ${t('pl.planXp')} <strong>${horizonTotal.toFixed(0)}</strong>${totalHits ? ` <span class="lo">${t('pl.hits', { n: totalHits })}</span>` : ''}
+          ${t('pl.planXp')} <strong>${horizonTotal.toFixed(0)}</strong> ${infoNote('info.model')}${totalHits ? ` <span class="lo">${t('pl.hits', { n: totalHits })}</span>` : ''}
         </span>
         <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareTitle')}">${t('pl.share')}</button>
         <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>${t('pl.copy')}</button>

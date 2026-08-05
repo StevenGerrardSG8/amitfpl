@@ -1,6 +1,6 @@
 // Market tab: price changes and transfer momentum.
 import { state, fmtPrice, num } from './state.js';
-import { fixtureChips, posBadge, playerCell, signed, fmtCount } from './ui.js';
+import { fixtureChips, posBadge, playerCell, signed, fmtCount, infoNote } from './ui.js';
 import { t } from './i18n.js';
 
 const COLUMNS = [
@@ -63,7 +63,7 @@ function moversCard(trends) {
   </div>`;
   return `<div class="card" style="margin-bottom:16px">
     <div class="toolbar" style="border-bottom:none;padding-bottom:0">
-      <span class="section-title" style="padding:0">${t('market.moversSince', { date: days[0] })}</span>
+      <span class="section-title" style="padding:0">${t('market.moversSince', { date: days[0] })} ${infoNote('info.movers')}</span>
     </div>
     <div class="trend-grid" style="padding:4px 16px 14px">
       ${section(t('market.priceRisers'), priceMoves.slice(0, 5).map((m) => row(m, signed(m.dPrice, 1))).join(''))}
@@ -108,7 +108,7 @@ function predictorCard() {
   </div>`;
   return `<div class="card" style="margin-bottom:16px">
     <div class="toolbar" style="border-bottom:none;padding-bottom:0">
-      <span class="section-title" style="padding:0">${t('market.predTitle')}</span>
+      <span class="section-title" style="padding:0">${t('market.predTitle')} ${infoNote('info.priceRadar')}</span>
       <span class="spacer"></span>
       <span class="result-count">${t('market.predBeta')}</span>
     </div>

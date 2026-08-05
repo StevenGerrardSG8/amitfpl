@@ -285,6 +285,15 @@ async function main() {
     renderDeadline();
   }, 30000);
 
+  // ⓘ method explainers: one delegated handler for every card's popover.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.info-btn');
+    document.querySelectorAll('.info-wrap.open').forEach((w) => {
+      if (!btn || w !== btn.parentElement) w.classList.remove('open');
+    });
+    if (btn) btn.parentElement.classList.toggle('open');
+  });
+
   // Power-user shortcut: "/" jumps to the Players search from anywhere.
   document.addEventListener('keydown', (e) => {
     if (e.key !== '/') return;

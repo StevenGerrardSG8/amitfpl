@@ -1,6 +1,6 @@
 import { getEntry, getPicks, fetchTeamSnapshot, fetchConfig } from './api.js';
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
-import { playerPhoto, teamBadge, fixtureDifficulty } from './ui.js';
+import { playerPhoto, teamBadge, fixtureDifficulty, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { importSquad } from './planner.js';
 import { t, haMark, gwLabel, posShort, playerName, teamShort } from './i18n.js';
@@ -220,7 +220,7 @@ export async function renderMyTeam(root) {
     const starters = picks.picks.filter((p) => p.position <= 11);
     const bench = picks.picks.filter((p) => p.position > 11);
     squadHtml = `
-      <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw) })}
+      <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw) })} ${infoNote('info.model')}
         <button class="link-btn" id="mt-import" title="${t('myteam.importTitle')}">${t('myteam.import')}</button>
       </div>
       <div class="table-wrap">

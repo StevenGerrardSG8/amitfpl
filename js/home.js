@@ -2,10 +2,25 @@
 // fixtures with kickoff times, plus quick summaries that deep-link
 // into the full tools.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { teamBadge, playerCell } from './ui.js';
+import { teamBadge, playerCell, infoNote } from './ui.js';
 import { loadBaseline, buildModel, teamForecast } from './model.js';
 import { watchlist } from './drawer.js';
 import { t, locale, haMark, gwName, gwLabel, isHe, teamShort } from './i18n.js';
+
+// One-time intro strip: what the product is, right on the page (people
+// reflexively close popups). Dismissed state persists per device.
+function introStrip() {
+  let dismissed = null;
+  try { dismissed = localStorage.getItem('amitfpl:introDismissed'); } catch { /* private mode */ }
+  if (dismissed) return '';
+  return `<div class="intro-strip" id="intro-strip">
+    <button class="intro-x" id="intro-x" title="${t('common.close')}" aria-label="${t('common.close')}">✕</button>
+    <div class="intro-name">amit<strong>fpl</strong></div>
+    <div class="intro-slogan">${t('intro.slogan')}</div>
+    <p class="intro-lines">${t('intro.line1')}</p>
+    <p class="intro-lines">${t('intro.line2')}</p>
+  </div>`;
+}
 
 function fixtureCards() {
   const nxt = state.nextEvent;
@@ -48,10 +63,10 @@ function fixtureCards() {
     </div>`;
 }
 
-function widget(title, rowsHtml, gotoTab, gotoLabel) {
+function widget(title, rowsHtml, gotoTab, gotoLabel, infoKey) {
   return `<div class="card widget">
     <div class="widget-head">
-      <span class="section-title" style="padding:0">${title}</span>
+      <span class="section-title" style="padding:0">${title}${infoKey ? ` ${infoNote(infoKey)}` : ''}</span>
       <button class="link-btn" data-goto="${gotoTab}">${gotoLabel} ${isHe() ? '←' : '→'}</button>
     </div>
     ${rowsHtml}
@@ -109,12 +124,13 @@ export async function renderHome(root) {
     : `<div class="note">${t('home.watchEmpty')}</div>`;
 
   root.innerHTML = `
+    ${introStrip()}
     ${fixtureCards()}
     <div class="widget-grid">
-      ${widget(t('home.xgTitle', { gw: gwLabel(gw) }), goalsRows, 'fixtures', t('home.fullForecast'))}
-      ${widget(t('home.csTitle'), csRows, 'fixtures', t('home.fullForecast'))}
-      ${widget(t('home.capTitle'), capRows, 'scout', t('home.gotoScout'))}
-      ${widget(t('home.scorersTitle'), scorerRows, 'scout', t('home.gotoScout'))}
+      ${widget(t('home.xgTitle', { gw: gwLabel(gw) }), goalsRows, 'fixtures', t('home.fullForecast'), 'info.forecast')}
+      ${widget(t('home.csTitle'), csRows, 'fixtures', t('home.fullForecast'), 'info.forecast')}
+      ${widget(t('home.capTitle'), capRows, 'scout', t('home.gotoScout'), 'info.model')}
+      ${widget(t('home.scorersTitle'), scorerRows, 'scout', t('home.gotoScout'), 'info.goalChance')}
       ${widget(t('home.watchTitle'), watchRows, 'players', t('home.gotoPlayers'))}
     </div>`;
 
@@ -123,4 +139,9 @@ export async function renderHome(root) {
       document.querySelector(`.tab[data-tab="${b.dataset.goto}"]`)?.click();
     })
   );
+
+  root.querySelector('#intro-x')?.addEventListener('click', () => {
+    try { localStorage.setItem('amitfpl:introDismissed', '1'); } catch { /* private mode */ }
+    root.querySelector('#intro-strip')?.remove();
+  });
 }

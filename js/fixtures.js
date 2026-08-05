@@ -1,5 +1,5 @@
 import { state, escapeHtml } from './state.js';
-import { teamBadge, fixtureDifficulty } from './ui.js';
+import { teamBadge, fixtureDifficulty, infoNote } from './ui.js';
 import { teamForecast } from './model.js';
 import { t, haMark, gwLabel, teamName, teamShort } from './i18n.js';
 
@@ -39,7 +39,7 @@ function forecastCard() {
   return `
     <div class="card" style="margin-bottom:16px">
       <div class="toolbar">
-        <span class="section-title" style="padding:0">${t('fx.forecastTitle')}</span>
+        <span class="section-title" style="padding:0">${t('fx.forecastTitle')} ${infoNote('info.forecast')}</span>
         <select id="fx-fc-gw">
           ${gws.map((e) => `<option value="${e}" ${e === gw ? 'selected' : ''}>${gwLabel(e)}</option>`).join('')}
         </select>
@@ -131,7 +131,7 @@ function swingsCard() {
   </tr>`;
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">${t('fx.swingsTitle')}</div>
+      <div class="section-title">${t('fx.swingsTitle')} ${infoNote('info.fdr')}</div>
       <div class="swing-grid">
         <div>
           <div class="note" style="padding:8px 16px 0"><strong class="hi">${t('fx.easier')}</strong>${t('fx.easierNote')}</div>
@@ -186,7 +186,7 @@ function rotationCard() {
     .join('');
   return `
     <div class="card" style="margin-top:16px">
-      <div class="section-title">${t('fx.rotationTitle')}</div>
+      <div class="section-title">${t('fx.rotationTitle')} ${infoNote('info.fdr')}</div>
       <div class="note" style="padding-top:2px">${t('fx.rotationNote')}</div>
       <div class="table-wrap">
         <table class="data">
@@ -260,7 +260,7 @@ export function renderFixtures(root) {
         </select>
         <span class="spacer"></span>
         <div class="legend">
-          <span>${t('fx.difficulty')}</span>
+          <span>${t('fx.difficulty')}</span>${infoNote('info.fdr')}
           <span class="fdr-chip fdr-1">1</span>
           <span class="fdr-chip fdr-2">2</span>
           <span class="fdr-chip fdr-3">3</span>

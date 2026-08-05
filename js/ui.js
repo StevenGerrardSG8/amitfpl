@@ -28,6 +28,13 @@ export function fixtureChips(teamId, count = 3) {
     .join(' ');
 }
 
+// Small ⓘ toggle explaining where a table's numbers come from and how
+// they're computed. Pure markup - a single delegated click handler in
+// app.js opens/closes the popovers.
+export function infoNote(key) {
+  return `<span class="info-wrap"><button class="info-btn" type="button" title="${t('info.how')}" aria-label="${t('info.how')}">ⓘ</button><span class="info-pop">${t(key)}</span></span>`;
+}
+
 // Tiny inline headshot for use next to a player's name in running text.
 export function inlinePhoto(p) {
   return playerPhoto(p, 'inline-photo');

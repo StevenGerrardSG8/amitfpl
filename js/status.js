@@ -1,6 +1,6 @@
 // Status tab: injuries & doubts, suspension watch.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
-import { fixtureChips, posBadge, playerCell } from './ui.js';
+import { fixtureChips, posBadge, playerCell, infoNote } from './ui.js';
 import { t, translateNews } from './i18n.js';
 
 // FPL bans: 5 yellows by GW19, 10 by GW32, 15 all season.
@@ -67,7 +67,7 @@ export function renderStatus(root) {
   root.innerHTML = `
     <div class="card">
       <div class="toolbar" style="border-bottom:none">
-        <span class="section-title" style="padding:0">${t('statusTab.title')}</span>
+        <span class="section-title" style="padding:0">${t('statusTab.title')} ${infoNote('info.status')}</span>
         <span class="spacer"></span>
         <label class="chk"><input type="checkbox" id="st-doubt" ${onlyDoubtful ? 'checked' : ''}/> ${t('statusTab.doubtOnly')}</label>
       </div>

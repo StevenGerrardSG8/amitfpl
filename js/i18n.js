@@ -584,6 +584,24 @@ const STRINGS = {
   'ob.item5': ['Language (EN/עב), dark mode and help (?) live in the top bar.', 'שפה (EN/עב), מצב כהה ועזרה (?) נמצאים בסרגל העליון.'],
   'ob.go': ["Let's go", 'יאללה, מתחילים'],
 
+  /* ---- intro strip (Home) ---- */
+  'intro.slogan': ['Win your mini-league with data, not gut feelings.', 'לנצח את המיני-ליגה עם דאטה, לא עם תחושות בטן.'],
+  'intro.line1': ['amitfpl is a Fantasy Premier League toolkit: an expected-points model for every player, a squad planner with transfer simulation, predicted lineups, a price-change radar and live match data.', 'amitfpl היא ערכת כלים לפנטזי של הפרמייר ליג: מודל נקודות צפויות לכל שחקן, מתכנן סגל עם סימולציית העברות, הרכבים צפויים, רדאר שינויי מחירים ונתוני משחקים חיים.'],
+  'intro.line2': ['Everything refreshes automatically from official data every 30 minutes - so picking a captain, planning chips and beating your rivals takes minutes, not hours.', 'הכל מתעדכן אוטומטית מנתונים רשמיים כל 30 דקות - כך שבחירת קפטן, תכנון צ׳יפים וניצחון על היריבים לוקחים דקות, לא שעות.'],
+
+  /* ---- ⓘ method explainers ---- */
+  'info.how': ['How is this computed?', 'איך זה מחושב?'],
+  'info.model': ['Our expected-points (xP) model blends each player\'s per-90 numbers (xG, xA, saves, bonus, defensive contribution) with projected minutes, then adjusts for the fixture using daily ClubElo team ratings - opponent strength, clean-sheet odds and home advantage. Data: the official FPL API + ClubElo, refreshed every 30 minutes.', 'מודל הנקודות הצפויות (צפי) משלב את נתוני ה-90 דקות של כל שחקן (שערים ובישולים צפויים, הצלות, בונוס, תרומה הגנתית) עם צפי דקות משחק, ומתאם לפי המשחק באמצעות דירוגי ClubElo יומיים - חוזק היריבה, סיכויי שער נקי ויתרון ביתיות. הנתונים: ה-API הרשמי של FPL ‏+ ClubElo, מתעדכנים כל 30 דקות.'],
+  'info.goalChance': ['Scoring chance = the probability of at least one goal, from a Poisson distribution over the player\'s expected goals (xG per 90 × projected minutes), scaled by how many goals his team is expected to score against this specific opponent (Elo-based).', 'סיכוי הבקעה = ההסתברות לפחות לשער אחד, לפי התפלגות פואסון על השערים הצפויים של השחקן (xG ל-90 דקות × צפי דקות), מותאם לכמות השערים שהקבוצה שלו צפויה להבקיע מול היריבה הספציפית (מבוסס Elo).'],
+  'info.assistChance': ['Assist chance = the probability of at least one assist, from a Poisson distribution over the player\'s expected assists, adjusted for the fixture the same way as goals.', 'סיכוי בישול = ההסתברות לפחות לבישול אחד, לפי התפלגות פואסון על הבישולים הצפויים של השחקן, מותאם למשחק באותה שיטה כמו שערים.'],
+  'info.captaincy': ['For each gameweek we rank every available player by model xP - the top three become the armband picks. Captain doubling isn\'t shown because it doesn\'t change the ranking.', 'לכל מחזור אנחנו מדרגים את כל השחקנים הזמינים לפי צפי המודל - שלושת הראשונים הם המועמדים לסרט. הכפלת הקפטן לא מוצגת כי היא לא משנה את הדירוג.'],
+  'info.forecast': ['Team goals come from the Elo gap between the sides (plus home advantage); the clean-sheet chance is the Poisson probability that the opponent scores zero given their expected goals.', 'שערי קבוצה נגזרים מפער ה-Elo בין הקבוצות (בתוספת יתרון ביתיות); סיכוי השער הנקי הוא הסתברות פואסון שהיריבה לא תבקיע בהינתן השערים הצפויים לה.'],
+  'info.value': ['Value = total points per £1M of price. Until the season gets going it uses last season\'s points.', 'תמורה = סך נקודות לכל מיליון ליש״ט של מחיר. עד שהעונה תתקדם החישוב מבוסס על נקודות העונה שעברה.'],
+  'info.fdr': ['Difficulty (1-5) comes from the opponent\'s venue-adjusted ClubElo rating - sharper than the official flat rating, which lumps all promoted sides together. When Elo is missing we fall back to the official FDR.', 'הקושי (1-5) נגזר מדירוג ה-ClubElo של היריבה מותאם למגרש - חד יותר מהדירוג הרשמי השטוח, שמקבץ את כל העולות יחד. כשאין Elo חוזרים ל-FDR הרשמי.'],
+  'info.priceRadar': ['FPL keeps its price algorithm secret. We estimate progress toward a change from net transfers this gameweek relative to the player\'s owner count - an indication, not a promise.', 'FPL שומרת את אלגוריתם המחירים בסוד. אנחנו מעריכים התקדמות לקראת שינוי לפי מאזן ההעברות במחזור ביחס למספר המחזיקים - אינדיקציה, לא הבטחה.'],
+  'info.movers': ['We sample every player\'s price and ownership once a day; movers show the change since tracking began.', 'אנחנו דוגמים מחיר ובעלות של כל שחקן פעם ביום; התזוזות מציגות את השינוי מאז תחילת המעקב.'],
+  'info.status': ['Availability flags and injury news come straight from the official FPL API - the same alerts the official site shows, refreshed every 30 minutes.', 'דגלי הכשירות וחדשות הפציעות מגיעים ישירות מה-API הרשמי של FPL - אותן התראות שמציג האתר הרשמי, מתעדכן כל 30 דקות.'],
+
   /* ---- accounts & sync ---- */
   'auth.signIn': ['Sign in', 'התחברות'],
   'auth.signInTitle': ['Sign in to sync your squad, plans and watchlist across devices', 'התחברו כדי לסנכרן סגל, תוכניות ורשימת מעקב בין מכשירים'],

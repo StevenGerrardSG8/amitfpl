@@ -2,7 +2,7 @@
 // to open a full profile - key stats, upcoming fixtures with model xP,
 // this season's gameweek log, and past-season history.
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
-import { playerPhoto, teamBadge, spBadges, fixtureDifficulty } from './ui.js';
+import { playerPhoto, teamBadge, spBadges, fixtureDifficulty, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { t, haMark, gwLabel, posShort, playerName, teamName, teamShort, isHe } from './i18n.js';
 
@@ -228,7 +228,7 @@ export async function openDrawer(id) {
   const sections = [];
   sections.push(await trendSection(id));
   sections.push(`
-    <div class="section-title" style="padding-inline-start:0">${t('dw.upcoming')}
+    <div class="section-title" style="padding-inline-start:0">${t('dw.upcoming')} ${infoNote('info.model')}
       <span class="muted" style="font-weight:600">${t('dw.nextN', { n: model.gws.length, xp: model.gws.reduce((s, e) => s + model.xp(p.id, e), 0).toFixed(1) })}</span></div>
     <div class="table-wrap"><table class="data">
       <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('common.fixture')}</th><th class="num no-sort">${t('stat.xp')}</th></tr></thead>
