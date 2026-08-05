@@ -145,6 +145,188 @@ body {
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+/* "More" dropdown: the research tools tucked behind one tab. */
+.more-menu {
+  position: fixed; /* placed under the button by app.js */
+  z-index: 60;
+  min-width: 170px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.more-menu .tab {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  text-align: start;
+}
+.more-menu .tab:hover { background: var(--bg); }
+.more-menu .tab.active { color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- Upload-your-squad strip (Home) ---------- */
+.analyze-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.analyze-cta .ac-icon { font-size: 26px; }
+.analyze-cta .ac-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.analyze-cta .ac-text strong { font-size: 15px; }
+.analyze-cta .ac-text span { color: var(--text-soft); font-size: 13px; }
+.analyze-cta .btn { white-space: nowrap; }
+@media (max-width: 640px) {
+  .analyze-cta { flex-wrap: wrap; }
+  .analyze-cta .btn { width: 100%; }
+}
+
+/* ---------- AI squad analysis card (My Team) ---------- */
+.an-card {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+[data-theme="dark"] .an-card { background: #1a2135; }
+.an-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.an-grade {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.an-grade-top { background: var(--green); color: #fff; }
+.an-grade-good { background: #d9f2e4; color: var(--green); }
+.an-grade-ok { background: #fdf1d7; color: var(--amber); }
+.an-grade-work { background: #fbe3e1; color: var(--red); }
+[data-theme="dark"] .an-grade-good { background: #16351f; }
+[data-theme="dark"] .an-grade-ok { background: #37290b; }
+[data-theme="dark"] .an-grade-work { background: #3a1512; }
+.an-outlook { margin: 8px 0 4px; color: var(--text-soft); }
+.an-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.an-list li { display: flex; gap: 9px; align-items: baseline; }
+.an-list .an-ic { flex: none; }
+
+/* The recommended XI, one row per position, incoming players lit up. */
+.an-xi {
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.an-xi-head { font-size: 13px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px; }
+.an-xi-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 5px 0; }
+.an-xi-pos { flex: none; width: 34px; font-size: 11px; font-weight: 700; color: var(--text-faint); }
+.an-xi-p {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.an-xi-p.in { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* Manual squad entry: search, results, selected chips */
+.mt-or {
+  text-align: center;
+  color: var(--text-faint);
+  font-weight: 700;
+  font-size: 12px;
+  margin: 14px 0 6px;
+}
+#mp-search {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+}
+#mp-search:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.mp-results { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.mp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: start;
+}
+.mp-row:hover:not([disabled]) { border-color: var(--accent); }
+.mp-row[disabled] { opacity: 0.45; cursor: default; }
+.mp-row .mp-name { font-weight: 600; }
+.mp-row .mp-meta { color: var(--text-soft); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.mp-row .mp-add {
+  margin-inline-start: auto;
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+}
+.mp-selected { margin-top: 14px; }
+.mp-sel-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.mp-chip {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mp-empty { color: var(--text-faint); }
+.mp-quota { margin-inline-start: auto; color: var(--text-faint); font-size: 11px; font-weight: 700; }
+[data-theme="dark"] .mp-chip { background: #232b6b33; }
+
+/* Auto-build options strip in the planner */
+.build-opts { padding-top: 10px; }
+.build-opts-label { font-size: 13px; font-weight: 600; color: var(--text-soft); }
+.build-opts .link-btn { margin-inline-start: auto; }
+
 .offline-bar {
   background: #b06f00;
   color: #fff;

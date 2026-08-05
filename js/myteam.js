@@ -3,22 +3,37 @@ import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, fixtureDifficulty, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { importSquad } from './planner.js';
+import { analyzeSquad, analysisHtml } from './analyze.js';
 import { t, haMark, gwLabel, posShort, playerName, teamShort } from './i18n.js';
 
 let model = null;
 const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
 
 const STORAGE_KEY = 'amitfpl:teamId';
+const MANUAL_KEY = 'amitfpl:manualSquad';
 
 const getTeamId = () => localStorage.getItem(STORAGE_KEY) || '';
 const setTeamId = (id) => localStorage.setItem(STORAGE_KEY, id);
 const clearTeamId = () => localStorage.removeItem(STORAGE_KEY);
 
+function getManual() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(MANUAL_KEY));
+    return Array.isArray(ids) ? ids.filter((id) => state.playersById[id]) : [];
+  } catch {
+    return [];
+  }
+}
+const setManual = (ids) => localStorage.setItem(MANUAL_KEY, JSON.stringify(ids));
+
 function renderSetup(root, message = '') {
   root.innerHTML = `
     <div class="card myteam-setup">
-      <h2>${t('myteam.connectTitle')}</h2>
+      <h2>${t('mp.title')}</h2>
       ${message ? `<div class="error-box">${escapeHtml(message)}</div>` : ''}
+      <p>${t('mp.lead')}</p>
+      <button class="btn" id="mt-manual">${t('mp.start')}</button>
+      <div class="mt-or">${t('mp.or')}</div>
       <p>${t('myteam.intro')}</p>
       <ol>
         <li>${t('myteam.step1')}</li>
@@ -28,10 +43,11 @@ function renderSetup(root, message = '') {
       <p class="note" style="padding:0">${t('myteam.preseason')}</p>
       <div class="id-row">
         <input type="text" id="mt-id" inputmode="numeric" placeholder="${t('myteam.placeholder')}" value="${escapeHtml(getTeamId())}" />
-        <button class="btn" id="mt-save">${t('myteam.connect')}</button>
+        <button class="btn ghost" id="mt-save">${t('myteam.connect')}</button>
       </div>
     </div>`;
 
+  root.querySelector('#mt-manual').addEventListener('click', () => renderManualPicker(root));
   const connect = () => {
     const id = root.querySelector('#mt-id').value.trim().replace(/\D/g, '');
     if (!id) return;
@@ -42,6 +58,139 @@ function renderSetup(root, message = '') {
   root.querySelector('#mt-id').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') connect();
   });
+}
+
+/* ---------------- manual squad: the simple upload path ----------------
+   Type a name, tap to add, analyze - no team id, works pre-season. */
+
+const MP_QUOTA = { 1: 2, 2: 5, 3: 5, 4: 3 };
+
+// Enough players to form a legal XI - the analysis can run from here.
+function manualReady(ids) {
+  const c = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  for (const id of ids) c[state.playersById[id].element_type]++;
+  return ids.length >= 11 && c[1] >= 1 && c[2] >= 3 && c[3] >= 2 && c[4] >= 1;
+}
+
+function renderManualPicker(root, sel = getManual(), query = '') {
+  const posC = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const clubC = {};
+  for (const id of sel) {
+    const p = state.playersById[id];
+    posC[p.element_type]++;
+    clubC[p.team] = (clubC[p.team] || 0) + 1;
+  }
+
+  const q = query.trim().toLowerCase();
+  const matches = q.length < 2 ? [] : state.bootstrap.elements
+    .filter((p) => p.status !== 'u' && !sel.includes(p.id))
+    .filter((p) =>
+      playerName(p).toLowerCase().includes(q) ||
+      p.web_name.toLowerCase().includes(q) ||
+      teamShort(state.teamsById[p.team]).toLowerCase().includes(q))
+    .sort((a, b) => parseFloat(b.selected_by_percent || 0) - parseFloat(a.selected_by_percent || 0))
+    .slice(0, 8);
+
+  const rowsHtml = matches.map((p) => {
+    const pos = state.positionsById[p.element_type].singular_name_short;
+    const full = posC[p.element_type] >= MP_QUOTA[p.element_type] || (clubC[p.team] || 0) >= 3;
+    return `<button class="mp-row" data-add="${p.id}" ${full ? 'disabled' : ''}>
+      <span class="mp-name">${escapeHtml(playerName(p))}</span>
+      <span class="mp-meta"><span class="pos-badge pos-${pos}">${posShort(pos)}</span> ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span>
+      <span class="mp-add">${full ? '·' : '+'}</span>
+    </button>`;
+  }).join('');
+
+  const selHtml = [1, 2, 3, 4].map((pos) => {
+    const chips = sel
+      .filter((id) => state.playersById[id].element_type === pos)
+      .map((id) => `<button class="mp-chip" data-del="${id}">${escapeHtml(playerName(state.playersById[id]))} ✕</button>`)
+      .join('');
+    const label = posShort(state.positionsById[pos].singular_name_short);
+    return `<div class="mp-sel-row"><span class="an-xi-pos">${label}</span>${chips || `<span class="mp-empty">–</span>`}<span class="mp-quota">${posC[pos]}/${MP_QUOTA[pos]}</span></div>`;
+  }).join('');
+
+  const ready = manualReady(sel);
+  root.innerHTML = `
+    <div class="card myteam-setup">
+      <h2>${t('mp.title')}</h2>
+      <p>${t('mp.sub')}</p>
+      <input type="text" id="mp-search" placeholder="${t('mp.searchPh')}" value="${escapeHtml(query)}" autocomplete="off" />
+      <div class="mp-results">${rowsHtml}</div>
+      <div class="mp-selected">${selHtml}</div>
+      <div class="id-row" style="margin-top:14px">
+        <button class="btn" id="mp-analyze" ${ready ? '' : 'disabled'}>${t('mp.analyze')}</button>
+        <span class="note" style="padding:0">${ready ? t('mp.count', { n: sel.length }) : t('mp.need')}</span>
+        <span class="spacer"></span>
+        <button class="link-btn" id="mp-back">${t('mp.back')}</button>
+      </div>
+    </div>`;
+
+  const input = root.querySelector('#mp-search');
+  const redraw = (nextSel, nextQ) => {
+    renderManualPicker(root, nextSel, nextQ);
+    const el = root.querySelector('#mp-search');
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  };
+  input.addEventListener('input', () => redraw(sel, input.value));
+  root.querySelectorAll('[data-add]').forEach((b) =>
+    b.addEventListener('click', () => redraw([...sel, +b.dataset.add], '')));
+  root.querySelectorAll('[data-del]').forEach((b) =>
+    b.addEventListener('click', () => redraw(sel.filter((id) => id !== +b.dataset.del), query)));
+  root.querySelector('#mp-analyze').addEventListener('click', () => {
+    setManual(sel);
+    renderMyTeam(root);
+  });
+  root.querySelector('#mp-back').addEventListener('click', () => {
+    if (sel.length) setManual(sel);
+    renderSetup(root);
+  });
+}
+
+// A manually entered squad gets the same analysis card and squad table
+// as a connected team - just without the account stats and leagues.
+function renderManualAnalysis(root) {
+  const ids = getManual();
+  const model5sorted = [...ids].sort((a, b) => {
+    const pa = state.playersById[a];
+    const pb = state.playersById[b];
+    return pa.element_type - pb.element_type || pb.now_cost - pa.now_cost;
+  });
+  root.innerHTML = `
+    <div class="card">
+      <div class="mt-header">
+        <h2>${t('mm.title')}</h2>
+        <span style="display:flex;gap:12px">
+          <button class="link-btn" id="mm-edit">${t('mm.edit')}</button>
+          <button class="link-btn" id="mm-connect">${t('mm.connect')}</button>
+        </span>
+      </div>
+      <div class="an-card" id="mt-analysis">
+        <div class="skel skel-block" style="height:120px"></div>
+      </div>
+      <div class="section-title">${t('mm.squad')} ${infoNote('info.model')}</div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
+            <th class="num no-sort">${t('common.price')}</th><th class="num no-sort" title="${t('common.xpNextTitle')}">${t('common.xpNext')}</th>
+            <th class="num no-sort">${t('common.form')}</th><th class="num no-sort">${t('myteam.gwPtsCol')}</th><th class="no-sort">${t('common.next3')}</th>
+          </tr></thead>
+          <tbody>${model5sorted.map((id) => pickRow({ element: id, multiplier: 1 }, null)).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  root.querySelector('#mm-edit').addEventListener('click', () => renderManualPicker(root));
+  root.querySelector('#mm-connect').addEventListener('click', () => renderSetup(root));
+
+  analyzeSquad({ squad: ids, starters: [], captain: null, bank: 0 })
+    .then((a) => {
+      const mount = root.querySelector('#mt-analysis');
+      if (mount) mount.innerHTML = analysisHtml(a);
+    })
+    .catch(() => root.querySelector('#mt-analysis')?.remove());
 }
 
 // Live per-player GW points: proxy first (local dev), snapshot second
@@ -157,6 +306,9 @@ export async function renderMyTeam(root) {
     if (config.teamId) {
       teamId = String(config.teamId);
       setTeamId(teamId);
+    } else if (manualReady(getManual())) {
+      renderManualAnalysis(root);
+      return;
     } else {
       renderSetup(root);
       return;
@@ -220,7 +372,11 @@ export async function renderMyTeam(root) {
     const starters = picks.picks.filter((p) => p.position <= 11);
     const bench = picks.picks.filter((p) => p.position > 11);
     squadHtml = `
-      <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw) })} ${infoNote('info.model')}
+      <div class="an-card" id="mt-analysis">
+        <div class="skel skel-block" style="height:120px"></div>
+      </div>`;
+    squadHtml += `
+      <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw ?? state.nextEvent?.id) })} ${infoNote('info.model')}
         <button class="link-btn" id="mt-import" title="${t('myteam.importTitle')}">${t('myteam.import')}</button>
       </div>
       <div class="table-wrap">
@@ -268,4 +424,17 @@ export async function renderMyTeam(root) {
     });
     document.querySelector('.tab[data-tab="planner"]')?.click();
   });
+
+  // The AI read of the squad - fills in async so the page never waits.
+  const anMount = root.querySelector('#mt-analysis');
+  if (anMount) {
+    analyzeSquad({
+      squad: picks.picks.map((x) => x.element),
+      starters: picks.picks.filter((x) => x.position <= 11).map((x) => x.element),
+      captain: picks.picks.find((x) => x.is_captain)?.element || null,
+      bank: entry.last_deadline_bank || 0,
+    }).then((a) => {
+      anMount.innerHTML = analysisHtml(a);
+    }).catch(() => anMount.remove());
+  }
 }
