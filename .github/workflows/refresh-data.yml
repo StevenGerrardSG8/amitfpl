@@ -27,6 +27,9 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python3 scripts/alerts.py
 
+      - name: Capture model predictions
+        run: node scripts/predict.mjs || echo "prediction snapshot skipped"
+
       - name: Commit if changed
         run: |
           git config user.name "fpl-data-bot"

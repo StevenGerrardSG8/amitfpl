@@ -59,6 +59,60 @@ def send(config, text):
         return False
 
 
+def build_digest(boot, config):
+    """One morning message: overnight price moves, watchlist status,
+    and today's fixtures with local (Israel) kickoff times."""
+    lines = ["🌅 <b>amitfpl morning brief</b>"]
+
+    # price moves from the daily trends samples
+    try:
+        trends = load_json(os.path.join(ROOT, "data", "trends.json"), {})
+        days = sorted(trends)
+        if len(days) >= 2:
+            prev, last = trends[days[-2]], trends[days[-1]]
+            players = {p["id"]: p for p in boot["elements"]}
+            moves = []
+            for pid, row in last.items():
+                if pid in prev and row[0] != prev[pid][0]:
+                    p = players.get(int(pid))
+                    if p:
+                        arrow = "📈" if row[0] > prev[pid][0] else "📉"
+                        moves.append(f"{arrow} {p['web_name']} £{prev[pid][0]/10:.1f}→£{row[0]/10:.1f}")
+            if moves:
+                lines.append("\n<b>Price moves:</b>\n" + "\n".join(moves[:8]))
+    except Exception:
+        pass
+
+    # watchlist status snapshot
+    watch = [w.lower() for w in config.get("watchlist", [])]
+    flags = [p for p in boot["elements"]
+             if p["web_name"].lower() in watch and p["status"] != "a"]
+    if flags:
+        lines.append("\n<b>Watchlist flags:</b>\n" + "\n".join(
+            f"🚑 {p['web_name']}: {p.get('news') or p['status']}" for p in flags[:5]))
+
+    # today's fixtures (Israel time)
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("Asia/Jerusalem")
+        today = datetime.now(tz).date()
+        fixtures = load_json(os.path.join(ROOT, "data", "fixtures.json"), [])
+        teams = {t["id"]: t["short_name"] for t in boot["teams"]}
+        todays = []
+        for f in fixtures:
+            if not f.get("kickoff_time"):
+                continue
+            ko = datetime.fromisoformat(f["kickoff_time"].replace("Z", "+00:00")).astimezone(tz)
+            if ko.date() == today:
+                todays.append(f"⚽ {ko.strftime('%H:%M')} {teams.get(f['team_h'], '?')} - {teams.get(f['team_a'], '?')}")
+        if todays:
+            lines.append("\n<b>Today's games:</b>\n" + "\n".join(todays[:12]))
+    except Exception:
+        pass
+
+    return "\n".join(lines) if len(lines) > 1 else None
+
+
 def check(config):
     boot = load_json(BOOTSTRAP_PATH)
     if not boot:
@@ -100,6 +154,13 @@ def check(config):
                 if key not in sent:
                     messages.append((key, f"{arrow} <b>{p['web_name']}</b> price: £{prev['price']/10:.1f} → £{price/10:.1f}"))
             players_seen[pid] = {"news": news, "price": price}
+
+    # --- morning digest (once a day, ~08:00 Israel time) ---
+    digest_key = f"digest:{now.strftime('%Y-%m-%d')}"
+    if now.hour == 5 and digest_key not in sent:
+        digest = build_digest(boot, config)
+        if digest:
+            messages.append((digest_key, digest))
 
     for key, text in messages:
         if send(config, text):

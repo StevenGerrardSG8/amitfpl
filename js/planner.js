@@ -11,7 +11,22 @@ import { openDrawer } from './drawer.js';
 // On phones the per-card action buttons become a bottom action sheet.
 const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
 
-const STORAGE_KEY = 'amitfpl:planner:v3';
+const SLOT_KEY = 'amitfpl:planner:slot';
+const DRAFTS = ['A', 'B', 'C'];
+let slot = 'A';
+try { slot = localStorage.getItem(SLOT_KEY) || 'A'; } catch { /* private mode */ }
+const slotKey = (s) => `amitfpl:planner:v3:${s}`;
+const LEGACY_KEY = 'amitfpl:planner:v3';
+
+function draftMeta(s) {
+  try {
+    const d = JSON.parse(localStorage.getItem(slotKey(s)));
+    if (!d) return null;
+    return { n: (d.baseSquad || []).length, xp: d.planXp };
+  } catch {
+    return null;
+  }
+}
 const QUOTA = { 1: 2, 2: 5, 3: 5, 4: 3 };
 const BUDGET = 1000; // £100.0M in API units
 const MAX_PER_CLUB = 3;
@@ -80,7 +95,14 @@ function importPlanFromHash() {
 function load() {
   if (importPlanFromHash()) return;
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    // One-time migration of the pre-drafts plan into slot A.
+    if (!localStorage.getItem(slotKey('A')) && localStorage.getItem(LEGACY_KEY)) {
+      localStorage.setItem(slotKey('A'), localStorage.getItem(LEGACY_KEY));
+      localStorage.removeItem(LEGACY_KEY);
+    }
+  } catch { /* fine */ }
+  try {
+    const saved = JSON.parse(localStorage.getItem(slotKey(slot)));
     if (saved) {
       Object.assign(view, {
         horizon: saved.horizon || 5,
@@ -92,6 +114,8 @@ function load() {
       });
       return;
     }
+    Object.assign(view, { baseSquad: [], starters: [], captain: null, chips: {}, transfers: {} });
+    if (slot !== 'A') return; // only slot A inherits the old v2 squad
   } catch { /* fresh start */ }
   try {
     // Migrate planner v2 (single squad, no transfers).
@@ -106,13 +130,14 @@ function load() {
 }
 
 const save = () =>
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+  localStorage.setItem(slotKey(slot), JSON.stringify({
     horizon: view.horizon,
     baseSquad: view.baseSquad,
     starters: view.starters,
     captain: view.captain,
     chips: view.chips,
     transfers: view.transfers,
+    planXp: view._planXp ?? null,
   }));
 
 /* ---------------- squad rules ---------------- */
@@ -763,6 +788,8 @@ export async function renderPlanner(root) {
   const itb = BUDGET - totalCost;
   const totalHits = model.gws.reduce((s, e) => s + (ft[e]?.hits || 0), 0);
   const horizonTotal = model.gws.reduce((s, e) => s + gwForecast(model, e, ft), 0);
+  view._planXp = Math.round(horizonTotal);
+  save();
   const lineup = lineupFor(model, gw);
   const formationLabel = lineup.formation
     || (formationValid(lineup.starters)
@@ -796,6 +823,13 @@ export async function renderPlanner(root) {
         <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="Copy a link that opens this exact plan on any device">Share</button>
         <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>Copy</button>
         <button class="link-btn" id="pl-clear" ${view.baseSquad.length ? '' : 'disabled'}>Clear</button>
+        <div class="gw-chips" id="pl-drafts" title="Squad drafts - each slot is a separate plan">
+          ${DRAFTS.map((s) => {
+            const meta = s === slot ? { n: view.baseSquad.length, xp: Math.round(horizonTotal) } : draftMeta(s);
+            const label = meta && meta.n ? `${s} · ${meta.xp ?? meta.n}` : s;
+            return `<button class="gw-chip ${s === slot ? 'active' : ''}" data-draft="${s}">${label}</button>`;
+          }).join('')}
+        </div>
       </div>
       <div class="toolbar" style="border-bottom:none;padding-top:10px">
         <div class="gw-chips">${gwChips}</div>
@@ -900,8 +934,18 @@ export async function renderPlanner(root) {
     rerender();
   });
 
-  root.querySelectorAll('.gw-chip').forEach((b) =>
+  root.querySelectorAll('.gw-chip[data-gw]').forEach((b) =>
     b.addEventListener('click', () => { view.planGw = +b.dataset.gw; view.pending = null; view.swapId = null; rerender(); })
+  );
+
+  root.querySelectorAll('#pl-drafts .gw-chip').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (b.dataset.draft === slot) return;
+      slot = b.dataset.draft;
+      try { localStorage.setItem(SLOT_KEY, slot); } catch { /* private mode */ }
+      Object.assign(view, { planGw: null, swapId: null, pending: null });
+      renderPlanner(root);
+    })
   );
 
   root.querySelectorAll('.chip-btn').forEach((b) =>

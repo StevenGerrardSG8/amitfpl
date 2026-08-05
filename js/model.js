@@ -22,6 +22,13 @@ export function baselinePlayer(id) {
   return baselineById?.[id] || null;
 }
 
+// Inject baseline data directly (used by the Node prediction snapshot
+// in CI, where relative fetch() isn't available).
+export function setBaseline(data) {
+  baselineById = {};
+  for (const p of data.elements) baselineById[p.id] = p;
+}
+
 export async function loadBaseline() {
   if (baselineById) return;
   baselineById = {};
@@ -132,9 +139,29 @@ export function buildModel(horizon) {
     let total = 0;
 
     if (!ref.minutes) {
-      // New signing with no history - lean on FPL's own estimate,
-      // scaled by fixture count (handles doubles/blanks).
-      total = num(p.ep_next) * fixtures.length * avail;
+      // No PL history (promoted-club players, foreign signings):
+      // price is the best signal - FPL prices starters like starters.
+      // £4.5 fodder ≈ 2.0 pts/match, £7.5 ≈ 3.7, £10 ≈ 5.0, adjusted
+      // for the fixture and how likely the price says they start.
+      const price = p.now_cost / 10;
+      const startProb = Math.min(0.9, Math.max(0.25, (price - 4.0) / 2.5)) * avail;
+      const ppm = Math.min(5.5, Math.max(1.2, 2.0 + (price - 4.5) * 0.55));
+      const team = state.teamsById[p.team];
+      for (const f of fixtures) {
+        const opp = state.teamsById[f.opponent];
+        const ourXG = teamXG(team, opp, f.isHome);
+        const homeNudge = f.isHome ? 1.07 : 0.93;
+        const attackScale = ourXG != null
+          ? ourXG / AVG_TEAM_XG
+          : (FDR_ATTACK_SCALE[f.difficulty] ?? 1) * homeNudge;
+        // Appearance points don't depend on the opponent - only the
+        // attacking share of the prior scales with the fixture.
+        total += startProb * (1.8 + (ppm - 1.8) * Math.sqrt(Math.max(0.3, attackScale)));
+      }
+      // Once the season runs, FPL's own projection becomes informative.
+      if (state.currentEvent && num(p.ep_next) > 0) {
+        total = 0.5 * total + 0.5 * num(p.ep_next) * fixtures.length;
+      }
     } else {
       const starts = ref.starts || 0;
       const startRate = Math.min(1, starts / 38);
@@ -208,12 +235,23 @@ export function buildModel(horizon) {
     const ref = b?.minutes ? b : p;
     const avail = availability(p);
     const fixtures = fixturesByTeam[p.team]?.[eventId] || [];
-    if (!fixtures.length || !avail || !ref.minutes) return 0;
-    const starts = ref.starts || 0;
-    const startRate = Math.min(1, starts / 38);
-    const minsPerStart = starts > 0 ? Math.min(90, ref.minutes / starts) : 0;
-    const minFactor = (startRate * minsPerStart * avail) / 90;
-    const xg90 = per90(b, p, 'expected_goals') + (p.penalties_order === 1 ? 0.05 : 0);
+    if (!fixtures.length || !avail) return 0;
+    let minFactor;
+    let xg90;
+    if (!ref.minutes) {
+      // Price-based prior for players without PL history.
+      const price = p.now_cost / 10;
+      minFactor = Math.min(0.9, Math.max(0.25, (price - 4.0) / 2.5)) * avail;
+      const posSlope = { 1: 0, 2: 0.02, 3: 0.05, 4: 0.08 }[p.element_type];
+      xg90 = Math.max(0.02, 0.08 + (price - 5) * posSlope);
+    } else {
+      const starts = ref.starts || 0;
+      const startRate = Math.min(1, starts / 38);
+      const minsPerStart = starts > 0 ? Math.min(90, ref.minutes / starts) : 0;
+      minFactor = (startRate * minsPerStart * avail) / 90;
+      xg90 = per90(b, p, 'expected_goals');
+    }
+    xg90 += p.penalties_order === 1 ? 0.05 : 0;
     const team = state.teamsById[p.team];
     let xg = 0;
     for (const f of fixtures) {
