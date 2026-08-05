@@ -5,5 +5,12 @@
     "B.Fernandes",
     "Semenyo"
   ],
-  "firebase": null
+  "firebase": {
+    "apiKey": "AIzaSyCUmK_F3w6FDJu7tmj6xsHxsqamFgCJLP0",
+    "authDomain": "amitfpl.firebaseapp.com",
+    "projectId": "amitfpl",
+    "storageBucket": "amitfpl.firebasestorage.app",
+    "messagingSenderId": "34872584860",
+    "appId": "1:34872584860:web:6289df93ddf4f421155b59"
+  }
 }
