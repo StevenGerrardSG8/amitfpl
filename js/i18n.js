@@ -263,12 +263,8 @@ const STRINGS = {
   'home.deadline': ['deadline {when}', 'דדליין {when}'],
   'home.toGo': ['{d}d {h}h to go', 'נותרו {d} ימים ו-{h} שעות'],
   'home.fixturesTitle': ['{gw} fixtures - your local time', 'משחקי {gw} - בשעון המקומי שלך'],
-  'home.xgTitle': ['Expected goals - {gw}', 'שערים צפויים - {gw}'],
-  'home.csTitle': ['Clean sheet chances', 'סיכויי שער נקי'],
   'home.capTitle': ['Captain picks', 'בחירות קפטן'],
-  'home.scorersTitle': ['Likely scorers', 'מועמדים להבקיע'],
   'home.watchTitle': ['My watchlist', 'רשימת המעקב שלי'],
-  'home.fullForecast': ['Full forecast', 'תחזית מלאה'],
   'home.gotoScout': ['Scout', 'סקאוט'],
   'home.gotoPlayers': ['Players', 'שחקנים'],
   'home.watchEmpty': ["Star players from their profile (open any player, tap Watch) and they'll show up here.", 'סמנו שחקנים למעקב מתוך הפרופיל שלהם (פתחו שחקן ולחצו "מעקב") והם יופיעו כאן.'],
@@ -632,11 +628,6 @@ const STRINGS = {
   'ob.item4': ['<strong>More ▾</strong> - Scout, Market, Fixtures and the rest of the research tools live there.', '<strong>עוד ▾</strong> - סקאוט, שוק, לוח משחקים ושאר כלי המחקר נמצאים שם.'],
   'ob.item5': ['Language (EN/עב), dark mode and help (?) live in the top bar.', 'שפה (EN/עב), מצב כהה ועזרה (?) נמצאים בסרגל העליון.'],
   'ob.go': ["Let's go", 'יאללה, מתחילים'],
-
-  /* ---- intro strip (Home) ---- */
-  'intro.slogan': ['Win your mini-league with data, not gut feelings.', 'לנצח את המיני-ליגה עם דאטה, לא עם תחושות בטן.'],
-  'intro.line1': ['amitfpl is a Fantasy Premier League toolkit: an expected-points model for every player, a squad planner with transfer simulation, predicted lineups, a price-change radar and live match data.', 'amitfpl היא ערכת כלים לפנטזי של הפרמייר ליג: מודל נקודות צפויות לכל שחקן, מתכנן סגל עם סימולציית העברות, הרכבים צפויים, רדאר שינויי מחירים ונתוני משחקים חיים.'],
-  'intro.line2': ['Everything refreshes automatically from official data every 30 minutes - so picking a captain, planning chips and beating your rivals takes minutes, not hours.', 'הכל מתעדכן אוטומטית מנתונים רשמיים כל 30 דקות - כך שבחירת קפטן, תכנון צ׳יפים וניצחון על היריבים לוקחים דקות, לא שעות.'],
 
   /* ---- ⓘ method explainers ---- */
   'info.how': ['How is this computed?', 'איך זה מחושב?'],
