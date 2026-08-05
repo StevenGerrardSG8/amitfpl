@@ -154,13 +154,24 @@ def check(config):
             prev = players_seen.get(pid, {})
             news = p.get("news") or ""
             if prev and news != prev.get("news", "") and news:
-                key = f"news:{pid}:{stable_hash(news)}"
+                # Keyed on the transition (old -> new text), not just the new
+                # text: a player can cycle through the same status twice
+                # (injured -> fit -> injured again with identical wording),
+                # and keying on the destination alone would silently eat the
+                # second, equally real, alert because that key was already
+                # marked sent the first time around.
+                key = f"news:{pid}:{stable_hash(prev.get('news', '') + '>' + news)}"
                 if key not in sent:
                     messages.append((key, f"🚑 <b>{p['web_name']}</b>: {news}"))
             price = p["now_cost"]
             if prev and price != prev.get("price", price):
                 arrow = "📈" if price > prev["price"] else "📉"
-                key = f"price:{pid}:{price}"
+                # Same reasoning as news: keyed on the transition, not the
+                # destination price - otherwise a price that revisits a
+                # value it already passed through (55 -> 56 -> 55) would
+                # have its second, real change silently swallowed because
+                # "reached 55" was already marked sent on the first pass.
+                key = f"price:{pid}:{prev['price']}>{price}"
                 if key not in sent:
                     messages.append((key, f"{arrow} <b>{p['web_name']}</b> price: £{prev['price']/10:.1f} → £{price/10:.1f}"))
             players_seen[pid] = {"news": news, "price": price}
