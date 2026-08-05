@@ -141,6 +141,22 @@ const save = () =>
     planXp: view._planXp ?? null,
   }));
 
+// Import a real FPL squad (from the My Team tab) into the active draft
+// slot, replacing whatever plan is there.
+export function importSquad({ squad, starters, captain }) {
+  Object.assign(view, {
+    baseSquad: (squad || []).filter((id) => state.playersById[id]),
+    starters: (starters || []).filter((id) => state.playersById[id]),
+    captain: captain && state.playersById[captain] ? captain : null,
+    transfers: {},
+    chips: {},
+    planGw: null,
+    pending: null,
+    swapId: null,
+  });
+  save();
+}
+
 /* ---------------- squad rules ---------------- */
 
 const posOf = (id) => state.playersById[id].element_type;
@@ -478,6 +494,74 @@ function assistantPanel(model, gw) {
     <div class="assistant-head">${t('pl.assistant')} <span class="muted" style="font-weight:500">${t('pl.asSubtitle', { n: view.horizon })}</span></div>
     ${items.join('')}
   </div>`;
+}
+
+/* ---------------- draft comparison ---------------- */
+
+// Side-by-side view of the three draft slots: value, plan xP, chips,
+// and the player differences of each draft vs the active one.
+function openDraftCompare(model, root) {
+  const drafts = DRAFTS.map((s) => {
+    let d = null;
+    if (s === slot) {
+      d = { baseSquad: view.baseSquad, chips: view.chips, planXp: view._planXp };
+    } else {
+      try { d = JSON.parse(localStorage.getItem(slotKey(s))); } catch { /* empty */ }
+    }
+    const sq = (d?.baseSquad || []).filter((id) => state.playersById[id]);
+    return { s, sq, chips: d?.chips || {}, xp: d?.planXp ?? null };
+  });
+  const active = drafts.find((d) => d.s === slot);
+  const activeSet = new Set(active.sq);
+  const names = (ids) => ids.map((id) => escapeHtml(playerName(state.playersById[id]))).join(', ');
+
+  const rows = drafts.map(({ s, sq, chips, xp }) => {
+    const letter = t(`draft.${s}`);
+    if (!sq.length) {
+      return `<tr><td class="team-cell">${letter}${s === slot ? ' ●' : ''}</td>
+        <td colspan="4" class="muted">${t('pl.cmpEmpty')}</td></tr>`;
+    }
+    const chipStr = Object.entries(chips)
+      .map(([e, k]) => `${t(`chipShort.${k}`)}·${gwLabel(e)}`).join(', ') || '-';
+    let diff = '';
+    if (s === slot) diff = `<span class="muted">${t('pl.cmpActive')}</span>`;
+    else {
+      const din = sq.filter((id) => !activeSet.has(id));
+      const sqSet = new Set(sq);
+      const dout = active.sq.filter((id) => !sqSet.has(id));
+      diff = din.length || dout.length
+        ? `${din.length ? `<span class="hi">+ ${names(din)}</span>` : ''}${din.length && dout.length ? '<br>' : ''}${dout.length ? `<span class="lo">− ${names(dout)}</span>` : ''}`
+        : `<span class="muted">${t('pl.cmpSame')}</span>`;
+    }
+    return `<tr>
+      <td class="team-cell">${letter}${s === slot ? ' ●' : ''}</td>
+      <td class="num">${fmtPrice(cost(sq))}</td>
+      <td class="num"><strong>${xp ?? '-'}</strong></td>
+      <td>${chipStr}</td>
+      <td style="white-space:normal;max-width:340px">${diff}</td>
+    </tr>`;
+  }).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'drawer-overlay onboard-overlay';
+  overlay.innerHTML = `
+    <div class="onboard-card" style="max-width:640px">
+      <h2 style="margin:0 0 12px">${t('pl.cmpTitle')}</h2>
+      <div class="table-wrap"><table class="data">
+        <thead><tr>
+          <th class="no-sort">${t('pl.cmpDraft')}</th><th class="num no-sort">${t('pl.cmpValue')}</th>
+          <th class="num no-sort">${t('pl.planXp')}</th><th class="no-sort">${t('pl.cmpChips')}</th>
+          <th class="no-sort">${t('pl.cmpDiff')}</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div class="note" style="padding:10px 0 0">${t('pl.cmpNote')}</div>
+      <button class="btn" id="cmp-close" style="margin-top:8px">${t('common.close')}</button>
+    </div>`;
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.closest('#cmp-close')) overlay.remove();
+  });
+  document.body.appendChild(overlay);
 }
 
 /* ---------------- mobile action sheet ---------------- */
@@ -856,6 +940,7 @@ export async function renderPlanner(root) {
         <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareTitle')}">${t('pl.share')}</button>
         <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>${t('pl.copy')}</button>
         <button class="link-btn" id="pl-clear" ${view.baseSquad.length ? '' : 'disabled'}>${t('common.clear')}</button>
+        <button class="link-btn" id="pl-drafts-cmp" title="${t('pl.cmpTitle')}">⚖</button>
         <div class="gw-chips" id="pl-drafts" title="${t('pl.draftsTitle')}">
           ${DRAFTS.map((s) => {
             const meta = s === slot ? { n: view.baseSquad.length, xp: Math.round(horizonTotal) } : draftMeta(s);
@@ -971,6 +1056,8 @@ export async function renderPlanner(root) {
   root.querySelectorAll('.gw-chip[data-gw]').forEach((b) =>
     b.addEventListener('click', () => { view.planGw = +b.dataset.gw; view.pending = null; view.swapId = null; rerender(); })
   );
+
+  root.querySelector('#pl-drafts-cmp')?.addEventListener('click', () => openDraftCompare(model, root));
 
   root.querySelectorAll('#pl-drafts .gw-chip').forEach((b) =>
     b.addEventListener('click', () => {

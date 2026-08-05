@@ -221,6 +221,46 @@ async function main() {
     try { localStorage.setItem('amitfpl:theme', dark ? 'light' : 'dark'); } catch { /* private mode */ }
     syncThemeIcon();
   });
+  // Until the user picks a theme explicitly, follow the system setting
+  // live (the head script already applied it before first paint).
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    let stored = null;
+    try { stored = localStorage.getItem('amitfpl:theme'); } catch { /* private mode */ }
+    if (stored) return;
+    if (e.matches) document.documentElement.dataset.theme = 'dark';
+    else delete document.documentElement.dataset.theme;
+    syncThemeIcon();
+  });
+
+  // First visit: a short welcome card explaining the main tools.
+  // Skipped for shared-plan links (they land straight in the planner).
+  let onboarded = '1';
+  try { onboarded = localStorage.getItem('amitfpl:onboarded') || ''; } catch { /* private mode */ }
+  if (!onboarded && !location.hash.startsWith('#plan=')) {
+    const ob = document.createElement('div');
+    ob.className = 'drawer-overlay onboard-overlay';
+    ob.innerHTML = `
+      <div class="onboard-card">
+        <h2>${t('ob.title')}</h2>
+        <p class="ob-sub">${t('ob.sub')}</p>
+        <ul class="ob-list">
+          <li>${t('ob.item1')}</li>
+          <li>${t('ob.item2')}</li>
+          <li>${t('ob.item3')}</li>
+          <li>${t('ob.item4')}</li>
+          <li>${t('ob.item5')}</li>
+        </ul>
+        <button class="btn" id="ob-go">${t('ob.go')}</button>
+      </div>`;
+    const dismiss = () => {
+      ob.remove();
+      try { localStorage.setItem('amitfpl:onboarded', '1'); } catch { /* private mode */ }
+    };
+    ob.addEventListener('click', (e) => {
+      if (e.target === ob || e.target.closest('#ob-go')) dismiss();
+    });
+    document.body.appendChild(ob);
+  }
 
   const initial = location.hash.slice(1);
   let lastTab = null;

@@ -4,7 +4,7 @@
 // and availability flags. Percent chip on each player = FPL ownership.
 import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge } from './ui.js';
-import { loadBaseline, baselinePlayer } from './model.js';
+import { loadBaseline, baselinePlayer, blendedStarts } from './model.js';
 import { t, locale, haMark, translateNews, playerName, teamName, teamShort } from './i18n.js';
 
 const FORMATIONS = [];
@@ -31,7 +31,7 @@ function startScores(squad) {
     const hi = Math.max(...costs);
     for (const p of group) {
       const b = baselinePlayer(p.id) || p;
-      const startRate = Math.min(1, (b.starts || 0) / 38);
+      const { startRate } = blendedStarts(p, b);
       const priceNorm = hi > lo ? (p.now_cost - lo) / (hi - lo) : 0.5;
       const own = num(p.selected_by_percent) / 1000; // gentle tiebreak
       scores.set(p.id, availability(p) * (0.55 * startRate + 0.45 * priceNorm) + own);

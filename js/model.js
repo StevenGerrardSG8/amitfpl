@@ -16,6 +16,9 @@ const AVG_TEAM_XG = 1.4; // league-average goals per team per match
 const STRENGTH_EXP = 1.5; // amplifies strength ratios into goal expectation
 
 let baselineById = null;
+// Optional post-hoc calibration ({scale: {elementType: factor}}),
+// computed by scripts/calibrate.py from prediction-vs-actual history.
+let calibration = null;
 
 // Frozen pre-season stats for a player (null if unknown).
 export function baselinePlayer(id) {
@@ -29,6 +32,15 @@ export function setBaseline(data) {
   for (const p of data.elements) baselineById[p.id] = p;
 }
 
+export function setCalibration(c) {
+  calibration = c;
+}
+
+const calFactor = (elementType) => {
+  const f = calibration?.scale?.[elementType];
+  return typeof f === 'number' ? Math.min(1.4, Math.max(0.6, f)) : 1;
+};
+
 export async function loadBaseline() {
   if (baselineById) return;
   baselineById = {};
@@ -37,6 +49,31 @@ export async function loadBaseline() {
     const data = await res.json();
     for (const p of data.elements) baselineById[p.id] = p;
   } catch { /* model degrades to current-season stats only */ }
+  try {
+    const res = await fetch('data/calibration.json');
+    if (res.ok) calibration = await res.json();
+  } catch { /* uncalibrated - factor 1 */ }
+}
+
+// In-season blend of starting likelihood: last season's starts share
+// gives way to this season's as real minutes accumulate (same ramp as
+// per90 - fully current by ~900 minutes). Pre-season the current stats
+// ARE last season's, so this is a no-op until GW1 resets them.
+export function blendedStarts(p, b) {
+  const gwsPlayed = state.currentEvent?.id || 0;
+  const bStarts = b?.starts || 0;
+  const bMins = b?.minutes || 0;
+  const bStartRate = Math.min(1, bStarts / 38);
+  const bMPS = bStarts > 0 ? Math.min(90, bMins / bStarts) : 0;
+  if (!gwsPlayed) return { startRate: bStartRate, minsPerStart: bMPS };
+  const w = Math.min(1, (p.minutes || 0) / 900);
+  const cStarts = p.starts || 0;
+  const cStartRate = Math.min(1, cStarts / gwsPlayed);
+  const cMPS = cStarts > 0 ? Math.min(90, (p.minutes || 0) / cStarts) : bMPS;
+  return {
+    startRate: w * cStartRate + (1 - w) * bStartRate,
+    minsPerStart: w * cMPS + (1 - w) * bMPS,
+  };
 }
 
 // FDR fallbacks, used while the API's team strength ratings are
@@ -163,9 +200,7 @@ export function buildModel(horizon) {
         total = 0.5 * total + 0.5 * num(p.ep_next) * fixtures.length;
       }
     } else {
-      const starts = ref.starts || 0;
-      const startRate = Math.min(1, starts / 38);
-      const minsPerStart = starts > 0 ? Math.min(90, ref.minutes / starts) : 0;
+      const { startRate, minsPerStart } = blendedStarts(p, b?.minutes ? b : ref);
       const expMins = startRate * minsPerStart * avail;
       const minFactor = expMins / 90;
       const p60 = Math.max(0, Math.min(1, (expMins - 30) / 45));
@@ -219,7 +254,7 @@ export function buildModel(horizon) {
       }
     }
 
-    total = Math.max(0, total);
+    total = Math.max(0, total * calFactor(p.element_type));
     cache.set(key, total);
     return total;
   }
@@ -245,9 +280,7 @@ export function buildModel(horizon) {
       const posSlope = { 1: 0, 2: 0.02, 3: 0.05, 4: 0.08 }[p.element_type];
       xg90 = Math.max(0.02, 0.08 + (price - 5) * posSlope);
     } else {
-      const starts = ref.starts || 0;
-      const startRate = Math.min(1, starts / 38);
-      const minsPerStart = starts > 0 ? Math.min(90, ref.minutes / starts) : 0;
+      const { startRate, minsPerStart } = blendedStarts(p, b?.minutes ? b : ref);
       minFactor = (startRate * minsPerStart * avail) / 90;
       xg90 = per90(b, p, 'expected_goals');
     }
@@ -275,9 +308,7 @@ export function buildModel(horizon) {
     const avail = availability(p);
     const fixtures = fixturesByTeam[p.team]?.[eventId] || [];
     if (!fixtures.length || !avail || !ref.minutes) return 0;
-    const starts = ref.starts || 0;
-    const startRate = Math.min(1, starts / 38);
-    const minsPerStart = starts > 0 ? Math.min(90, ref.minutes / starts) : 0;
+    const { startRate, minsPerStart } = blendedStarts(p, b?.minutes ? b : ref);
     const minFactor = (startRate * minsPerStart * avail) / 90;
     const xa90 = per90(b, p, 'expected_assists');
     const team = state.teamsById[p.team];

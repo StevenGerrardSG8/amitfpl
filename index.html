@@ -13,12 +13,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Hebrew:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script>
-    // Apply saved theme + language direction before first paint to avoid a flash.
+    // Apply theme + language direction before first paint to avoid a
+    // flash. Explicit choices win; otherwise follow the system theme
+    // and the browser language.
     try {
-      if (localStorage.getItem('amitfpl:theme') === 'dark') {
+      var storedTheme = localStorage.getItem('amitfpl:theme');
+      if (storedTheme === 'dark' ||
+          (!storedTheme && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.dataset.theme = 'dark';
       }
-      if (localStorage.getItem('amitfpl:lang') === 'he') {
+      var storedLang = localStorage.getItem('amitfpl:lang');
+      var wantHe = storedLang === 'he' ||
+        (!storedLang && (navigator.language || '').toLowerCase().indexOf('he') === 0);
+      if (wantHe) {
         document.documentElement.lang = 'he';
         document.documentElement.dir = 'rtl';
       }
@@ -125,8 +132,7 @@
     (function () {
       var isFile = location.protocol === 'file:';
       var isLocal = location.hostname === 'localhost' || location.hostname.startsWith('192.168.');
-      var he = false;
-      try { he = localStorage.getItem('amitfpl:lang') === 'he'; } catch (e) { /* private mode */ }
+      var he = document.documentElement.dir === 'rtl';
       var T = {
         fileBlocked: he
           ? '<strong>הדף נפתח כקובץ, ולכן הדפדפן חוסם את האפליקציה.</strong><br>סגרו את הלשונית הזו ולחצו לחיצה כפולה על <b>Start amitfpl.command</b> במקום.'

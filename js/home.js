@@ -28,12 +28,16 @@ function fixtureCards() {
   const left = dl - Date.now();
   const d = Math.floor(left / 86400000);
   const h = Math.floor((left % 86400000) / 3600000);
+  // Deadline day (under 24h to go): the hero strip turns urgent.
+  const deadlineDay = left > 0 && left < 86400000;
   return `
-    <div class="hero-strip">
+    <div class="hero-strip ${deadlineDay ? 'hero-urgent' : ''}">
+      ${deadlineDay ? `<span class="hero-alarm">🔥 ${t('home.deadlineDay')}</span>` : ''}
       <span class="hero-gw">${escapeHtml(gwName(nxt.name))}</span>
       <span>${t('home.fixtures', { n: fx.length })}</span>
       <span>${t('home.deadline', { when: dl.toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>
-      <span class="hero-count">${left > 0 ? t('home.toGo', { d, h }) : t('chrome.locked')}</span>
+      <span class="hero-count">${left > 0 ? (deadlineDay ? t('home.hoursLeft', { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) }) : t('home.toGo', { d, h })) : t('chrome.locked')}</span>
+      ${deadlineDay ? `<button class="hero-cta" data-goto="planner">${t('home.toPlanner')}</button>` : ''}
     </div>
     <div class="card" style="margin-bottom:16px">
       <div class="section-title">${t('home.fixturesTitle', { gw: escapeHtml(gwName(nxt.name)) })}</div>

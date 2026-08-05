@@ -30,6 +30,9 @@ jobs:
       - name: Capture model predictions
         run: node scripts/predict.mjs || echo "prediction snapshot skipped"
 
+      - name: Calibrate model vs real results
+        run: python3 scripts/calibrate.py || echo "calibration skipped"
+
       - name: Commit if changed
         run: |
           git config user.name "fpl-data-bot"

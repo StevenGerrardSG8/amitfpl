@@ -107,6 +107,72 @@ def fetch_elo(teams):
         print(f"elo: only matched {len(out)} teams, keeping previous file", file=sys.stderr)
 
 
+def snapshot_live(bootstrap):
+    """Live per-player points for the current GW -> data/live.json
+    {"gw": N, "e": {playerId: [minutes, total_points]}} (trimmed to keep
+    the repo light). Skipped when no GW is running."""
+    current = next((e for e in bootstrap["events"] if e.get("is_current")), None)
+    if not current or current.get("finished"):
+        return
+    try:
+        live = fetch(f"/event/{current['id']}/live/")
+    except Exception as e:
+        print(f"live fetch failed: {e}", file=sys.stderr)
+        return
+    trimmed = {}
+    for el in live.get("elements", []):
+        s = el.get("stats") or {}
+        if s.get("minutes") or s.get("total_points"):
+            trimmed[str(el["id"])] = [s.get("minutes", 0), s.get("total_points", 0)]
+    write("live.json", {"gw": current["id"], "e": trimmed})
+
+
+def snapshot_leagues(entry, team_id):
+    """Standings for the team's private classic leagues -> data/leagues.json.
+    Top 20 rows per league, up to 5 leagues (skips the giant global ones)."""
+    classic = (entry.get("leagues") or {}).get("classic") or []
+    private = [l for l in classic if l.get("league_type") == "x"][:5]
+    out = []
+    for lg in private:
+        try:
+            data = fetch(f"/leagues-classic/{lg['id']}/standings/")
+        except Exception as e:
+            print(f"league {lg['id']} fetch failed: {e}", file=sys.stderr)
+            continue
+        rows = (data.get("standings") or {}).get("results") or []
+        out.append({
+            "id": lg["id"],
+            "name": data.get("league", {}).get("name") or lg.get("name"),
+            "standings": [
+                {"entry": r["entry"], "player_name": r["player_name"],
+                 "entry_name": r["entry_name"], "rank": r["rank"],
+                 "last_rank": r["last_rank"], "total": r["total"],
+                 "event_total": r.get("event_total")}
+                for r in rows[:20]
+            ],
+        })
+    if out:
+        write("leagues.json", out)
+
+
+def report_missing_names(elements):
+    """Players whose web_name has no Hebrew mapping in js/names-he.js ->
+    data/names-missing.json (new signings after transfer windows)."""
+    import re
+    try:
+        with open(os.path.join(ROOT, "js", "names-he.js"), encoding="utf-8") as f:
+            src = f.read()
+        keys = set(re.findall(r"^  '((?:[^'\\]|\\.)*)':", src, re.M))
+        keys |= set(re.findall(r'^  "([^"]*)":', src, re.M))
+    except Exception as e:
+        print(f"names-he.js parse failed: {e}", file=sys.stderr)
+        return
+    missing = sorted({p["web_name"] for p in elements} - keys)
+    write("names-missing.json", {"count": len(missing), "names": missing})
+    if missing:
+        print(f"names-he: {len(missing)} unmapped: {', '.join(missing[:10])}")
+
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -116,6 +182,8 @@ def main():
     snapshot_summaries(bootstrap["elements"])
     append_trends(bootstrap["elements"])
     fetch_elo(bootstrap["teams"])
+    snapshot_live(bootstrap)
+    report_missing_names(bootstrap["elements"])
 
     # Personal team snapshot — set teamId in config.json (repo root) to enable.
     team = None
@@ -132,6 +200,7 @@ def main():
                 except Exception as e:
                     print(f"picks unavailable: {e}", file=sys.stderr)
             team = {"entry": entry, "picks": picks}
+            snapshot_leagues(entry, team_id)
     except FileNotFoundError:
         pass
     write("myteam.json", team)

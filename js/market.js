@@ -74,6 +74,51 @@ function moversCard(trends) {
   </div>`;
 }
 
+// Price-change radar: net transfers this GW relative to the player's
+// owner count. A rough community heuristic (FPL's real thresholds are
+// secret), so it's labelled as experimental in the UI.
+function predictorCard() {
+  const els = state.bootstrap.elements;
+  const total = state.bootstrap.total_players || 9000000;
+  const scored = els
+    .filter((p) => num(p.selected_by_percent) >= 0.1)
+    .map((p) => {
+      const owners = Math.max(1, (num(p.selected_by_percent) / 100) * total);
+      const net = p.transfers_in_event - p.transfers_out_event;
+      return { p, net, score: net / (owners * 0.06) };
+    });
+  const risers = scored.filter((x) => x.score > 0.3).sort((a, b) => b.score - a.score).slice(0, 5);
+  const fallers = scored.filter((x) => x.score < -0.3).sort((a, b) => a.score - b.score).slice(0, 5);
+  if (!risers.length && !fallers.length) {
+    return `<div class="card" style="margin-bottom:16px">
+      <div class="section-title">${t('market.predTitle')}</div>
+      <div class="note">${t('market.predQuiet')}</div>
+    </div>`;
+  }
+  const row = ({ p, net, score }) => `<tr><td>${playerCell(p)}</td>
+    <td class="num">${signed(net, 0)}</td>
+    <td class="num"><span class="cs-pill ${Math.abs(score) >= 0.8 ? 'cs-hi' : ''}">${Math.min(99, Math.round(Math.abs(score) * 100))}%</span></td></tr>`;
+  const section = (title, rows) => `<div>
+    <div class="section-title" style="padding-inline-start:0">${title}</div>
+    <table class="data"><thead><tr>
+      <th class="no-sort">${t('common.player')}</th><th class="num no-sort">${t('market.net')}</th>
+      <th class="num no-sort" title="${t('market.predProgressTitle')}">${t('market.predProgress')}</th>
+    </tr></thead>
+    <tbody>${rows || `<tr><td class="note" colspan="3">${t('market.noneYet')}</td></tr>`}</tbody></table>
+  </div>`;
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="toolbar" style="border-bottom:none;padding-bottom:0">
+      <span class="section-title" style="padding:0">${t('market.predTitle')}</span>
+      <span class="spacer"></span>
+      <span class="result-count">${t('market.predBeta')}</span>
+    </div>
+    <div class="trend-grid" style="padding:4px 16px 14px">
+      ${section(t('market.predRise'), risers.map(row).join(''))}
+      ${section(t('market.predFall'), fallers.map(row).join(''))}
+    </div>
+  </div>`;
+}
+
 function val(p, key) {
   if (key === 'web_name') return p.web_name.toLowerCase();
   if (key === 'position') return p.element_type;
@@ -118,6 +163,7 @@ export async function renderMarket(root) {
     .join('');
 
   root.innerHTML = `
+    ${predictorCard()}
     ${moversCard(trends)}
     <div class="card">
       <div class="toolbar">

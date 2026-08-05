@@ -1227,6 +1227,46 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .sheet-btn:active { background: var(--accent-soft); }
 .sheet-cancel { text-align: center; color: var(--text-faint); border-style: dashed; }
 
+/* ---------- Deadline-day hero & onboarding ---------- */
+.hero-strip.hero-urgent {
+  background: linear-gradient(100deg, #d93025, #b3132b);
+  animation: hero-pulse 2.2s ease-in-out infinite;
+}
+@keyframes hero-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(217, 48, 37, 0.25); }
+  50% { box-shadow: 0 4px 26px rgba(217, 48, 37, 0.55); }
+}
+.hero-alarm { font-weight: 800; letter-spacing: -0.2px; }
+.hero-cta {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 14px;
+  background: #fff;
+  color: #b3132b;
+  cursor: pointer;
+}
+.hero-cta:hover { transform: translateY(-1px); }
+
+.onboard-overlay { justify-content: center; align-items: center; }
+.onboard-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  max-width: 480px;
+  width: calc(100vw - 40px);
+  padding: 24px 26px;
+  animation: chip-note-in 0.25s ease-out;
+}
+.onboard-card h2 { margin: 0 0 4px; font-size: 20px; }
+.ob-sub { color: var(--text-soft); margin: 0 0 12px; }
+.ob-list { margin: 0 0 18px; padding-inline-start: 18px; color: var(--text-soft); }
+.ob-list li { margin: 7px 0; font-size: 13px; }
+.ob-list strong { color: var(--text); }
+
 /* ---------- Team forecast ---------- */
 .xg-pill {
   display: inline-block;
@@ -1418,6 +1458,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .stat-tile .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
 .stat-tile .v { font-size: 20px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* Live GW points tile + my row in league standings */
+.stat-tile.live { border-color: #0f9d58; }
+.stat-tile.live .v { color: #0f9d58; }
+tr.league-me td { background: var(--accent-soft); font-weight: 700; }
 
 .section-title {
   padding: 14px 16px 0;

@@ -155,6 +155,39 @@ def check(config):
                     messages.append((key, f"{arrow} <b>{p['web_name']}</b> price: £{prev['price']/10:.1f} → £{price/10:.1f}"))
             players_seen[pid] = {"news": news, "price": price}
 
+    # --- price-change predictions ---
+    # Same heuristic as the Market tab's radar: net transfers this GW
+    # relative to owner count. Alert once per (player, price, direction)
+    # for watchlist players, or any player owned by >=5% of managers.
+    total_players = boot.get("total_players") or 9_000_000
+    pred_msgs = []
+    for p in boot["elements"]:
+        sel = float(p["selected_by_percent"] or 0)
+        if sel < 0.1:
+            continue
+        owners = max(1.0, sel / 100 * total_players)
+        net = p["transfers_in_event"] - p["transfers_out_event"]
+        score = net / (owners * 0.06)
+        if abs(score) < 0.8:
+            continue
+        watched = p["web_name"].lower() in watch
+        if not (watched or sel >= 5):
+            continue
+        direction = "rise 📈" if score > 0 else "fall 📉"
+        key = f"pred:{p['id']}:{p['now_cost']}:{'r' if score > 0 else 'f'}"
+        if key not in sent:
+            star = "⭐ " if watched else ""
+            pred_msgs.append((key, f"🔮 {star}<b>{p['web_name']}</b> (£{p['now_cost']/10:.1f}) looks close to a price {direction} tonight (net {net:+,})"))
+    messages.extend(pred_msgs[:5])
+
+    # --- unmapped Hebrew names (new signings) ---
+    missing = load_json(os.path.join(ROOT, "data", "names-missing.json"), {}) or {}
+    if missing.get("count"):
+        key = f"names:{missing['count']}:{hash(tuple(missing.get('names', [])[:10]))}"
+        if key not in sent:
+            sample = ", ".join(missing.get("names", [])[:8])
+            messages.append((key, f"🈳 <b>{missing['count']} players missing Hebrew names</b> in names-he.js:\n{sample}"))
+
     # --- morning digest (once a day, ~08:00 Israel time) ---
     digest_key = f"digest:{now.strftime('%Y-%m-%d')}"
     if now.hour == 5 and digest_key not in sent:

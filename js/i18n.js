@@ -6,8 +6,14 @@ import { PLAYER_NAMES_HE } from './names-he.js';
 
 const LANG_KEY = 'amitfpl:lang';
 
+// Explicit choice wins; otherwise first visits follow the browser
+// language (Hebrew browsers open in Hebrew).
 let lang = 'en';
-try { if (localStorage.getItem(LANG_KEY) === 'he') lang = 'he'; } catch { /* private mode */ }
+try {
+  const stored = localStorage.getItem(LANG_KEY);
+  if (stored) lang = stored === 'he' ? 'he' : 'en';
+  else if ((navigator.language || '').toLowerCase().startsWith('he')) lang = 'he';
+} catch { /* private mode */ }
 
 export const getLang = () => lang;
 export const isHe = () => lang === 'he';
@@ -316,6 +322,13 @@ const STRINGS = {
   'market.ownDrops': ['Ownership drops', 'ירידה בבעלות'],
   'market.noneYet': ['none yet', 'אין עדיין'],
   'market.blurb': ['Price moves and transfer momentum - spot rises before they happen. Click headers to sort.', 'תנועות מחירים ומומנטום העברות - זהו עליות לפני שהן קורות. לחצו על כותרות למיון.'],
+  'market.predTitle': ['Price-change radar (beta)', 'רדאר שינויי מחירים (ניסיוני)'],
+  'market.predRise': ['Likely to rise tonight', 'צפויים לעלות הלילה'],
+  'market.predFall': ['Likely to fall tonight', 'צפויים לרדת הלילה'],
+  'market.predProgress': ['Progress', 'התקדמות'],
+  'market.predProgressTitle': ['Estimated progress toward a price change, from net transfers vs. owner count', 'התקדמות משוערת לקראת שינוי מחיר, לפי מאזן העברות מול מספר המחזיקים'],
+  'market.predQuiet': ['No meaningful transfer momentum right now - the radar wakes up once transfers start flowing.', 'אין מומנטום העברות משמעותי כרגע - הרדאר מתעורר כשההעברות מתחילות לזרום.'],
+  'market.predBeta': ['net transfers vs. owners · an indication, not a promise', 'מאזן העברות מול מחזיקים · אינדיקציה, לא הבטחה'],
   'market.allZeros': ['All zeros for now - this comes alive once the season starts.', 'הכל אפסים בינתיים - זה מתעורר לחיים כשהעונה מתחילה.'],
 
   /* ---- status tab ---- */
@@ -429,6 +442,14 @@ const STRINGS = {
   'myteam.gwPtsCol': ['GW Pts', 'נק׳ מחזור'],
   'myteam.squadSoon': ['Your squad will appear here once the season starts (picks are public after the GW1 deadline, Aug 21).', 'הסגל שלך יופיע כאן כשהעונה תתחיל (הסגלים נחשפים אחרי דדליין מחזור 1, ‏21 באוגוסט).'],
   'myteam.changeId': ['Change team ID', 'החלפת מזהה קבוצה'],
+  'myteam.livePts': ['{gw} live', '{gw} בשידור חי'],
+  'myteam.liveMin': ["' played", ' דק׳ משחק'],
+  'myteam.leagues': ['My leagues', 'הליגות שלי'],
+  'myteam.leagueName': ['League', 'ליגה'],
+  'myteam.leagueRank': ['Rank', 'דירוג'],
+  'myteam.leagueTeam': ['Team', 'קבוצה'],
+  'myteam.leagueManager': ['Manager', 'מנג׳ר'],
+  'myteam.leagueTotal': ['Total', 'סה״כ'],
 
   /* ---- player drawer ---- */
   'dw.noData': ['no data yet', 'אין נתונים עדיין'],
@@ -533,6 +554,32 @@ const STRINGS = {
   'pl.asPlanTc': ['Plan TC', 'תכנון TC'],
   'pl.asBbWindow': ['Best Bench Boost window: <strong>{gw}</strong> <span class="muted">bench projects +{n}</span>', 'החלון הטוב ביותר לבנץ׳ בוסט: <strong>{gw}</strong> <span class="muted">הספסל צפוי ל-‎+{n}</span>'],
   'pl.asPlanBb': ['Plan BB', 'תכנון BB'],
+
+  /* ---- draft comparison & team import ---- */
+  'pl.cmpTitle': ['Compare drafts', 'השוואת טיוטות'],
+  'pl.cmpDraft': ['Draft', 'טיוטה'],
+  'pl.cmpValue': ['Value', 'שווי'],
+  'pl.cmpChips': ['Chips', 'צ׳יפים'],
+  'pl.cmpDiff': ['Differences vs active draft', 'הבדלים מול הטיוטה הפעילה'],
+  'pl.cmpActive': ['the active draft', 'הטיוטה הפעילה'],
+  'pl.cmpEmpty': ['empty', 'ריקה'],
+  'pl.cmpSame': ['identical squad', 'סגל זהה'],
+  'pl.cmpNote': ['● marks the active draft. Switch drafts with the A/B/C buttons in the toolbar.', '● מסמן את הטיוטה הפעילה. מחליפים טיוטה עם כפתורי א/ב/ג בסרגל.'],
+  'myteam.import': ['Import to planner', 'ייבוא למתכנן'],
+  'myteam.importTitle': ['Copy this squad into the planner\'s active draft (replaces its current plan)', 'העתקת הסגל הזה לטיוטה הפעילה במתכנן (מחליף את התוכנית הנוכחית בה)'],
+
+  /* ---- deadline day & onboarding ---- */
+  'home.deadlineDay': ['Deadline day!', 'יום דדליין!'],
+  'home.hoursLeft': ['{h}h {m}m left!', 'נותרו {h} שע׳ {m} דק׳!'],
+  'home.toPlanner': ['Final touches in the planner →', 'ליטושים אחרונים במתכנן ←'],
+  'ob.title': ['Welcome to amitfpl 👋', 'ברוכים הבאים ל-amitfpl 👋'],
+  'ob.sub': ['Your personal FPL toolkit. The 60-second tour:', 'ערכת ה-FPL האישית שלך. סיור של 60 שניות:'],
+  'ob.item1': ['<strong>Players</strong> - every player, sortable, filterable; click one for the full profile.', '<strong>שחקנים</strong> - כל השחקנים עם מיון וסינון; לחיצה על שחקן פותחת פרופיל מלא.'],
+  'ob.item2': ['<strong>Planner</strong> - build your squad on a pitch, plan transfers and chips for future GWs.', '<strong>מתכנן</strong> - בניית סגל על מגרש, תכנון העברות וצ׳יפים למחזורים הבאים.'],
+  'ob.item3': ['<strong>Scout & Fixtures</strong> - captain picks, likely scorers and the difficulty planner.', '<strong>סקאוט ולוח משחקים</strong> - בחירות קפטן, מועמדים להבקיע ומתכנן הקושי.'],
+  'ob.item4': ['<strong>My Team</strong> - connect your real FPL squad with your Team ID.', '<strong>הקבוצה שלי</strong> - חיבור הסגל האמיתי עם מזהה הקבוצה.'],
+  'ob.item5': ['Language (EN/עב), dark mode and help (?) live in the top bar.', 'שפה (EN/עב), מצב כהה ועזרה (?) נמצאים בסרגל העליון.'],
+  'ob.go': ["Let's go", 'יאללה, מתחילים'],
 
   /* ---- help modal ---- */
   'help.title': ['How to use amitfpl', 'איך משתמשים ב-amitfpl'],
