@@ -56,6 +56,7 @@ const view = {
   pending: null,   // {type:'in'|'out', id} - half-made transfer
   showAssistant: false,
   building: false,
+  buildOptions: null, // [{squad, xp}] - the auto-build's three takes
 };
 
 let sideScroll = 0;
@@ -112,7 +113,11 @@ function load() {
         captain: saved.captain || null,
         chips: saved.chips || {},
         transfers: saved.transfers || {},
+        buildOptions: (saved.buildOptions || []).filter(
+          (o) => (o?.squad || []).every((id) => state.playersById[id])
+        ).slice(0, 3) || null,
       });
+      if (!view.buildOptions?.length) view.buildOptions = null;
       return;
     }
     Object.assign(view, { baseSquad: [], starters: [], captain: null, chips: {}, transfers: {} });
@@ -139,6 +144,7 @@ const save = () =>
     chips: view.chips,
     transfers: view.transfers,
     planXp: view._planXp ?? null,
+    buildOptions: view.buildOptions,
   }));
 
 // Import a real FPL squad (from the My Team tab) into the active draft
@@ -153,6 +159,7 @@ export function importSquad({ squad, starters, captain }) {
     planGw: null,
     pending: null,
     swapId: null,
+    buildOptions: null,
   });
   save();
 }
@@ -263,12 +270,14 @@ function weightedSquadScore(squad, score) {
   return total;
 }
 
-function buildOptimalSquad(model) {
+// avoid: ids from earlier build options, mildly penalized so the next
+// option lands on a genuinely different squad - not the same 15 again.
+function buildOptimalSquad(model, avoid = null) {
   const score = {};
   const pools = { 1: [], 2: [], 3: [], 4: [] };
   for (const p of state.bootstrap.elements) {
     if (p.status === 'u' || p.status === 'n') continue;
-    score[p.id] = model.horizonTotal(p.id);
+    score[p.id] = model.horizonTotal(p.id) * (avoid?.has(p.id) ? 0.9 : 1);
     pools[p.element_type].push(p);
   }
   for (const pos of [1, 2, 3, 4]) {
@@ -328,6 +337,20 @@ export function bestXI(model, squadIds, eventId) {
   }
   return best;
 }
+
+// Comparable forecast for an arbitrary squad: best XI + captain, summed
+// over the horizon. Labels the auto-build options so picking between
+// them is a number, not a guess.
+function squadForecast(model, squad) {
+  return model.gws.reduce((s, gw) => {
+    const xi = bestXI(model, squad, gw);
+    if (!xi) return s;
+    return s + xi.total + Math.max(...xi.xi.map((id) => model.xp(id, gw)));
+  }, 0);
+}
+
+const sameSquad = (a, b) =>
+  a.length === b.length && [...a].sort().join() === [...b].sort().join();
 
 /* ---------------- state upkeep ---------------- */
 
@@ -979,6 +1002,12 @@ export async function renderPlanner(root) {
         <span class="spacer"></span>
         <span class="result-count">${formationLabel}${lineup.captain ? ` · ${t('pl.capLabel')}: <strong>${escapeHtml(playerName(state.playersById[lineup.captain]))}</strong>` : ''} · ${t('pl.gwForecast', { gw: gwLabel(gw) })} <strong>${gwForecast(model, gw, ft).toFixed(1)} ${t('pl.pts')}</strong>${isFirst ? '' : ` ${t('pl.autoLineup')}`}</span>
       </div>
+      ${view.buildOptions?.length ? `<div class="toolbar build-opts">
+        <span class="build-opts-label">${t('pl.buildOpts')}</span>
+        ${view.buildOptions.map((o, i) => `<button class="gw-chip ${sameSquad(o.squad, view.baseSquad) ? 'active' : ''}" data-build-opt="${i}">${t('pl.buildOptN', { n: i + 1 })} · ${o.xp}</button>`).join('')}
+        ${infoNote('info.buildOpts')}
+        <button class="link-btn" id="pl-build-opts-x" title="${t('common.close')}">✕</button>
+      </div>` : ''}
       ${chipsBar(model, gw)}
       ${transfersBar(model, gw, ft)}
       ${view.showAssistant ? assistantPanel(model, gw) : ''}
@@ -999,6 +1028,19 @@ export async function renderPlanner(root) {
     rerender();
   });
 
+  const applyBuildOption = (i) => {
+    const opt = view.buildOptions?.[i];
+    if (!opt) return;
+    view.baseSquad = [...opt.squad];
+    view.starters = [];
+    view.captain = null;
+    view.transfers = {};
+    ensureConsistency(model);
+  };
+
+  // The build makes three different strong squads (each pass mildly
+  // penalizes players the previous ones used), so "auto build" offers a
+  // choice of lineups instead of the same single answer every time.
   root.querySelector('#pl-build').addEventListener('click', () => {
     if (view.building) return;
     view.building = true;
@@ -1006,14 +1048,30 @@ export async function renderPlanner(root) {
     btn.textContent = t('pl.optimizing');
     btn.disabled = true;
     setTimeout(() => {
-      view.baseSquad = buildOptimalSquad(model);
-      view.starters = [];
-      view.captain = null;
-      view.transfers = {};
-      ensureConsistency(model);
+      const options = [];
+      const used = new Set();
+      for (let k = 0; k < 3; k++) {
+        const squad = buildOptimalSquad(model, k ? used : null);
+        options.push({ squad, xp: Math.round(squadForecast(model, squad)) });
+        squad.forEach((id) => used.add(id));
+      }
+      view.buildOptions = options;
+      applyBuildOption(0);
       view.building = false;
       rerender();
     }, 30);
+  });
+
+  root.querySelectorAll('[data-build-opt]').forEach((b) =>
+    b.addEventListener('click', () => {
+      applyBuildOption(+b.dataset.buildOpt);
+      rerender();
+    })
+  );
+
+  root.querySelector('#pl-build-opts-x')?.addEventListener('click', () => {
+    view.buildOptions = null;
+    rerender();
   });
 
   root.querySelector('#pl-assist').addEventListener('click', () => {
@@ -1073,7 +1131,7 @@ export async function renderPlanner(root) {
   });
 
   root.querySelector('#pl-clear')?.addEventListener('click', () => {
-    Object.assign(view, { baseSquad: [], starters: [], captain: null, transfers: {}, swapId: null, pending: null });
+    Object.assign(view, { baseSquad: [], starters: [], captain: null, transfers: {}, swapId: null, pending: null, buildOptions: null });
     rerender();
   });
 

@@ -239,6 +239,33 @@ body {
 .an-list li { display: flex; gap: 9px; align-items: baseline; }
 .an-list .an-ic { flex: none; }
 
+/* The recommended XI, one row per position, incoming players lit up. */
+.an-xi {
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.an-xi-head { font-size: 13px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px; }
+.an-xi-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 5px 0; }
+.an-xi-pos { flex: none; width: 34px; font-size: 11px; font-weight: 700; color: var(--text-faint); }
+.an-xi-p {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.an-xi-p.in { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* Auto-build options strip in the planner */
+.build-opts { padding-top: 10px; }
+.build-opts-label { font-size: 13px; font-weight: 600; color: var(--text-soft); }
+.build-opts .link-btn { margin-inline-start: auto; }
+
 .offline-bar {
   background: #b06f00;
   color: #fff;

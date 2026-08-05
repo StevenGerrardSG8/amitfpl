@@ -6,7 +6,7 @@
 import { state, fmtPrice, statusInfo, escapeHtml } from './state.js';
 import { loadBaseline, buildModel } from './model.js';
 import { bestXI } from './planner.js';
-import { t, playerName, gwLabel } from './i18n.js';
+import { t, playerName, gwLabel, posShort } from './i18n.js';
 
 const MAX_PER_CLUB = 3;
 
@@ -89,16 +89,27 @@ export async function analyzeSquad({ squad, starters = [], captain = null, bank 
     .slice(0, 2);
 
   // --- lineup check: does the model's best XI beat the picked one?
+  // Presented as who-for-who swaps plus the full recommended XI, so the
+  // advice reads as an actual lineup rather than one merged sentence.
   let lineupFix = null;
   if (starters.length === 11 && xi) {
     const curPts = lineup.reduce((s, id) => s + model.xp(id, gw), 0);
     const gain = xi.total - curPts;
     if (gain > 0.4) {
-      lineupFix = {
-        ins: xi.xi.filter((id) => !lineup.includes(id)),
-        outs: lineup.filter((id) => !xi.xi.includes(id)),
-        gain,
-      };
+      const posType = (id) => state.playersById[id].element_type;
+      const outs = lineup.filter((id) => !xi.xi.includes(id));
+      const remIns = xi.xi.filter((id) => !lineup.includes(id));
+      const pairs = [];
+      for (const out of outs) {
+        // Same-position swap when there is one; formation changes pair up
+        // whatever is left (e.g. a defender makes way for a midfielder).
+        let idx = remIns.findIndex((id) => posType(id) === posType(out));
+        if (idx === -1) idx = 0;
+        const inId = remIns.splice(idx, 1)[0];
+        if (inId == null) break;
+        pairs.push({ out, in: inId, gain: model.xp(inId, gw) - model.xp(out, gw) });
+      }
+      lineupFix = { pairs, gain, xi: xi.xi, formation: xi.formation };
     }
   }
 
@@ -128,12 +139,29 @@ export function analysisHtml(a) {
     items.push(li('💰', t('an.noTransfer', { bank: fmtPrice(a.bank) })));
   }
 
+  let xiHtml = '';
   if (a.lineupFix) {
-    items.push(li('🪑', t('an.lineup', {
-      ins: a.lineupFix.ins.map(nameOf).join(', '),
-      outs: a.lineupFix.outs.map(nameOf).join(', '),
-      gain: a.lineupFix.gain.toFixed(1),
-    })));
+    for (const p of a.lineupFix.pairs) {
+      items.push(li('🪑', t('an.lineupSwap', {
+        in: nameOf(p.in),
+        out: nameOf(p.out),
+        gain: p.gain.toFixed(1),
+      })));
+    }
+    // The recommended XI itself, row per position, incoming players lit up.
+    const ins = new Set(a.lineupFix.pairs.map((p) => p.in));
+    const rows = [1, 2, 3, 4].map((pos) => {
+      const chips = a.lineupFix.xi
+        .filter((id) => state.playersById[id].element_type === pos)
+        .map((id) => `<span class="an-xi-p ${ins.has(id) ? 'in' : ''}">${nameOf(id)}</span>`)
+        .join('');
+      const label = posShort(state.positionsById[pos].singular_name_short);
+      return `<div class="an-xi-row"><span class="an-xi-pos">${label}</span>${chips}</div>`;
+    }).join('');
+    xiHtml = `<div class="an-xi">
+      <div class="an-xi-head">${t('an.xiTitle', { formation: a.lineupFix.formation, gain: a.lineupFix.gain.toFixed(1) })}</div>
+      ${rows}
+    </div>`;
   } else {
     items.push(li('✅', t('an.lineupOk')));
   }
@@ -144,5 +172,6 @@ export function analysisHtml(a) {
       <span class="an-grade an-grade-${a.grade}">${t(`an.grade.${a.grade}`)}</span>
     </div>
     <p class="an-outlook">${t('an.outlook', { pts: a.xiXp.toFixed(0), gw: gwLabel(a.gw) })}</p>
-    <ul class="an-list">${items.join('')}</ul>`;
+    <ul class="an-list">${items.join('')}</ul>
+    ${xiHtml}`;
 }
