@@ -1692,6 +1692,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* A pitch diagram is a real-world orientation, not text - a right
+     winger doesn't swap sides because the page is in Hebrew. Flexbox's
+     "row" axis otherwise follows the page's text direction, which
+     would silently mirror every L/R placement in RTL. */
+  direction: ltr;
 }
 .lu-row { display: flex; justify-content: center; gap: 2px; flex-wrap: wrap; }
 .lu-p { width: 19%; min-width: 52px; text-align: center; color: #fff; }
