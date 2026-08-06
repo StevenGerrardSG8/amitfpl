@@ -152,7 +152,11 @@ def snapshot_leagues(entry, team_id):
             ],
         })
     if out:
-        write("leagues.json", out)
+        # Tag the snapshot with the team it belongs to - the site only
+        # ever fetches one team's leagues here, but if a different team
+        # ID is connected in a browser it must NOT show this team's
+        # private league standings under that other team's "My leagues".
+        write("leagues.json", {"teamId": str(team_id), "leagues": out})
 
 
 def report_missing_names(elements):

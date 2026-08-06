@@ -1,21 +1,32 @@
-// Home dashboard: as clean as possible. One CTA, next GW at a glance,
-// and just the two most personal/actionable widgets - everything else
-// (full xG/clean-sheet forecasts, scorer odds) already lives one tap
-// away in Fixtures/Scout, so it doesn't need to be repeated here too.
+// Home dashboard: one CTA, a deadline strip, then a grid of small
+// glanceable preview cards (scoring chances, goals/clean-sheet
+// forecast, fixture difficulty, set-piece takers, top picks,
+// watchlist) - each links to its full page for the deep view.
 import { state, fmtPrice, escapeHtml } from './state.js';
-import { teamBadge, playerCell, infoNote } from './ui.js';
-import { loadBaseline, buildModel } from './model.js';
+import { teamBadge, playerCell, infoNote, fixtureDifficulty, inlinePhoto } from './ui.js';
+import { loadBaseline, buildModel, teamForecast } from './model.js';
 import { watchlist } from './drawer.js';
-import { t, locale, gwName, isHe, teamShort } from './i18n.js';
+import { hasConnectedSquad } from './myteam.js';
+import { takers } from './setpieces.js';
+import { t, locale, gwName, isHe, teamShort, haMark, playerName } from './i18n.js';
+
+// Hebrew needs the singular noun for exactly 1 ("יום אחד"/"שעה אחת"/
+// "דקה אחת"), not "1 ימים"/"1 שעות"/"1 דקות" - English's bare "d"/"h"/"m"
+// abbreviations don't have this problem, so only Hebrew branches here.
+const HE_UNIT_ONE = { d: 'יום אחד', h: 'שעה אחת', m: 'דקה אחת' };
+const HE_UNIT_MANY = { d: 'ימים', h: 'שעות', m: 'דקות' };
+function heCount(n, unit) {
+  return n === 1 ? HE_UNIT_ONE[unit] : `${n} ${HE_UNIT_MANY[unit]}`;
+}
 
 // The one-tap path Itay asked for: upload your squad, get the AI read.
 // One friendly strip, one button - no wall of tools.
 function analyzeCta() {
-  let connected = null;
+  let ready = false;
   try {
-    connected = localStorage.getItem('amitfpl:teamId') || localStorage.getItem('amitfpl:manualSquad');
+    ready = hasConnectedSquad();
   } catch { /* private mode */ }
-  const k = connected ? 'Ready' : '';
+  const k = ready ? 'Ready' : '';
   return `<div class="analyze-cta">
     <span class="ac-icon">🧠</span>
     <div class="ac-text">
@@ -26,40 +37,25 @@ function analyzeCta() {
   </div>`;
 }
 
-function fixtureCards() {
+// A one-line deadline strip replaces the old fixture-schedule hero
+// card - the raw schedule already lives one tap away on Matches, so
+// this only needs to say when the deadline is and how urgent it is.
+function deadlineStrip() {
   const nxt = state.nextEvent;
   if (!nxt) return '';
-  const fx = state.fixtures
-    .filter((f) => f.event === nxt.id && f.kickoff_time)
-    .sort((a, b) => a.kickoff_time.localeCompare(b.kickoff_time));
-  const cards = fx.map((f) => {
-    const h = state.teamsById[f.team_h];
-    const a = state.teamsById[f.team_a];
-    const ko = new Date(f.kickoff_time);
-    const when = ko.toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    return `<div class="fx-card">
-      <div class="fx-row">
-        <div class="fx-team">${teamBadge(h.id)}<span>${escapeHtml(teamShort(h))}</span></div>
-        <span class="fx-vs">${t('common.vs')}</span>
-        <div class="fx-team">${teamBadge(a.id)}<span>${escapeHtml(teamShort(a))}</span></div>
-      </div>
-      <div class="fx-time">${when}</div>
-    </div>`;
-  }).join('');
   const dl = new Date(nxt.deadline_time);
   const left = dl - Date.now();
   const d = Math.floor(left / 86400000);
   const h = Math.floor((left % 86400000) / 3600000);
-  // Deadline day (under 24h to go): the whole card turns urgent.
   const deadlineDay = left > 0 && left < 86400000;
   const count = left > 0
-    ? (deadlineDay ? t('home.hoursLeft', { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) }) : t('home.toGo', { d, h }))
+    ? (deadlineDay
+        ? t('home.hoursLeft', isHe()
+            ? { h: heCount(Math.floor(left / 3600000), 'h'), m: heCount(Math.floor((left % 3600000) / 60000), 'm') }
+            : { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) })
+        : t('home.toGo', isHe() ? { d: heCount(d, 'd'), h: heCount(h, 'h') } : { d, h }))
     : t('chrome.locked');
   const when = dl.toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-  // One card, not two: a calm headline (GW + countdown) and a lighter
-  // subline (deadline + fixture count), then the fixtures grid right
-  // underneath - a hairline divider separates the two instead of a
-  // second stacked card with its own repeated "Gameweek N" title.
   return `
     <div class="card hero-card ${deadlineDay ? 'hero-urgent' : ''}" style="margin-bottom:16px">
       <div class="hero-top">
@@ -67,11 +63,82 @@ function fixtureCards() {
           <span class="hero-gw">${escapeHtml(gwName(nxt.name))}</span>
           <span class="hero-count">${deadlineDay ? `🔥 ${count}` : count}</span>
         </div>
-        <div class="hero-sub">${t('home.deadline', { when })} · ${t('home.fixtures', { n: fx.length })}</div>
+        <div class="hero-sub">${t('home.deadline', { when })}</div>
         ${deadlineDay ? `<button class="hero-cta" data-goto="planner">${t('home.toPlanner')}</button>` : ''}
       </div>
-      <div class="fx-grid">${cards}</div>
     </div>`;
+}
+
+// Scoring chances: who's most likely to find the net this gameweek.
+function scoringRows(model, gw) {
+  const top = state.bootstrap.elements
+    .filter((p) => p.status === 'a' || p.status === 'd')
+    .map((p) => ({ p, prob: model.goalChance(p.id, gw) }))
+    .sort((a, b) => b.prob - a.prob)
+    .slice(0, 6);
+  return widgetList(top.map(({ p, prob }) => wRow(playerCell(p), `${Math.round(prob * 100)}%`)));
+}
+
+// Goals + clean sheet forecast: same model, same compact row style as
+// the equivalent card on Fixtures.
+function goalsCsRows(model, gw) {
+  const top = [...teamForecast(gw)].sort((a, b) => b.xg - a.xg).slice(0, 8);
+  return widgetList(top.map(({ team, opp, isHome, xg, cs }) => {
+    const csPct = Math.round(cs * 100);
+    return wRow(
+      `<div class="w-left"><span class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</span><span class="muted">${t('common.vs')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</span></div>`,
+      `<span class="xg-pill">${xg.toFixed(2)}</span> <span class="cs-pill ${csPct >= 40 ? 'cs-hi' : csPct <= 20 ? 'cs-lo' : ''}">${csPct}%</span>`
+    );
+  }));
+}
+
+// Fixture difficulty: the easiest-run teams over their next 3 games,
+// same colour-coded chips as the full Fixtures grid. Rows here are a
+// single line, shorter than Scoring chances' player-photo rows, so it
+// takes more of them to fill the height that card sets for the row.
+function fdrRows() {
+  const top = state.bootstrap.teams
+    .map((team) => {
+      const fx = (state.upcomingByTeam[team.id] || []).slice(0, 3);
+      const avg = fx.length ? fx.reduce((s, f) => s + fixtureDifficulty(f), 0) / fx.length : 5;
+      return { team, fx, avg };
+    })
+    .sort((a, b) => a.avg - b.avg)
+    .slice(0, 9);
+  return widgetList(top.map(({ team, fx }) => wRow(
+    `<span class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</span>`,
+    fx.length
+      ? `<div class="fdr-cell" style="flex-direction:row">${fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${escapeHtml(teamShort(state.teamsById[f.opponent]))}</span>`).join('')}</div>`
+      : '-'
+  )));
+}
+
+// Set-piece takers: the 6 teams playing soonest this gameweek, each
+// with their first-choice (currently available) penalty taker - same
+// single-line-row reasoning as fdrRows() above.
+function takersRows() {
+  const nxt = state.nextEvent;
+  const fx = nxt
+    ? state.fixtures.filter((f) => f.event === nxt.id && f.kickoff_time).sort((a, b) => a.kickoff_time.localeCompare(b.kickoff_time))
+    : [];
+  const teamIds = [];
+  for (const f of fx) {
+    if (!teamIds.includes(f.team_h)) teamIds.push(f.team_h);
+    if (!teamIds.includes(f.team_a)) teamIds.push(f.team_a);
+    if (teamIds.length >= 6) break;
+  }
+  const byTeam = {};
+  for (const p of state.bootstrap.elements) (byTeam[p.team] = byTeam[p.team] || []).push(p);
+  return widgetList(teamIds.map((tid) => {
+    const pens = takers(byTeam[tid] || [], 'penalties_order');
+    const primary = pens.find((p) => !['i', 's', 'u', 'n'].includes(p.status)) || pens[0];
+    return wRow(
+      `<span class="team-cell">${teamBadge(tid)} ${escapeHtml(teamShort(state.teamsById[tid]))}</span>`,
+      primary
+        ? `<span class="clickable" data-pid="${primary.id}">${inlinePhoto(primary)} ${escapeHtml(playerName(primary))}</span>`
+        : '<span class="muted">-</span>'
+    );
+  }));
 }
 
 function widget(title, rowsHtml, gotoTab, gotoLabel, infoKey) {
@@ -101,7 +168,8 @@ export async function renderHome(root) {
     .map((p) => ({ p, xp: model.xp(p.id, gw) }))
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 4);
-  const capRows = widgetList(captains.map(({ p, xp }) => wRow(playerCell(p), xp.toFixed(1))));
+  const capRows = widgetList(captains.map(({ p, xp }, i) =>
+    wRow(`<div class="w-left"><span class="rank-badge rank-${i + 1}">${i + 1}</span>${playerCell(p)}</div>`, `${xp.toFixed(1)} <small>${t('pl.pts')}</small>`)));
 
   const watched = watchlist().map((id) => state.playersById[id]).filter(Boolean);
   const watchRows = watched.length
@@ -111,8 +179,12 @@ export async function renderHome(root) {
 
   root.innerHTML = `
     ${analyzeCta()}
-    ${fixtureCards()}
+    ${deadlineStrip()}
     <div class="widget-grid">
+      ${widget(t('home.scoringTitle'), scoringRows(model, gw), 'scout', t('tab.scout'), 'info.goalChance')}
+      ${widget(t('fx.forecastTitle'), goalsCsRows(model, gw), 'fixtures', t('tab.fixtures'), 'info.forecast')}
+      ${widget(t('home.fdrTitle'), fdrRows(), 'fixtures', t('tab.fixtures'), 'info.fdr')}
+      ${widget(t('home.takersTitle'), takersRows(), 'setpieces', t('tab.setpieces'))}
       ${widget(t('home.capTitle'), capRows, 'scout', t('home.gotoScout'), 'info.model')}
       ${widget(t('home.watchTitle'), watchRows, 'players', t('home.gotoPlayers'))}
     </div>`;

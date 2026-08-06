@@ -63,34 +63,6 @@ body {
 
 .chips { display: flex; align-items: center; gap: 8px; }
 
-.updated-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-faint);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.updated-chip button {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-soft);
-  border-radius: 999px;
-  width: 26px;
-  height: 26px;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-}
-.updated-chip button:hover { color: var(--accent); border-color: var(--accent); }
-.updated-chip button.spinning {
-  animation: spin 0.8s linear infinite;
-  pointer-events: none;
-  color: var(--accent);
-}
-
 .deadline-chip {
   display: flex;
   align-items: center;
@@ -558,6 +530,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .status-flag { font-size: 11px; font-weight: 700; margin-inline-start: 5px; cursor: help; }
 .status-d { color: var(--amber); }
 .status-i, .status-s, .status-u, .status-n { color: var(--red); }
+
+.lineup-flag { font-size: 10px; margin-inline-start: 5px; cursor: help; }
+.lineup-flag.yes { color: var(--green); }
+.lineup-flag.no { color: var(--text-faint); }
 
 .hi { color: var(--green); font-weight: 600; }
 .lo { color: var(--red); }
@@ -1408,7 +1384,31 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding: 7px 16px;
 }
 .w-row:hover { background: var(--bg); }
+.w-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .w-val { flex: none; font-weight: 700; color: var(--text-soft); font-size: 13px; }
+.w-val small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  margin-inline-start: 3px;
+}
+.rank-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  color: #201800;
+}
+.rank-badge.rank-1 { background: #d9a521; }
+.rank-badge.rank-2 { background: #c3c8d1; }
+.rank-badge.rank-3 { background: #b5651d; color: #fff; }
+.rank-badge.rank-4 { background: var(--border); color: var(--text-soft); }
 
 /* ---------- Drawer extras: actions, trends ---------- */
 .drawer-actions { display: flex; gap: 8px; margin-top: 8px; }
@@ -1898,7 +1898,6 @@ tr.league-me td { background: var(--accent-soft); font-weight: 700; }
   .tabs { padding: 0 8px; }
   .brand-sub { display: none; }
   .deadline-chip .deadline-time { display: none; }
-  .updated-chip span { display: none; }
   .toolbar { padding: 10px 12px; gap: 8px; }
   .toolbar input[type="search"] { width: 100%; }
   table.data { font-size: 12px; }

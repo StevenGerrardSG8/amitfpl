@@ -1,5 +1,5 @@
 // Scout tab: captaincy shortlist, differentials, best value.
-import { state, fmtPrice, num, escapeHtml } from './state.js';
+import { state, fmtPrice, num, escapeHtml, statusInfo } from './state.js';
 import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { t, haMark, gwLabel, playerName, teamShort } from './i18n.js';
@@ -61,7 +61,9 @@ export async function renderScout(root) {
           const opp = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e)
             .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
             .join(', ');
-          return `<td><span class="clickable" data-pid="${p.id}">${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(playerName(p))}${i === 0 ? '</strong>' : ''}</span>
+          const st = statusInfo(p);
+          const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
+          return `<td><span class="clickable" data-pid="${p.id}">${inlinePhoto(p)} ${i === 0 ? '<strong>' : ''}${escapeHtml(playerName(p))}${i === 0 ? '</strong>' : ''}${flag}</span>
             <span class="muted">${xp.toFixed(1)} · ${opp || '-'}</span></td>`;
         })
         .join('');
