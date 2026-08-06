@@ -2,7 +2,7 @@ import { state, escapeHtml, statusInfo } from './state.js';
 import { teamBadge, inlinePhoto, fixtureChips } from './ui.js';
 import { t, playerName, teamName } from './i18n.js';
 
-function takers(players, orderKey) {
+export function takers(players, orderKey) {
   return players
     .filter((p) => p[orderKey] != null)
     .sort((a, b) => a[orderKey] - b[orderKey]);

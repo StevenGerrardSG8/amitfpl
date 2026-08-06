@@ -259,10 +259,12 @@ const STRINGS = {
   'sp.cornerTitle': ['First-choice corners & indirect FKs', 'מרים קרנות ובעיטות עקיפות ראשון'],
 
   /* ---- home ---- */
-  'home.fixtures': ['{n} fixtures', '{n} משחקים'],
   'home.deadline': ['deadline {when}', 'דדליין {when}'],
   'home.toGo': ['{d}d {h}h to go', 'נותרו {d} ו-{h}'],
   'home.capTitle': ["League's top picks", 'הבחירות המובילות בליגה'],
+  'home.scoringTitle': ['Scoring chances', 'סיכויי הבקעה'],
+  'home.fdrTitle': ['Fixture difficulty', 'רמת קושי המשחקים'],
+  'home.takersTitle': ['Set-piece takers', 'בועטי נייחים'],
   'home.watchTitle': ['My watchlist', 'רשימת המעקב שלי'],
   'home.gotoScout': ['Scout', 'סקאוט'],
   'home.gotoPlayers': ['Players', 'שחקנים'],
