@@ -2,13 +2,17 @@
 // Strategy: network-first for everything, falling back to cache when
 // offline. This keeps the app installable and usable offline WITHOUT
 // ever serving stale code when online.
-const CACHE = 'amitfpl-v2';
+// Bumped for the new lion icon/favicon - forces installed PWAs to purge
+// their old cached icon.svg/icon-180.png instead of showing a stale icon.
+const CACHE = 'amitfpl-v3';
 const CORE = [
   './',
   'index.html',
   'styles.css',
   'manifest.json',
-  'icon.svg',
+  'favicon.png',
+  'icon-180.png',
+  'icon-512.png',
   'js/app.js', 'js/api.js', 'js/i18n.js', 'js/names-he.js', 'js/auth.js', 'js/state.js', 'js/ui.js', 'js/model.js',
   'js/players.js', 'js/planner.js', 'js/scout.js', 'js/market.js',
   'js/status.js', 'js/compare.js', 'js/fixtures.js', 'js/lineups.js',
