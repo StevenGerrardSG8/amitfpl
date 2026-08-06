@@ -144,8 +144,6 @@ export function t(key, params) {
 const STRINGS = {
   /* ---- chrome / header ---- */
   'brand.sub': ['FPL Toolkit', 'ערכת כלים ל-FPL'],
-  'chrome.refreshTitle': ['Refresh data now', 'רענון נתונים עכשיו'],
-  'chrome.refreshAria': ['Refresh data', 'רענון נתונים'],
   'chrome.themeTitle': ['Toggle dark mode', 'החלפת מצב כהה'],
   'chrome.helpTitle': ['Help & glossary', 'עזרה ומילון מונחים'],
   'chrome.langTitle': ['עברית', 'English'],
@@ -153,10 +151,6 @@ const STRINGS = {
   'chrome.offline': ['Offline - showing saved data', 'אין חיבור - מוצגים נתונים שמורים'],
   'chrome.toTop': ['Back to top', 'חזרה למעלה'],
   'chrome.loadError': ["Couldn't load FPL data ({msg}). Refresh to retry.", 'טעינת נתוני FPL נכשלה ({msg}). רעננו כדי לנסות שוב.'],
-  'chrome.updatedNow': ['Updated just now', 'עודכן ממש עכשיו'],
-  'chrome.updatedMin': ['Updated {m}m ago', 'עודכן לפני {m} דקות'],
-  'chrome.updatedHr': ['Updated {h}h {m}m ago', 'עודכן לפני {h} שעות ו-{m} דקות'],
-  'chrome.refreshFailed': ['refresh failed', 'הרענון נכשל'],
   'chrome.deadline': ['{gw} deadline', 'דדליין {gw}'],
   'chrome.inTime': ['in {count}', 'בעוד {count}'],
   'chrome.locked': ['locked', 'ננעל'],
@@ -707,7 +701,6 @@ export function applyStaticI18n() {
   const set = (sel, fn) => { const el = document.querySelector(sel); if (el) fn(el); };
   set('#more-btn', (el) => { el.textContent = `${t('tab.more')} ▾`; });
   set('.brand-sub', (el) => { el.textContent = t('brand.sub'); });
-  set('#refresh-btn', (el) => { el.title = t('chrome.refreshTitle'); el.setAttribute('aria-label', t('chrome.refreshAria')); });
   set('#theme-btn', (el) => { el.title = t('chrome.themeTitle'); el.setAttribute('aria-label', t('chrome.themeTitle')); });
   set('#help-btn', (el) => { el.title = t('chrome.helpTitle'); el.setAttribute('aria-label', t('chrome.helpTitle')); });
   set('#lang-btn', (el) => { el.textContent = isHe() ? 'EN' : 'עב'; el.title = t('chrome.langTitle'); el.setAttribute('aria-label', t('chrome.langTitle')); });

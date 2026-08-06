@@ -83,31 +83,6 @@ function renderDeadline() {
   chip.hidden = false;
 }
 
-// The freshest honest timestamp: snapshot generation time when known,
-// otherwise the time we fetched. Oldest of the two sources wins.
-function dataTimestamp() {
-  const hits = CORE.map(readCache);
-  if (hits.some((h) => !h)) return null;
-  return Math.min(...hits.map((h) => h.gen ?? h.t));
-}
-
-function renderUpdatedChip(failed = false) {
-  const chip = document.getElementById('updated-chip');
-  const text = document.getElementById('updated-text');
-  const ts = dataTimestamp();
-  if (!ts) { chip.hidden = true; return; }
-  chip.hidden = false;
-  if (failed) {
-    text.textContent = t('chrome.refreshFailed');
-    return;
-  }
-  const mins = Math.floor((Date.now() - ts) / 60000);
-  text.textContent =
-    mins < 1 ? t('chrome.updatedNow')
-    : mins < 60 ? t('chrome.updatedMin', { m: mins })
-    : t('chrome.updatedHr', { h: Math.floor(mins / 60), m: mins % 60 });
-}
-
 function rerenderAll() {
   for (const v of Object.values(views)) v.done = false;
   showTab(activeTab);
@@ -136,26 +111,17 @@ async function loadFaces() {
   }
 }
 
-async function refresh(manual = false) {
+async function refresh() {
   if (refreshing) return;
   refreshing = true;
-  const btn = document.getElementById('refresh-btn');
-  btn.classList.add('spinning');
   try {
-    if (manual) {
-      // On the local server this pulls brand-new data from FPL before we
-      // refetch; elsewhere (e.g. GitHub Pages) it 404s and we move on.
-      await fetch('/api/refresh-now', { method: 'POST' }).catch(() => {});
-    }
     await fetchCore();
     renderDeadline();
     rerenderAll();
-    renderUpdatedChip();
   } catch {
-    renderUpdatedChip(true);
+    /* next visibility/online trigger will retry */
   } finally {
     refreshing = false;
-    btn.classList.remove('spinning');
   }
 }
 
@@ -187,7 +153,6 @@ async function main() {
 
   loading.hidden = true;
   renderDeadline();
-  renderUpdatedChip();
   initDrawer();
   initAuth(); // optional accounts - no-op until Firebase is configured
 
@@ -252,7 +217,6 @@ async function main() {
   updateTabFades();
   tabsNav.addEventListener('scroll', updateTabFades, { passive: true });
   window.addEventListener('resize', updateTabFades);
-  document.getElementById('refresh-btn').addEventListener('click', () => refresh(true));
 
   // Help modal
   const helpOverlay = document.getElementById('help-overlay');
@@ -269,7 +233,6 @@ async function main() {
     setLang(getLang() === 'he' ? 'en' : 'he');
     applyStaticI18n();
     renderDeadline();
-    renderUpdatedChip();
     rerenderAll();
   });
 
@@ -341,11 +304,8 @@ async function main() {
     : views[lastTab] ? lastTab
     : 'home');
 
-  // Keep the "updated Xm ago" label and the deadline countdown honest.
-  setInterval(() => {
-    if (!refreshing) renderUpdatedChip();
-    renderDeadline();
-  }, 30000);
+  // Keep the deadline countdown honest.
+  setInterval(renderDeadline, 30000);
 
   // ⓘ method explainers: one delegated handler for every card's popover.
   // The pop is fixed-positioned and clamped to the viewport so it never gets
