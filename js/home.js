@@ -102,7 +102,7 @@ export async function renderHome(root) {
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 4);
   const capRows = widgetList(captains.map(({ p, xp }, i) =>
-    wRow(`<span class="rank-badge rank-${i + 1}">${i + 1}</span>${playerCell(p)}`, `${xp.toFixed(1)} <small>${t('pl.pts')}</small>`)));
+    wRow(`<div class="w-left"><span class="rank-badge rank-${i + 1}">${i + 1}</span>${playerCell(p)}</div>`, `${xp.toFixed(1)} <small>${t('pl.pts')}</small>`)));
 
   const watched = watchlist().map((id) => state.playersById[id]).filter(Boolean);
   const watchRows = watched.length
