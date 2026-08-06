@@ -92,8 +92,11 @@ function goalsCsRows(model, gw) {
   }));
 }
 
-// Fixture difficulty: the 4 teams with the easiest run over their
+// Fixture difficulty: the 6 teams with the easiest run over their
 // next 3 games, same colour-coded chips as the full Fixtures grid.
+// Rows here are a single line, shorter than the player-photo rows in
+// the other cards, so it takes more of them to fill the same card
+// height - hence 6 here vs 4 elsewhere.
 function fdrRows() {
   const top = state.bootstrap.teams
     .map((team) => {
@@ -102,7 +105,7 @@ function fdrRows() {
       return { team, fx, avg };
     })
     .sort((a, b) => a.avg - b.avg)
-    .slice(0, 4);
+    .slice(0, 6);
   return widgetList(top.map(({ team, fx }) => wRow(
     `<span class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</span>`,
     fx.length
@@ -111,8 +114,9 @@ function fdrRows() {
   )));
 }
 
-// Set-piece takers: the 4 teams playing soonest this gameweek, each
-// with their first-choice (currently available) penalty taker.
+// Set-piece takers: the 6 teams playing soonest this gameweek, each
+// with their first-choice (currently available) penalty taker - same
+// single-line-row reasoning as fdrRows() above.
 function takersRows() {
   const nxt = state.nextEvent;
   const fx = nxt
@@ -122,7 +126,7 @@ function takersRows() {
   for (const f of fx) {
     if (!teamIds.includes(f.team_h)) teamIds.push(f.team_h);
     if (!teamIds.includes(f.team_a)) teamIds.push(f.team_a);
-    if (teamIds.length >= 4) break;
+    if (teamIds.length >= 6) break;
   }
   const byTeam = {};
   for (const p of state.bootstrap.elements) (byTeam[p.team] = byTeam[p.team] || []).push(p);
