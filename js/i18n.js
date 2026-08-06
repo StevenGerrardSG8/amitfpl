@@ -405,7 +405,6 @@ const STRINGS = {
   'lu.doubtful': ['Doubtful', 'מוטל בספק'],
 
   /* ---- matches ---- */
-  'mt.gameweek': ['Gameweek', 'מחזור'],
   'mt.tbc': ['TBC', 'טרם נקבע'],
   'mt.ft': ['FT', 'סיום'],
   'mt.live': ['LIVE', 'חי'],

@@ -64,18 +64,16 @@ export function renderMatches(root) {
     .filter((f) => f.event === gw)
     .sort((x, y) => (x.kickoff_time || '').localeCompare(y.kickoff_time || ''));
 
-  const gwOptions = state.bootstrap.events
-    .map((e) => `<option value="${e.id}" ${e.id === gw ? 'selected' : ''}>${escapeHtml(gwName(e.name))}</option>`)
-    .join('');
+  const evtName = state.bootstrap.events.find((e) => e.id === gw)?.name || '';
 
   root.innerHTML = `
     <div class="card">
-      <div class="toolbar">
-        <label>${t('mt.gameweek')}</label>
-        <button class="link-btn" id="mt-prev" ${gw <= 1 ? 'disabled' : ''}>${isHe() ? '›' : '‹'}</button>
-        <select id="mt-gw">${gwOptions}</select>
-        <button class="link-btn" id="mt-next" ${gw >= 38 ? 'disabled' : ''}>${isHe() ? '‹' : '›'}</button>
-        <span class="spacer"></span>
+      <div class="widget-head">
+        <span class="section-title" style="padding:0">
+          <button class="link-btn" id="mt-prev" ${gw <= 1 ? 'disabled' : ''}>${isHe() ? '›' : '‹'}</button>
+          ${escapeHtml(gwName(evtName))}
+          <button class="link-btn" id="mt-next" ${gw >= 38 ? 'disabled' : ''}>${isHe() ? '‹' : '›'}</button>
+        </span>
         <span class="result-count">${t('mt.blurb')}</span>
       </div>
       <div class="mt-list">
@@ -83,10 +81,6 @@ export function renderMatches(root) {
       </div>
     </div>`;
 
-  root.querySelector('#mt-gw').addEventListener('change', (e) => {
-    view.gw = +e.target.value;
-    renderMatches(root);
-  });
   root.querySelector('#mt-prev')?.addEventListener('click', () => { view.gw = gw - 1; renderMatches(root); });
   root.querySelector('#mt-next')?.addEventListener('click', () => { view.gw = gw + 1; renderMatches(root); });
 }
