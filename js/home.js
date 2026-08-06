@@ -75,14 +75,14 @@ function scoringRows(model, gw) {
     .filter((p) => p.status === 'a' || p.status === 'd')
     .map((p) => ({ p, prob: model.goalChance(p.id, gw) }))
     .sort((a, b) => b.prob - a.prob)
-    .slice(0, 4);
+    .slice(0, 6);
   return widgetList(top.map(({ p, prob }) => wRow(playerCell(p), `${Math.round(prob * 100)}%`)));
 }
 
 // Goals + clean sheet forecast: same model, same compact row style as
 // the equivalent card on Fixtures.
 function goalsCsRows(model, gw) {
-  const top = [...teamForecast(gw)].sort((a, b) => b.xg - a.xg).slice(0, 4);
+  const top = [...teamForecast(gw)].sort((a, b) => b.xg - a.xg).slice(0, 6);
   return widgetList(top.map(({ team, opp, isHome, xg, cs }) => {
     const csPct = Math.round(cs * 100);
     return wRow(
