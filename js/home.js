@@ -82,7 +82,7 @@ function scoringRows(model, gw) {
 // Goals + clean sheet forecast: same model, same compact row style as
 // the equivalent card on Fixtures.
 function goalsCsRows(model, gw) {
-  const top = [...teamForecast(gw)].sort((a, b) => b.xg - a.xg).slice(0, 6);
+  const top = [...teamForecast(gw)].sort((a, b) => b.xg - a.xg).slice(0, 8);
   return widgetList(top.map(({ team, opp, isHome, xg, cs }) => {
     const csPct = Math.round(cs * 100);
     return wRow(
@@ -92,11 +92,10 @@ function goalsCsRows(model, gw) {
   }));
 }
 
-// Fixture difficulty: the 6 teams with the easiest run over their
-// next 3 games, same colour-coded chips as the full Fixtures grid.
-// Rows here are a single line, shorter than the player-photo rows in
-// the other cards, so it takes more of them to fill the same card
-// height - hence 6 here vs 4 elsewhere.
+// Fixture difficulty: the easiest-run teams over their next 3 games,
+// same colour-coded chips as the full Fixtures grid. Rows here are a
+// single line, shorter than Scoring chances' player-photo rows, so it
+// takes more of them to fill the height that card sets for the row.
 function fdrRows() {
   const top = state.bootstrap.teams
     .map((team) => {
@@ -105,7 +104,7 @@ function fdrRows() {
       return { team, fx, avg };
     })
     .sort((a, b) => a.avg - b.avg)
-    .slice(0, 6);
+    .slice(0, 9);
   return widgetList(top.map(({ team, fx }) => wRow(
     `<span class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</span>`,
     fx.length
