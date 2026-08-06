@@ -757,8 +757,23 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    already occupy those) - reads at a glance across a whole pitch of
    cards, and works the same way on the side-list's smaller photos
    even though .row-photo has no border of its own to override. */
-.lu-start { border: 2px solid var(--green); }
-.lu-bench { border: 2px solid var(--text-faint); opacity: 0.75; }
+.face-wrap.lu-start { border: 2px solid var(--green); }
+.face-wrap.lu-bench { border: 2px solid var(--text-faint); opacity: 0.75; }
+
+/* Explicit label - the ring alone read as decoration, not a stated
+   fact, so it's paired with the actual word. */
+.lineup-pill {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+.lineup-pill.lu-start { background: #d9f2e2; color: #0f5c33; }
+.lineup-pill.lu-bench { background: #eceef3; color: #5b6478; }
+[data-theme="dark"] .lineup-pill.lu-start { background: #143c26; color: #7fdca4; }
+[data-theme="dark"] .lineup-pill.lu-bench { background: #232b3d; color: #aab3c9; }
 .pp-cap {
   position: absolute;
   top: -4px;

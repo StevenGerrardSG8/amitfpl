@@ -13,14 +13,17 @@ import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort } from '
 // Does this player actually start for his real club right now, per
 // the same model behind the Lineups tab? A fantasy squad slot scoring
 // 0 because its owner is on the bench is exactly the kind of thing
-// this planner should surface, not just fixtures and price. Shown as
-// a coloured ring around the photo rather than another badge crowding
-// the corners (club crest, captain armband, price tag are already
-// there) - the same treatment on every photo reads at a glance across
-// the whole pitch.
+// this planner should surface, not just fixtures and price. The ring
+// around the photo alone read as decoration, not information - so it
+// pairs with an explicit "Starts"/"Bench" pill, same words the Lineups
+// tab itself and the rest of the app already use for this.
 function lineupStatus(p) {
   const starting = getPredictedXI(p.team).has(p.id);
-  return { cls: starting ? 'lu-start' : 'lu-bench', title: starting ? t('pl.predictedStart') : t('pl.predictedBench') };
+  return {
+    cls: starting ? 'lu-start' : 'lu-bench',
+    label: starting ? t('common.starts') : t('common.bench'),
+    title: starting ? t('pl.predictedStart') : t('pl.predictedBench'),
+  };
 }
 
 // On phones the per-card action buttons become a bottom action sheet.
@@ -748,6 +751,7 @@ function playerCard(model, id, gw, isStarter, opts) {
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
     <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}</div>
+    <span class="lineup-pill ${ls.cls}" title="${ls.title}">${ls.label}</span>
     ${isStarter ? `<div class="pp-fix">${opp || t('common.noFixture')}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${buttons}
@@ -952,7 +956,7 @@ function sideList(model, gw) {
     return `<div class="side-row">
       <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')} · ${ls.title}">${playerPhoto(p, `row-photo ${ls.cls}`)}</span>
       <div class="side-info clickable" data-pid="${p.id}">
-        <span class="player-name">${escapeHtml(playerName(p))}${flag}</span>
+        <span class="player-name">${escapeHtml(playerName(p))}${flag} <span class="lineup-pill ${ls.cls}" title="${ls.title}">${ls.label}</span></span>
         <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span>
         <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>

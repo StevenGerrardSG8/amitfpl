@@ -189,6 +189,7 @@ const STRINGS = {
   'common.fixture': ['Fixture', 'משחק'],
   'common.gw': ['GW', 'מחזור'],
   'common.bench': ['Bench', 'ספסל'],
+  'common.starts': ['Starts', 'מתחיל'],
   'common.clear': ['Clear', 'ניקוי'],
   'common.cancel': ['Cancel', 'ביטול'],
   'common.close': ['Close', 'סגירה'],
