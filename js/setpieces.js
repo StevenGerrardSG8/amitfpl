@@ -8,15 +8,25 @@ function takers(players, orderKey) {
     .sort((a, b) => a[orderKey] - b[orderKey]);
 }
 
+const flagOf = (p) => {
+  const st = statusInfo(p);
+  return st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
+};
+
 function takerCell(list) {
   if (!list.length) return '<span class="sp-alt">-</span>';
-  const [first, ...rest] = list;
+  // Highlight whoever could actually take it right now, not blindly the
+  // API's nominal #1 - a first-choice taker who's injured, suspended or
+  // out on loan (i/s/u/n) isn't walking onto the pitch to take it. The
+  // skipped name still shows up in "then ..." below, with its own flag,
+  // so nothing is hidden - just correctly not the headline pick.
+  const primaryIdx = list.findIndex((p) => !['i', 's', 'u', 'n'].includes(p.status));
+  const primary = primaryIdx === -1 ? list[0] : list[primaryIdx];
+  const rest = list.filter((p) => p !== primary);
   const alt = rest.length
-    ? `<div class="sp-alt">${t('sp.then', { names: rest.slice(0, 2).map((p) => escapeHtml(playerName(p))).join(', ') })}</div>`
+    ? `<div class="sp-alt">${t('sp.then', { names: rest.slice(0, 2).map((p) => `${escapeHtml(playerName(p))}${flagOf(p)}`).join(', ') })}</div>`
     : '';
-  const st = statusInfo(first);
-  const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
-  return `<div><span class="sp-primary clickable" data-pid="${first.id}">${inlinePhoto(first)} ${escapeHtml(playerName(first))}</span>${flag}${alt}</div>`;
+  return `<div><span class="sp-primary clickable" data-pid="${primary.id}">${inlinePhoto(primary)} ${escapeHtml(playerName(primary))}</span>${flagOf(primary)}${alt}</div>`;
 }
 
 export function renderSetPieces(root) {

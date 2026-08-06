@@ -30,11 +30,18 @@ function startScores(squad) {
     const lo = Math.min(...costs);
     const hi = Math.max(...costs);
     for (const p of group) {
+      const avail = availability(p);
+      // A genuinely unavailable player (injured/suspended/out on loan/
+      // unregistered) must score exactly 0 - not "0 times everything
+      // plus a small ownership tiebreak". Without this, a high-ownership
+      // star who's ruled out could still outscore, and get predicted to
+      // start ahead of, a fit but low-owned squad player.
+      if (avail <= 0) { scores.set(p.id, 0); continue; }
       const b = baselinePlayer(p.id) || p;
       const { startRate } = blendedStarts(p, b);
       const priceNorm = hi > lo ? (p.now_cost - lo) / (hi - lo) : 0.5;
       const own = num(p.selected_by_percent) / 1000; // gentle tiebreak
-      scores.set(p.id, availability(p) * (0.55 * startRate + 0.45 * priceNorm) + own);
+      scores.set(p.id, avail * (0.55 * startRate + 0.45 * priceNorm) + own);
     }
   }
   return scores;
@@ -98,7 +105,7 @@ function teamCard(team, squad) {
     .slice(0, 3)
     .map((p) => `<span class="lu-flag lu-doubt clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(playerName(p))} ${p.chance_of_playing_next_round ?? 75}%</span>`);
   const out = squad
-    .filter((p) => ['i', 's', 'u'].includes(p.status) && !inXI.has(p.id))
+    .filter((p) => ['i', 's', 'u', 'n'].includes(p.status) && !inXI.has(p.id))
     .sort((a, b) => b.now_cost - a.now_cost)
     .slice(0, 3)
     .map((p) => `<span class="lu-flag lu-out clickable" data-pid="${p.id}" title="${escapeHtml(translateNews(p.news) || '')}">${escapeHtml(playerName(p))}</span>`);
