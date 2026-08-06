@@ -7,7 +7,17 @@ import { state, fmtPrice, num, escapeHtml, statusInfo } from './state.js';
 import { playerPhoto, teamBadge, inlinePhoto, fixtureChips, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
+import { getPredictedXI } from './lineups.js';
 import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort } from './i18n.js';
+
+// Small badge: does this player actually start for his real club right
+// now, per the same model behind the Lineups tab? A fantasy squad slot
+// scoring 0 because its owner is on the bench is exactly the kind of
+// thing this planner should surface, not just fixtures and price.
+function lineupFlag(p) {
+  const starting = getPredictedXI(p.team).has(p.id);
+  return `<span class="lineup-flag ${starting ? 'yes' : 'no'}" title="${starting ? t('pl.predictedStart') : t('pl.predictedBench')}">${starting ? '●' : '○'}</span>`;
+}
 
 // On phones the per-card action buttons become a bottom action sheet.
 const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
@@ -687,6 +697,7 @@ function playerCard(model, id, gw, isStarter, opts) {
   const xp = model.xp(id, gw);
   const st = statusInfo(p);
   const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
+  const startFlag = lineupFlag(p);
   const opp = (state.upcomingByTeam[p.team] || [])
     .filter((f) => f.event === gw)
     .map((f) => `${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
@@ -732,7 +743,7 @@ function playerCard(model, id, gw, isStarter, opts) {
       ${opts.benchOrd ? `<span class="bench-ord">${opts.benchOrd}</span>` : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
-    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}</div>
+    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}${startFlag}</div>
     ${isStarter ? `<div class="pp-fix">${opp || t('common.noFixture')}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${buttons}
@@ -933,10 +944,11 @@ function sideList(model, gw) {
       : pendingOut ? t('pl.transferInFor', { name: playerName(pendingOut) }) : t('pl.transferInto', { gw: gwLabel(gw) });
     const st = statusInfo(p);
     const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
+    const startFlag = lineupFlag(p);
     return `<div class="side-row">
       <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">${playerPhoto(p, 'row-photo')}</span>
       <div class="side-info clickable" data-pid="${p.id}">
-        <span class="player-name">${escapeHtml(playerName(p))}${flag}</span>
+        <span class="player-name">${escapeHtml(playerName(p))}${flag}${startFlag}</span>
         <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span>
         <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>

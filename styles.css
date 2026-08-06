@@ -531,6 +531,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .status-d { color: var(--amber); }
 .status-i, .status-s, .status-u, .status-n { color: var(--red); }
 
+.lineup-flag { font-size: 10px; margin-inline-start: 5px; cursor: help; }
+.lineup-flag.yes { color: var(--green); }
+.lineup-flag.no { color: var(--text-faint); }
+
 .hi { color: var(--green); font-weight: 600; }
 .lo { color: var(--red); }
 

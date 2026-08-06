@@ -500,6 +500,8 @@ const STRINGS = {
   'pl.picked': ['{n}/11 picked', 'נבחרו {n}/11'],
   'pl.gwForecast': ['{gw} forecast', 'תחזית {gw}'],
   'pl.pts': ['pts', 'נק׳'],
+  'pl.predictedStart': ['Predicted to start for his club (Lineups model)', 'צפוי לפתוח בהרכב הקבוצה שלו (מודל ההרכבים)'],
+  'pl.predictedBench': ['Predicted to be on the bench for his club (Lineups model)', 'צפוי לספסל בקבוצה שלו (מודל ההרכבים)'],
   'pl.autoLineup': ['· auto lineup', '· הרכב אוטומטי'],
   'pl.chipsBar': ['Chips · {gw}', 'צ׳יפים · {gw}'],
   'pl.chipNoteTC': ['Triple Captain active · {name} counts ×3 this GW · +{n} extra pts in the forecast', 'טריפל קפטן פעיל · {name} נספר פי 3 במחזור הזה · תוספת {n} נק׳ לתחזית'],
