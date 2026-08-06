@@ -3,14 +3,13 @@ import { teamBadge, fixtureDifficulty, infoNote } from './ui.js';
 import { teamForecast } from './model.js';
 import { t, haMark, gwLabel, teamName, teamShort } from './i18n.js';
 
-const view = { horizon: 6, sortByEase: true, forecastGw: null };
+const view = { horizon: 6, sortByEase: true };
 
+// A calm card, not a wide table with its own gameweek picker - this
+// always shows the upcoming gameweek (the one the rest of the page is
+// already about), same compact .w-row pattern Home uses.
 function forecastCard() {
-  const fromEvent = (state.currentEvent || state.nextEvent)?.id ?? 1;
-  const gws = [];
-  for (let e = fromEvent; e < fromEvent + 6 && e <= 38; e++) gws.push(e);
-  const gw = view.forecastGw && gws.includes(view.forecastGw) ? view.forecastGw : gws[0];
-
+  const gw = (state.currentEvent || state.nextEvent)?.id ?? 1;
   const forecast = teamForecast(gw);
   // Shootout watch: matches with the highest combined expected goals.
   const xgByTeam = Object.fromEntries(forecast.map((r) => [r.team.id, r.xg]));
@@ -27,36 +26,24 @@ function forecastCard() {
   const rows = forecast
     .map(({ team, opp, isHome, xg, cs }) => {
       const csPct = Math.round(cs * 100);
-      return `<tr>
-        <td class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamName(team))}</td>
-        <td>${teamBadge(opp.id, 'meta-badge')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</td>
-        <td class="num"><span class="xg-pill">${xg.toFixed(2)}</span></td>
-        <td class="num"><span class="cs-pill ${csPct >= 40 ? 'cs-hi' : csPct <= 20 ? 'cs-lo' : ''}">${csPct}%</span></td>
-      </tr>`;
+      return `<div class="w-row">
+        <div class="w-left">
+          <span class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</span>
+          <span class="muted">${t('common.vs')} ${escapeHtml(teamShort(opp))} (${haMark(isHome)})</span>
+        </div>
+        <span class="w-val"><span class="xg-pill">${xg.toFixed(2)}</span> <span class="cs-pill ${csPct >= 40 ? 'cs-hi' : csPct <= 20 ? 'cs-lo' : ''}">${csPct}%</span></span>
+      </div>`;
     })
     .join('');
 
   return `
     <div class="card" style="margin-bottom:16px">
-      <div class="toolbar">
-        <span class="section-title" style="padding:0">${t('fx.forecastTitle')} ${infoNote('info.forecast')}</span>
-        <select id="fx-fc-gw">
-          ${gws.map((e) => `<option value="${e}" ${e === gw ? 'selected' : ''}>${gwLabel(e)}</option>`).join('')}
-        </select>
-        <span class="spacer"></span>
+      <div class="widget-head">
+        <span class="section-title" style="padding:0">${t('fx.forecastTitle')} ${infoNote('info.forecast')} · ${gwLabel(gw)}</span>
         <span class="result-count">${t('fx.modelNote')}</span>
       </div>
       ${shootouts ? `<div class="toolbar" style="border-bottom:none;padding-top:0"><span class="chips-label">${t('fx.shootout')}</span> ${shootouts}</div>` : ''}
-      <div class="table-wrap" style="max-height:50vh;overflow-y:auto">
-        <table class="data">
-          <thead><tr>
-            <th class="no-sort">${t('common.team')}</th><th class="no-sort">${t('common.fixture')}</th>
-            <th class="num no-sort" title="${t('fx.goalsTitle')}">${t('fx.goals')}</th>
-            <th class="num no-sort" title="${t('fx.csTitle')}">${t('fx.cleanSheet')}</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
+      <div class="w-list" style="max-height:50vh;overflow-y:auto">${rows}</div>
     </div>`;
 }
 
@@ -279,10 +266,6 @@ export function renderFixtures(root) {
     ${rotationCard()}
     ${blanksDoublesCard()}`;
 
-  root.querySelector('#fx-fc-gw').addEventListener('change', (e) => {
-    view.forecastGw = +e.target.value;
-    renderFixtures(root);
-  });
   root.querySelector('#fx-horizon').addEventListener('change', (e) => {
     view.horizon = +e.target.value;
     renderFixtures(root);
