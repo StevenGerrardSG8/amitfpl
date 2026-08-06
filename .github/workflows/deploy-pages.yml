@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+# The legacy branch-based Pages pipeline (Settings -> Pages -> Deploy
+# from a branch) was taking 5-8 minutes per deploy and intermittently
+# erroring with no useful detail. This Actions-based deploy is the
+# method GitHub itself now recommends: faster, and failures show up
+# as a normal Actions run with real logs instead of an opaque status
+# field. Requires the repo's Pages source to be set to "GitHub
+# Actions" in Settings -> Pages (done alongside adding this file).
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
