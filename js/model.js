@@ -108,6 +108,16 @@ function teamXG(team, opp, isHome) {
   return base * Math.pow(ratio, STRENGTH_EXP);
 }
 
+// Attack multiplier for one fixture: scaled off real team xG when
+// available, otherwise the FDR bucket nudged for home/away. Shared by
+// xp(), goalChance() and assistChance() so a future tune only needs
+// changing here instead of drifting across all three.
+function attackScaleFor(team, opp, isHome, difficulty) {
+  const ourXG = teamXG(team, opp, isHome);
+  const homeNudge = isHome ? 1.07 : 0.93;
+  return ourXG != null ? ourXG / AVG_TEAM_XG : (FDR_ATTACK_SCALE[difficulty] ?? 1) * homeNudge;
+}
+
 // P(X >= k) for a Poisson(lambda) - used for defensive-contribution
 // threshold points.
 function poissonAtLeast(lambda, k) {
@@ -186,11 +196,7 @@ export function buildModel(horizon) {
       const team = state.teamsById[p.team];
       for (const f of fixtures) {
         const opp = state.teamsById[f.opponent];
-        const ourXG = teamXG(team, opp, f.isHome);
-        const homeNudge = f.isHome ? 1.07 : 0.93;
-        const attackScale = ourXG != null
-          ? ourXG / AVG_TEAM_XG
-          : (FDR_ATTACK_SCALE[f.difficulty] ?? 1) * homeNudge;
+        const attackScale = attackScaleFor(team, opp, f.isHome, f.difficulty);
         // Appearance points don't depend on the opponent - only the
         // attacking share of the prior scales with the fixture.
         total += startProb * (1.8 + (ppm - 1.8) * Math.sqrt(Math.max(0.3, attackScale)));
@@ -220,12 +226,8 @@ export function buildModel(horizon) {
       const team = state.teamsById[p.team];
       for (const f of fixtures) {
         const opp = state.teamsById[f.opponent];
-        const ourXG = teamXG(team, opp, f.isHome);
         const theirXG = teamXG(opp, team, !f.isHome) ?? FDR_OPP_XG[f.difficulty] ?? AVG_TEAM_XG;
-        const homeNudge = f.isHome ? 1.07 : 0.93;
-        const attackScale = ourXG != null
-          ? ourXG / AVG_TEAM_XG
-          : (FDR_ATTACK_SCALE[f.difficulty] ?? 1) * homeNudge;
+        const attackScale = attackScaleFor(team, opp, f.isHome, f.difficulty);
         const pCS = Math.exp(-theirXG);
 
         let pts = 0;
@@ -289,11 +291,7 @@ export function buildModel(horizon) {
     let xg = 0;
     for (const f of fixtures) {
       const opp = state.teamsById[f.opponent];
-      const ourXG = teamXG(team, opp, f.isHome);
-      const homeNudge = f.isHome ? 1.07 : 0.93;
-      const attackScale = ourXG != null
-        ? ourXG / AVG_TEAM_XG
-        : (FDR_ATTACK_SCALE[f.difficulty] ?? 1) * homeNudge;
+      const attackScale = attackScaleFor(team, opp, f.isHome, f.difficulty);
       xg += xg90 * minFactor * attackScale;
     }
     return 1 - Math.exp(-xg);
@@ -307,19 +305,27 @@ export function buildModel(horizon) {
     const ref = b?.minutes ? b : p;
     const avail = availability(p);
     const fixtures = fixturesByTeam[p.team]?.[eventId] || [];
-    if (!fixtures.length || !avail || !ref.minutes) return 0;
-    const { startRate, minsPerStart } = blendedStarts(p, b?.minutes ? b : ref);
-    const minFactor = (startRate * minsPerStart * avail) / 90;
-    const xa90 = per90(b, p, 'expected_assists');
+    if (!fixtures.length || !avail) return 0;
+    let minFactor;
+    let xa90;
+    if (!ref.minutes) {
+      // Price-based prior for players without PL history, mirroring
+      // goalChance()'s fallback - otherwise every new/promoted-club
+      // signing shows a real Scorers percentage but a hard 0 here.
+      const price = p.now_cost / 10;
+      minFactor = Math.min(0.9, Math.max(0.25, (price - 4.0) / 2.5)) * avail;
+      const posSlope = { 1: 0, 2: 0.015, 3: 0.04, 4: 0.015 }[p.element_type];
+      xa90 = Math.max(0.01, 0.05 + (price - 5) * posSlope);
+    } else {
+      const { startRate, minsPerStart } = blendedStarts(p, b?.minutes ? b : ref);
+      minFactor = (startRate * minsPerStart * avail) / 90;
+      xa90 = per90(b, p, 'expected_assists');
+    }
     const team = state.teamsById[p.team];
     let xa = 0;
     for (const f of fixtures) {
       const opp = state.teamsById[f.opponent];
-      const ourXG = teamXG(team, opp, f.isHome);
-      const homeNudge = f.isHome ? 1.07 : 0.93;
-      const attackScale = ourXG != null
-        ? ourXG / AVG_TEAM_XG
-        : (FDR_ATTACK_SCALE[f.difficulty] ?? 1) * homeNudge;
+      const attackScale = attackScaleFor(team, opp, f.isHome, f.difficulty);
       xa += xa90 * minFactor * attackScale;
     }
     return 1 - Math.exp(-xa);

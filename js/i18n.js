@@ -230,7 +230,7 @@ const STRINGS = {
   'badge.pen': ['P', 'פ'],
   'badge.fk': ['FK', 'ח'],
   'badge.corner': ['C', 'ק'],
-  'badge.ft': ['FT', 'חינם'],
+  'badge.ft': ['FT', 'ה״ח'],
   'unit.pp': ['pp', ' נק׳ אחוז'],
   'draft.A': ['A', 'א'],
   'draft.B': ['B', 'ב'],
@@ -261,9 +261,8 @@ const STRINGS = {
   /* ---- home ---- */
   'home.fixtures': ['{n} fixtures', '{n} משחקים'],
   'home.deadline': ['deadline {when}', 'דדליין {when}'],
-  'home.toGo': ['{d}d {h}h to go', 'נותרו {d} ימים ו-{h} שעות'],
-  'home.fixturesTitle': ['{gw} fixtures - your local time', 'משחקי {gw} - בשעון המקומי שלך'],
-  'home.capTitle': ['Captain picks', 'בחירות קפטן'],
+  'home.toGo': ['{d}d {h}h to go', 'נותרו {d} ו-{h}'],
+  'home.capTitle': ["League's top picks", 'הבחירות המובילות בליגה'],
   'home.watchTitle': ['My watchlist', 'רשימת המעקב שלי'],
   'home.gotoScout': ['Scout', 'סקאוט'],
   'home.gotoPlayers': ['Players', 'שחקנים'],
@@ -302,7 +301,7 @@ const STRINGS = {
   'scout.valueNote': ["Based on total points (last season's, until this season gets going).", 'מבוסס על סך הנקודות (של העונה שעברה, עד שהעונה הנוכחית תתקדם).'],
   'scout.ptsPerM': ['Pts/£M', 'נק׳/מיליון'],
   'scout.ptsPerMTitle': ['Total points per £1M', 'סך נקודות לכל מיליון £'],
-  'scout.xpTitle': ['FPL expected points, next GW', 'נקודות צפויות, המחזור הבא'],
+  'scout.xpTitle': ['amitfpl model\'s expected points, next GW', 'נקודות צפויות לפי מודל amitfpl, המחזור הבא'],
 
   /* ---- market ---- */
   'market.dGw': ['Δ GW', 'Δ מחזור'],
@@ -434,7 +433,7 @@ const STRINGS = {
   'myteam.connect': ['Connect', 'חיבור'],
   'myteam.loading': ['Loading your team…', 'טוען את הקבוצה שלך…'],
   'myteam.notFound': ['Team ID {id} was not found. Double-check the number and try again.', 'מזהה הקבוצה {id} לא נמצא. בדקו שוב את המספר ונסו שנית.'],
-  'myteam.noLive': ['Live team lookup isn\'t available on the hosted site. Set "teamId": {id} in config.json in the GitHub repo - the data refresher will pick it up within 30 minutes.', 'שליפת קבוצה חיה לא זמינה באתר המתארח. הגדירו ‎"teamId": {id}‎ בקובץ config.json בריפו של GitHub - מרענן הנתונים יקלוט את זה תוך 30 דקות.'],
+  'myteam.noLive': ['Live lookup for team {id} isn\'t available on the hosted site yet - only one team is tracked live at a time. If this is your own team, ask whoever runs this site to set it as the tracked team; it\'ll refresh within 30 minutes once configured.', 'שליפה חיה לקבוצה {id} עדיין לא זמינה באתר המתארח - רק קבוצה אחת עוקבת בזמן אמת בכל רגע. אם זו הקבוצה שלכם, בקשו ממי שמריץ את האתר להגדיר אותה כקבוצה הנעקבת - היא תתעדכן תוך 30 דקות לאחר ההגדרה.'],
   'myteam.overallPts': ['Overall points', 'נקודות כולל'],
   'myteam.overallRank': ['Overall rank', 'דירוג כללי'],
   'myteam.gwPts': ['{gw} points', 'נקודות {gw}'],
@@ -617,8 +616,7 @@ const STRINGS = {
   'myteam.importTitle': ['Copy this squad into the planner\'s active draft (replaces its current plan)', 'העתקת הסגל הזה לטיוטה הפעילה במתכנן (מחליף את התוכנית הנוכחית בה)'],
 
   /* ---- deadline day & onboarding ---- */
-  'home.deadlineDay': ['Deadline day!', 'יום דדליין!'],
-  'home.hoursLeft': ['{h}h {m}m left!', 'נותרו {h} שעות ו-{m} דקות!'],
+  'home.hoursLeft': ['{h}h {m}m left!', 'נותרו {h} ו-{m}!'],
   'home.toPlanner': ['Final touches in the planner →', 'ליטושים אחרונים במתכנן ←'],
   'ob.title': ['Welcome to amitfpl 👋', 'ברוכים הבאים ל-amitfpl 👋'],
   'ob.sub': ['Your personal FPL toolkit. The 60-second tour:', 'ערכת ה-FPL האישית שלך. סיור של 60 שניות:'],

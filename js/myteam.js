@@ -12,6 +12,12 @@ const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
 const STORAGE_KEY = 'amitfpl:teamId';
 const MANUAL_KEY = 'amitfpl:manualSquad';
 
+// getEntry/getPicks only resolve through dev-server.py's /api/fpl proxy,
+// which only runs locally - on the hosted site every lookup 404s
+// regardless of whether the ID is real, so a 404 there must not be
+// read as "bad ID."
+const hasLiveProxy = () => ['localhost', '127.0.0.1'].includes(location.hostname);
+
 const getTeamId = () => localStorage.getItem(STORAGE_KEY) || '';
 const setTeamId = (id) => localStorage.setItem(STORAGE_KEY, id);
 const clearTeamId = () => localStorage.removeItem(STORAGE_KEY);
@@ -26,6 +32,27 @@ function getManual() {
 }
 const setManual = (ids) => localStorage.setItem(MANUAL_KEY, JSON.stringify(ids));
 
+// Loading placeholder for the AI squad-analysis card - identical for
+// a manually-picked squad and a connected team.
+const analysisPlaceholderHtml = () => `
+  <div class="an-card" id="mt-analysis">
+    <div class="skel skel-block" style="height:120px"></div>
+  </div>`;
+
+// The squad table's header is the same 7 columns whether the squad
+// came from manual entry or a connected team - only the rows differ.
+const squadTableHtml = (rowsHtml) => `
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr>
+        <th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
+        <th class="num no-sort">${t('common.price')}</th><th class="num no-sort" title="${t('common.xpNextTitle')}">${t('common.xpNext')}</th>
+        <th class="num no-sort">${t('common.form')}</th><th class="num no-sort">${t('myteam.gwPtsCol')}</th><th class="no-sort">${t('common.next3')}</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </div>`;
+
 function renderSetup(root, message = '') {
   root.innerHTML = `
     <div class="card myteam-setup">
@@ -34,6 +61,7 @@ function renderSetup(root, message = '') {
       <p>${t('mp.lead')}</p>
       <button class="btn" id="mt-manual">${t('mp.start')}</button>
       <div class="mt-or">${t('mp.or')}</div>
+      <div class="section-title" style="padding:0">${t('myteam.connectTitle')}</div>
       <p>${t('myteam.intro')}</p>
       <ol>
         <li>${t('myteam.step1')}</li>
@@ -64,6 +92,13 @@ function renderSetup(root, message = '') {
    Type a name, tap to add, analyze - no team id, works pre-season. */
 
 const MP_QUOTA = { 1: 2, 2: 5, 3: 5, 4: 3 };
+
+// Whether My Team can actually render an analysis right now - a
+// connected team ID, or a manual squad that's actually complete (not
+// just "something was picked before the user hit Back").
+export function hasConnectedSquad() {
+  return !!getTeamId() || manualReady(getManual());
+}
 
 // Enough players to form a legal XI - the analysis can run from here.
 function manualReady(ids) {
@@ -166,20 +201,9 @@ function renderManualAnalysis(root) {
           <button class="link-btn" id="mm-connect">${t('mm.connect')}</button>
         </span>
       </div>
-      <div class="an-card" id="mt-analysis">
-        <div class="skel skel-block" style="height:120px"></div>
-      </div>
+      ${analysisPlaceholderHtml()}
       <div class="section-title">${t('mm.squad')} ${infoNote('info.model')}</div>
-      <div class="table-wrap">
-        <table class="data">
-          <thead><tr>
-            <th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
-            <th class="num no-sort">${t('common.price')}</th><th class="num no-sort" title="${t('common.xpNextTitle')}">${t('common.xpNext')}</th>
-            <th class="num no-sort">${t('common.form')}</th><th class="num no-sort">${t('myteam.gwPtsCol')}</th><th class="no-sort">${t('common.next3')}</th>
-          </tr></thead>
-          <tbody>${model5sorted.map((id) => pickRow({ element: id, multiplier: 1 }, null)).join('')}</tbody>
-        </table>
-      </div>
+      ${squadTableHtml(model5sorted.map((id) => pickRow({ element: id, multiplier: 1 }, null)).join(''))}
     </div>`;
 
   root.querySelector('#mm-edit').addEventListener('click', () => renderManualPicker(root));
@@ -215,10 +239,16 @@ async function fetchLive(gw) {
   return null;
 }
 
-async function fetchLeagues() {
+// The snapshot is generated for one team (config.json's teamId) - only
+// use it when it actually belongs to the team currently connected in
+// this browser, otherwise a differently-connected team would see
+// somebody else's private league standings under "My leagues".
+async function fetchLeagues(teamId) {
   try {
     const res = await fetch('data/leagues.json');
-    return res.ok ? await res.json() : null;
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && String(data.teamId) === String(teamId) ? data.leagues : null;
   } catch {
     return null;
   }
@@ -329,7 +359,7 @@ export async function renderMyTeam(root) {
     try {
       entry = await getEntry(teamId);
     } catch (e) {
-      if (e.status === 404) {
+      if (hasLiveProxy() && e.status === 404) {
         clearTeamId();
         renderSetup(root, t('myteam.notFound', { id: teamId }));
       } else {
@@ -354,7 +384,7 @@ export async function renderMyTeam(root) {
   const liveTotal = live && picks?.picks?.length
     ? picks.picks.reduce((s, pk) => s + (live[pk.element]?.[1] || 0) * pk.multiplier, 0)
     : null;
-  const leagues = await fetchLeagues();
+  const leagues = await fetchLeagues(teamId);
 
   const stats = [
     { k: t('myteam.overallPts'), v: entry.summary_overall_points ?? '-' },
@@ -371,28 +401,16 @@ export async function renderMyTeam(root) {
   if (picks?.picks?.length) {
     const starters = picks.picks.filter((p) => p.position <= 11);
     const bench = picks.picks.filter((p) => p.position > 11);
-    squadHtml = `
-      <div class="an-card" id="mt-analysis">
-        <div class="skel skel-block" style="height:120px"></div>
-      </div>`;
+    squadHtml = analysisPlaceholderHtml();
     squadHtml += `
       <div class="section-title">${t('myteam.squadGw', { gw: gwLabel(gw ?? state.nextEvent?.id) })} ${infoNote('info.model')}
         <button class="link-btn" id="mt-import" title="${t('myteam.importTitle')}">${t('myteam.import')}</button>
       </div>
-      <div class="table-wrap">
-        <table class="data">
-          <thead><tr>
-            <th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
-            <th class="num no-sort">${t('common.price')}</th><th class="num no-sort" title="${t('common.xpNextTitle')}">${t('common.xpNext')}</th>
-            <th class="num no-sort">${t('common.form')}</th><th class="num no-sort">${t('myteam.gwPtsCol')}</th><th class="no-sort">${t('common.next3')}</th>
-          </tr></thead>
-          <tbody>
-            ${starters.map((pk) => pickRow(pk, live)).join('')}
-            <tr class="bench-divider"><td colspan="7">${t('common.bench')}</td></tr>
-            ${bench.map((pk) => pickRow(pk, live)).join('')}
-          </tbody>
-        </table>
-      </div>`;
+      ${squadTableHtml(`
+        ${starters.map((pk) => pickRow(pk, live)).join('')}
+        <tr class="bench-divider"><td colspan="7">${t('common.bench')}</td></tr>
+        ${bench.map((pk) => pickRow(pk, live)).join('')}
+      `)}`;
   } else {
     squadHtml = `<div class="note">${t('myteam.squadSoon')}</div>`;
   }

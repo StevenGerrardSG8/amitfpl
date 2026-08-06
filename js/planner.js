@@ -3,7 +3,7 @@
 // drop, captain, chips). Later GWs simulate a rolling plan: record
 // transfers per GW, free transfers bank up (max 5), extra moves cost
 // -4, Wildcard/Free Hit make a GW's moves free (FH reverts after).
-import { state, fmtPrice, num, escapeHtml } from './state.js';
+import { state, fmtPrice, num, escapeHtml, statusInfo } from './state.js';
 import { playerPhoto, teamBadge, inlinePhoto, fixtureChips, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
@@ -234,7 +234,10 @@ function squadAt(model, gw) {
 // Free-transfer bookkeeping across the horizon.
 function ftInfo(model) {
   const info = {};
-  let carry = 1; // FTs available entering the first planned GW
+  // Editing the base squad (model.gws[0]) is free/unlimited and never
+  // calls recordTransfer, so it must contribute nothing to the count -
+  // otherwise every real GW after it shows one FT too many.
+  let carry = 0;
   for (const e of model.gws) {
     const avail = Math.min(MAX_FT, carry);
     const moves = (view.transfers[e] || []).length;
@@ -682,6 +685,8 @@ function openSheet(model, root, id, gw) {
 function playerCard(model, id, gw, isStarter, opts) {
   const p = state.playersById[id];
   const xp = model.xp(id, gw);
+  const st = statusInfo(p);
+  const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
   const opp = (state.upcomingByTeam[p.team] || [])
     .filter((f) => f.event === gw)
     .map((f) => `${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
@@ -727,7 +732,7 @@ function playerCard(model, id, gw, isStarter, opts) {
       ${opts.benchOrd ? `<span class="bench-ord">${opts.benchOrd}</span>` : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
-    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}</div>
+    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}</div>
     ${isStarter ? `<div class="pp-fix">${opp || t('common.noFixture')}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${buttons}
@@ -926,10 +931,12 @@ function sideList(model, gw) {
       : tooDear ? t('pl.overBudget')
       : isFirst ? t('pl.addToSquad')
       : pendingOut ? t('pl.transferInFor', { name: playerName(pendingOut) }) : t('pl.transferInto', { gw: gwLabel(gw) });
+    const st = statusInfo(p);
+    const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
     return `<div class="side-row">
       <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">${playerPhoto(p, 'row-photo')}</span>
       <div class="side-info clickable" data-pid="${p.id}">
-        <span class="player-name">${escapeHtml(playerName(p))}</span>
+        <span class="player-name">${escapeHtml(playerName(p))}${flag}</span>
         <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span>
         <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>

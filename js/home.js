@@ -6,16 +6,26 @@ import { state, fmtPrice, escapeHtml } from './state.js';
 import { teamBadge, playerCell, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { watchlist } from './drawer.js';
+import { hasConnectedSquad } from './myteam.js';
 import { t, locale, gwName, isHe, teamShort } from './i18n.js';
+
+// Hebrew needs the singular noun for exactly 1 ("יום אחד"/"שעה אחת"/
+// "דקה אחת"), not "1 ימים"/"1 שעות"/"1 דקות" - English's bare "d"/"h"/"m"
+// abbreviations don't have this problem, so only Hebrew branches here.
+const HE_UNIT_ONE = { d: 'יום אחד', h: 'שעה אחת', m: 'דקה אחת' };
+const HE_UNIT_MANY = { d: 'ימים', h: 'שעות', m: 'דקות' };
+function heCount(n, unit) {
+  return n === 1 ? HE_UNIT_ONE[unit] : `${n} ${HE_UNIT_MANY[unit]}`;
+}
 
 // The one-tap path Itay asked for: upload your squad, get the AI read.
 // One friendly strip, one button - no wall of tools.
 function analyzeCta() {
-  let connected = null;
+  let ready = false;
   try {
-    connected = localStorage.getItem('amitfpl:teamId') || localStorage.getItem('amitfpl:manualSquad');
+    ready = hasConnectedSquad();
   } catch { /* private mode */ }
-  const k = connected ? 'Ready' : '';
+  const k = ready ? 'Ready' : '';
   return `<div class="analyze-cta">
     <span class="ac-icon">🧠</span>
     <div class="ac-text">
@@ -53,7 +63,11 @@ function fixtureCards() {
   // Deadline day (under 24h to go): the whole card turns urgent.
   const deadlineDay = left > 0 && left < 86400000;
   const count = left > 0
-    ? (deadlineDay ? t('home.hoursLeft', { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) }) : t('home.toGo', { d, h }))
+    ? (deadlineDay
+        ? t('home.hoursLeft', isHe()
+            ? { h: heCount(Math.floor(left / 3600000), 'h'), m: heCount(Math.floor((left % 3600000) / 60000), 'm') }
+            : { h: Math.floor(left / 3600000), m: Math.floor((left % 3600000) / 60000) })
+        : t('home.toGo', isHe() ? { d: heCount(d, 'd'), h: heCount(h, 'h') } : { d, h }))
     : t('chrome.locked');
   const when = dl.toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   // One card, not two: a calm headline (GW + countdown) and a lighter
