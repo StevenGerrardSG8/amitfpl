@@ -10,13 +10,17 @@ import { openDrawer } from './drawer.js';
 import { getPredictedXI } from './lineups.js';
 import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort } from './i18n.js';
 
-// Small badge: does this player actually start for his real club right
-// now, per the same model behind the Lineups tab? A fantasy squad slot
-// scoring 0 because its owner is on the bench is exactly the kind of
-// thing this planner should surface, not just fixtures and price.
-function lineupFlag(p) {
+// Does this player actually start for his real club right now, per
+// the same model behind the Lineups tab? A fantasy squad slot scoring
+// 0 because its owner is on the bench is exactly the kind of thing
+// this planner should surface, not just fixtures and price. Shown as
+// a coloured ring around the photo rather than another badge crowding
+// the corners (club crest, captain armband, price tag are already
+// there) - the same treatment on every photo reads at a glance across
+// the whole pitch.
+function lineupStatus(p) {
   const starting = getPredictedXI(p.team).has(p.id);
-  return `<span class="lineup-flag ${starting ? 'yes' : 'no'}" title="${starting ? t('pl.predictedStart') : t('pl.predictedBench')}">${starting ? '●' : '○'}</span>`;
+  return { cls: starting ? 'lu-start' : 'lu-bench', title: starting ? t('pl.predictedStart') : t('pl.predictedBench') };
 }
 
 // On phones the per-card action buttons become a bottom action sheet.
@@ -697,7 +701,7 @@ function playerCard(model, id, gw, isStarter, opts) {
   const xp = model.xp(id, gw);
   const st = statusInfo(p);
   const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
-  const startFlag = lineupFlag(p);
+  const ls = lineupStatus(p);
   const opp = (state.upcomingByTeam[p.team] || [])
     .filter((f) => f.event === gw)
     .map((f) => `${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
@@ -730,8 +734,8 @@ function playerCard(model, id, gw, isStarter, opts) {
   const pid = calm && !mobileSheet ? `class="clickable" data-pid="${id}"` : '';
   return `<div class="pp-card pc-card ${isSwapSource ? 'swap-source' : ''} ${swapTarget || transferTarget ? 'swap-target' : ''}"
        ${opts.editable ? 'draggable="true"' : ''} data-id="${id}" data-starter="${isStarter ? 1 : 0}" ${mobileSheet ? `data-sheet="${id}"` : ''}>
-    <div class="pp-photo-wrap" ${calm && !mobileSheet ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}">
-      ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
+    <div class="pp-photo-wrap" ${calm && !mobileSheet ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}" title="${ls.title}">
+      ${playerPhoto(p, `${isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm'} ${ls.cls}`)}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
       ${opts.captain === id && isStarter
         ? (opts.chip === 'TC'
@@ -743,7 +747,7 @@ function playerCard(model, id, gw, isStarter, opts) {
       ${opts.benchOrd ? `<span class="bench-ord">${opts.benchOrd}</span>` : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
-    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}${startFlag}</div>
+    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}</div>
     ${isStarter ? `<div class="pp-fix">${opp || t('common.noFixture')}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${buttons}
@@ -944,11 +948,11 @@ function sideList(model, gw) {
       : pendingOut ? t('pl.transferInFor', { name: playerName(pendingOut) }) : t('pl.transferInto', { gw: gwLabel(gw) });
     const st = statusInfo(p);
     const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
-    const startFlag = lineupFlag(p);
+    const ls = lineupStatus(p);
     return `<div class="side-row">
-      <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">${playerPhoto(p, 'row-photo')}</span>
+      <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')} · ${ls.title}">${playerPhoto(p, `row-photo ${ls.cls}`)}</span>
       <div class="side-info clickable" data-pid="${p.id}">
-        <span class="player-name">${escapeHtml(playerName(p))}${flag}${startFlag}</span>
+        <span class="player-name">${escapeHtml(playerName(p))}${flag}</span>
         <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span>
         <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>

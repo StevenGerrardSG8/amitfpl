@@ -531,10 +531,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .status-d { color: var(--amber); }
 .status-i, .status-s, .status-u, .status-n { color: var(--red); }
 
-.lineup-flag { font-size: 10px; margin-inline-start: 5px; cursor: help; }
-.lineup-flag.yes { color: var(--green); }
-.lineup-flag.no { color: var(--text-faint); }
-
 .hi { color: var(--green); font-weight: 600; }
 .lo { color: var(--red); }
 
@@ -755,6 +751,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   display: block;
 }
 .pp-photo-sm { width: 42px; height: 42px; }
+
+/* Predicted-lineup status: a coloured ring around the photo itself
+   instead of another corner badge (club crest, armband and price tag
+   already occupy those) - reads at a glance across a whole pitch of
+   cards, and works the same way on the side-list's smaller photos
+   even though .row-photo has no border of its own to override. */
+.lu-start { border: 2px solid var(--green); }
+.lu-bench { border: 2px solid var(--text-faint); opacity: 0.75; }
 .pp-cap {
   position: absolute;
   top: -4px;
