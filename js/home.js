@@ -105,7 +105,9 @@ function fdrRows() {
     .slice(0, 4);
   return widgetList(top.map(({ team, fx }) => wRow(
     `<span class="team-cell">${teamBadge(team.id)} ${escapeHtml(teamShort(team))}</span>`,
-    fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${escapeHtml(teamShort(state.teamsById[f.opponent]))}</span>`).join(' ') || '-'
+    fx.length
+      ? `<div class="fdr-cell" style="flex-direction:row">${fx.map((f) => `<span class="fdr-chip fdr-${fixtureDifficulty(f)}">${escapeHtml(teamShort(state.teamsById[f.opponent]))}</span>`).join('')}</div>`
+      : '-'
   )));
 }
 
