@@ -6,6 +6,14 @@ import { state, fmtPrice, num, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge } from './ui.js';
 import { loadBaseline, baselinePlayer, blendedStarts } from './model.js';
 import { t, locale, haMark, translateNews, playerName, teamName, teamShort } from './i18n.js';
+import { PLAYER_SIDE } from './lineup-sides.js';
+
+// Left-to-right within a row, as if standing behind your own goal
+// looking at the pitch. A player with no researched side (see
+// lineup-sides.js) ranks as "center" - mixed in with genuinely central
+// players rather than incorrectly pinned to an edge.
+const SIDE_RANK = { L: 0, C: 1, R: 2 };
+const sideRank = (p) => SIDE_RANK[PLAYER_SIDE[p.id]] ?? 1;
 
 const FORMATIONS = [];
 for (let d = 3; d <= 5; d++)
@@ -115,7 +123,11 @@ function teamCard(team, squad) {
   }
 
   const rows = [4, 3, 2, 1].map((pos) => {
-    const chips = pred.xi.filter((p) => p.element_type === pos).map(playerChip).join('');
+    // Stable sort: same-side players keep their existing (xP) order,
+    // only the L/C/R grouping itself is being fixed.
+    const chips = pred.xi.filter((p) => p.element_type === pos)
+      .sort((a, b) => sideRank(a) - sideRank(b))
+      .map(playerChip).join('');
     return chips ? `<div class="lu-row">${chips}</div>` : '';
   }).join('');
 
