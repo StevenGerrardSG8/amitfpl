@@ -2,9 +2,10 @@
 // Strategy: network-first for everything, falling back to cache when
 // offline. This keeps the app installable and usable offline WITHOUT
 // ever serving stale code when online.
-// Bumped for the new lion icon/favicon - forces installed PWAs to purge
-// their old cached icon.svg/icon-180.png instead of showing a stale icon.
-const CACHE = 'amitfpl-v3';
+// Bumped again: icon-180/icon-512 were redrawn full-bleed (no more
+// baked-in "amitfpl" caption shrinking the badge into a mostly-empty
+// tile) - forces installed PWAs to purge the old cropped-looking icon.
+const CACHE = 'amitfpl-v4';
 const CORE = [
   './',
   'index.html',
