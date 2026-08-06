@@ -11,7 +11,27 @@ const FORMATIONS = [];
 for (let d = 3; d <= 5; d++)
   for (let m = 2; m <= 5; m++)
     for (let f = 1; f <= 3; f++)
-      if (d + m + f === 10) FORMATIONS.push([d, m, f]);
+      // 5-2-3 is excluded - three out-and-out forwards behind just two
+      // central midfielders essentially never happens as a team's base
+      // shape in professional football.
+      if (d + m + f === 10 && !(d === 5 && m === 2)) FORMATIONS.push([d, m, f]);
+
+// Squads simply roster more defenders than out-and-out forwards (a 25-man
+// squad might carry 8 defenders but only 3 strikers), so picking the
+// formation that maximizes the raw *sum* of per-player scores has no
+// realism prior at all - it systematically over-picks back-5 shapes just
+// because there are more defenders to add up, not because the team
+// actually lines up that way. In the real Premier League, back-4 is the
+// clear default (~80-85% of teams); back-3/back-5 is the exception, not
+// a coin flip. This bonus (added to the summed score before comparing
+// formations) counters that pure squad-depth artifact without overriding
+// a genuinely decisive per-player signal - a team whose extra defenders
+// truly do outscore its attack will still win the comparison.
+const FORMATION_BIAS = {
+  '4-3-3': 0.6, '4-4-2': 0.5, '4-5-1': 0.5,
+  '3-4-3': 0.2, '3-5-2': 0.2,
+  '5-3-2': 0, '5-4-1': 0,
+};
 
 function availability(p) {
   if (p.status === 'a') return 1;
@@ -56,8 +76,9 @@ function predictXI(squad) {
   for (const [d, m, f] of FORMATIONS) {
     if (byPos[2].length < d || byPos[3].length < m || byPos[4].length < f || !byPos[1].length) continue;
     const xi = [byPos[1][0], ...byPos[2].slice(0, d), ...byPos[3].slice(0, m), ...byPos[4].slice(0, f)];
-    const total = xi.reduce((s, p) => s + scores.get(p.id), 0);
-    if (!best || total > best.total) best = { xi, total, formation: `${d}-${m}-${f}` };
+    const formation = `${d}-${m}-${f}`;
+    const total = xi.reduce((s, p) => s + scores.get(p.id), 0) + FORMATION_BIAS[formation];
+    if (!best || total > best.total) best = { xi, total, formation };
   }
   return best;
 }
