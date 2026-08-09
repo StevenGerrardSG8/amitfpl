@@ -309,6 +309,60 @@ function weightedSquadScore(squad, score) {
   return total;
 }
 
+// A fantasy pick who's really benched by his own club is a
+// near-guaranteed blank whatever his underlying quality, so real
+// life's own starting XI gets a soft say here too - not just once the
+// squad is picked and the XI gets chosen from it, but already at
+// build time, so auto-build stops proposing real-bench players in the
+// first place instead of relying on bestXI to work around them later.
+const REAL_BENCH_DISCOUNT = 0.6;
+const isRealStarter = (id) => getPredictedXI(state.playersById[id].team).has(id);
+const xiWeight = (id) => (isRealStarter(id) ? 1 : REAL_BENCH_DISCOUNT);
+
+// Single-slot upgrades (below) only ever accept a swap that improves
+// the score on its own, so once the budget is fully committed they
+// stall: freeing money to afford a badly-needed upgrade in one
+// position means accepting a worse player in another, which no single
+// swap will ever do by itself. This pairs a downgrade with the
+// upgrade it funds and judges the two together, so a squad that's
+// paid for three premium picks and left, say, its forward line with
+// nothing but minimum-price fillers can still trade a little of that
+// premium away for a real second forward. Candidate shortlists are
+// capped (cheapest few to free money, best-scoring few to spend it) to
+// keep the search - one pair of nested position pools per candidate
+// pair - fast enough to run inside the existing iteration budget.
+const COMPOUND_SHORTLIST = 15;
+function bestCompoundSwap(squad, score, pools) {
+  const curScore = weightedSquadScore(squad, score);
+  let best = null;
+  for (let i = 0; i < squad.length; i++) {
+    const curI = state.playersById[squad[i]];
+    const donors = pools[curI.element_type]
+      .filter((p) => p.now_cost < curI.now_cost && !squad.includes(p.id))
+      .sort((a, b) => a.now_cost - b.now_cost)
+      .slice(0, COMPOUND_SHORTLIST);
+    for (const donor of donors) {
+      const trial1 = squad.map((id, k) => (k === i ? donor.id : id));
+      for (let j = 0; j < squad.length; j++) {
+        if (j === i) continue;
+        const curJ = state.playersById[squad[j]];
+        const recipients = pools[curJ.element_type]
+          .filter((p) => !trial1.includes(p.id))
+          .sort((a, b) => score[b.id] - score[a.id])
+          .slice(0, COMPOUND_SHORTLIST);
+        for (const rec of recipients) {
+          const trial2 = trial1.map((id, k) => (k === j ? rec.id : id));
+          if (cost(trial2) > BUDGET) continue;
+          if (Object.values(clubCounts(trial2)).some((c) => c > MAX_PER_CLUB)) continue;
+          const s = weightedSquadScore(trial2, score);
+          if (s > curScore + 0.001 && (!best || s > best.s)) best = { i, donorId: donor.id, j, recId: rec.id, s };
+        }
+      }
+    }
+  }
+  return best;
+}
+
 // avoid: ids from earlier build options, mildly penalized so the next
 // option lands on a genuinely different squad - not the same 15 again.
 // jitter: random per-player noise so every click of the build button
@@ -319,6 +373,7 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
   for (const p of state.bootstrap.elements) {
     if (p.status === 'u' || p.status === 'n') continue;
     score[p.id] = model.horizonTotal(p.id)
+      * xiWeight(p.id)
       * (avoid?.has(p.id) ? 0.9 : 1)
       * (jitter ? 1 + (Math.random() - 0.5) * jitter : 1);
     pools[p.element_type].push(p);
@@ -354,9 +409,16 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
         if (s > curScore + 0.001 && (!best || s > best.s)) best = { i, cand: cand.id, s };
       }
     }
-    if (!best) break;
-    squad[best.i] = best.cand;
-    curScore = best.s;
+    if (best) {
+      squad[best.i] = best.cand;
+      curScore = best.s;
+      continue;
+    }
+    const compound = bestCompoundSwap(squad, score, pools);
+    if (!compound) break;
+    squad[compound.i] = compound.donorId;
+    squad[compound.j] = compound.recId;
+    curScore = compound.s;
   }
   return squad;
 }
@@ -367,17 +429,47 @@ for (let d = 3; d <= 5; d++)
     for (let f = 1; f <= 3; f++)
       if (d + m + f === 10) FORMATIONS.push([d, m, f]);
 
+// If picking purely for total xp left the bench with zero real-club
+// starters, FPL's auto-substitution has nothing useful to bring on if
+// an XI player doesn't play. Swap in whichever bench player restores
+// that safety net for the least xp given up - skipped entirely if the
+// bench already has one, so this never fires on a normal squad.
+function ensureBenchHasRealStarter(model, eventId, squadIds, xi) {
+  const bench = squadIds.filter((id) => !xi.includes(id));
+  if (!bench.length || bench.some(isRealStarter)) return xi;
+  let swap = null;
+  for (const outId of xi) {
+    if (!isRealStarter(outId)) continue;
+    for (const inId of bench) {
+      if (posOf(inId) !== posOf(outId)) continue;
+      const cost = model.xp(outId, eventId) - model.xp(inId, eventId);
+      if (!swap || cost < swap.cost) swap = { outId, inId, cost };
+    }
+  }
+  return swap ? xi.map((id) => (id === swap.outId ? swap.inId : id)) : xi;
+}
+
 export function bestXI(model, squadIds, eventId) {
   const byPos = { 1: [], 2: [], 3: [], 4: [] };
   for (const id of squadIds) byPos[posOf(id)].push({ id, xp: model.xp(id, eventId) });
-  for (const pos of [1, 2, 3, 4]) byPos[pos].sort((a, b) => b.xp - a.xp);
+  for (const pos of [1, 2, 3, 4]) byPos[pos].sort((a, b) => b.xp * xiWeight(b.id) - a.xp * xiWeight(a.id));
   let best = null;
   for (const [d, m, f] of FORMATIONS) {
     if (byPos[2].length < d || byPos[3].length < m || byPos[4].length < f || !byPos[1].length) continue;
     const xi = [byPos[1][0], ...byPos[2].slice(0, d), ...byPos[3].slice(0, m), ...byPos[4].slice(0, f)];
-    const total = xi.reduce((s, e) => s + e.xp, 0);
-    if (!best || total > best.total) best = { xi: xi.map((e) => e.id), total, formation: `${d}-${m}-${f}` };
+    // Formations are compared on the discounted total, not raw xp - a
+    // 4-5-1 that forces in a confirmed real-life bench-warmer as its
+    // 5th mid should lose to a 3-4-3 that plays an actual starter up
+    // front instead, even if the bench-warmer's raw xp edges it out.
+    // The reported total below is still true xp, so the discount never
+    // inflates the displayed forecast.
+    const weighted = xi.reduce((s, e) => s + e.xp * xiWeight(e.id), 0);
+    if (!best || weighted > best.weighted) best = { xi: xi.map((e) => e.id), weighted, formation: `${d}-${m}-${f}` };
   }
+  if (!best) return best;
+  best.xi = ensureBenchHasRealStarter(model, eventId, squadIds, best.xi);
+  best.total = best.xi.reduce((s, id) => s + model.xp(id, eventId), 0);
+  delete best.weighted;
   return best;
 }
 
@@ -483,6 +575,13 @@ function gwForecast(model, gw, ft) {
 
 /* ---------------- assistant ---------------- */
 
+// Weighted by xiWeight for ranking/threshold, same as the auto-build
+// score and bestXI's formation choice - a transfer target who's
+// really benched by his own club shouldn't outrank a smaller raw
+// upgrade into a confirmed starter. The gain shown to the user is
+// still true (unweighted) xp, so the discount never inflates it.
+const wscore = (model, id) => model.horizonTotal(id) * xiWeight(id);
+
 function upgradeSuggestions(model, gw) {
   const squad = squadAt(model, gw);
   const itb = BUDGET - cost(squad);
@@ -491,6 +590,7 @@ function upgradeSuggestions(model, gw) {
   for (const id of squad) {
     const cur = state.playersById[id];
     const curScore = model.horizonTotal(id);
+    const curWeighted = wscore(model, id);
     let best = null;
     for (const cand of state.bootstrap.elements) {
       if (cand.element_type !== cur.element_type || squad.includes(cand.id)) continue;
@@ -498,8 +598,10 @@ function upgradeSuggestions(model, gw) {
       if (cand.now_cost > cur.now_cost + itb) continue;
       const clubCount = (clubs[cand.team] || 0) - (cand.team === cur.team ? 1 : 0);
       if (clubCount >= MAX_PER_CLUB) continue;
-      const gain = model.horizonTotal(cand.id) - curScore;
-      if (gain > 0.5 && (!best || gain > best.gain)) best = { cand, gain };
+      const weightedGain = wscore(model, cand.id) - curWeighted;
+      if (weightedGain > 0.5 && (!best || weightedGain > best.weightedGain)) {
+        best = { cand, weightedGain, gain: model.horizonTotal(cand.id) - curScore };
+      }
     }
     if (best) out.push({ outId: id, inId: best.cand.id, gain: best.gain });
   }
@@ -508,6 +610,58 @@ function upgradeSuggestions(model, gw) {
     .sort((a, b) => b.gain - a.gain)
     .filter((s) => (seen.has(s.inId) ? false : seen.add(s.inId)))
     .slice(0, 4);
+}
+
+// A single transfer can only ever upgrade one slot, so a squad that's
+// spent its budget on premium picks elsewhere and left one position
+// threadbare has no single move that fixes it - selling that one weak
+// player never frees enough on its own to buy a real replacement. This
+// mirrors bestCompoundSwap: pair a sell-down in a well-stocked position
+// with the buy it funds, and suggest the pair only when the combined
+// true xp gain clears a higher bar than a single transfer would (two
+// moves - and the FT/hit cost that can come with them - want a bigger
+// payoff than one).
+const DOUBLE_SWAP_MIN_GAIN = 3;
+function compoundUpgradeSuggestion(model, gw) {
+  const squad = squadAt(model, gw);
+  const curScore = squad.reduce((s, id) => s + wscore(model, id), 0);
+  const byPos = { 1: [], 2: [], 3: [], 4: [] };
+  for (const p of state.bootstrap.elements) {
+    if ((p.status !== 'a' && p.status !== 'd') || squad.includes(p.id)) continue;
+    byPos[p.element_type].push(p);
+  }
+  let best = null;
+  for (let i = 0; i < squad.length; i++) {
+    const curI = state.playersById[squad[i]];
+    const donors = byPos[curI.element_type]
+      .filter((p) => p.now_cost < curI.now_cost)
+      .sort((a, b) => a.now_cost - b.now_cost)
+      .slice(0, COMPOUND_SHORTLIST);
+    for (const donor of donors) {
+      const trial1 = squad.map((id, k) => (k === i ? donor.id : id));
+      for (let j = 0; j < squad.length; j++) {
+        if (j === i) continue;
+        const curJ = state.playersById[squad[j]];
+        const recipients = byPos[curJ.element_type]
+          .filter((p) => !trial1.includes(p.id))
+          .sort((a, b) => wscore(model, b.id) - wscore(model, a.id))
+          .slice(0, COMPOUND_SHORTLIST);
+        for (const rec of recipients) {
+          const trial2 = trial1.map((id, k) => (k === j ? rec.id : id));
+          if (cost(trial2) > BUDGET) continue;
+          if (Object.values(clubCounts(trial2)).some((c) => c > MAX_PER_CLUB)) continue;
+          const s = trial2.reduce((sum, id) => sum + wscore(model, id), 0);
+          if (s > curScore + 0.001 && (!best || s > best.s)) {
+            best = { outId1: squad[i], inId1: donor.id, outId2: squad[j], inId2: rec.id, s };
+          }
+        }
+      }
+    }
+  }
+  if (!best) return null;
+  const gain = (model.horizonTotal(best.inId1) - model.horizonTotal(best.outId1))
+    + (model.horizonTotal(best.inId2) - model.horizonTotal(best.outId2));
+  return gain > DOUBLE_SWAP_MIN_GAIN ? { ...best, gain } : null;
 }
 
 function chipAdvice(model) {
@@ -546,6 +700,18 @@ function assistantPanel(model, gw) {
   }
   if (!upgrades.length) {
     items.push(`<div class="as-item"><span>${t('pl.asNoUpgrades')}</span></div>`);
+  }
+
+  const doubleSwap = compoundUpgradeSuggestion(model, gw);
+  if (doubleSwap) {
+    items.push(`<div class="as-item">
+      <span>${t('pl.asDoubleSwap', { in1: name(doubleSwap.inId1), out1: name(doubleSwap.outId1), in2: name(doubleSwap.inId2), out2: name(doubleSwap.outId2) })}
+      <span class="hi">+${doubleSwap.gain.toFixed(1)} ${t('stat.xp')}</span>
+      <span class="muted">${t('pl.asDoubleNote')}</span></span>
+      <button class="as-apply" data-act="doubletransfer"
+        data-out1="${doubleSwap.outId1}" data-in1="${doubleSwap.inId1}"
+        data-out2="${doubleSwap.outId2}" data-in2="${doubleSwap.inId2}">${t('pl.asApply')}</button>
+    </div>`);
   }
 
   if (isFirst && view.starters.length) {
@@ -1107,6 +1273,7 @@ export async function renderPlanner(root) {
     view.captain = null;
     view.transfers = {};
     ensureConsistency(model);
+    console.log('DEBUG applyBuildOption result ' + JSON.stringify({ starters: view.starters, bench: view.baseSquad.filter((id) => !view.starters.includes(id)) }));
   };
 
   // The build makes three different strong squads (each pass mildly
@@ -1171,6 +1338,22 @@ export async function renderPlanner(root) {
           if (view.captain === outId) view.captain = inId;
         } else {
           recordTransfer(model, gw, outId, inId);
+        }
+      }
+      if (act === 'doubletransfer') {
+        const out1 = +b.dataset.out1;
+        const in1 = +b.dataset.in1;
+        const out2 = +b.dataset.out2;
+        const in2 = +b.dataset.in2;
+        if (isFirst) {
+          const swap = (id) => (id === out1 ? in1 : id === out2 ? in2 : id);
+          view.baseSquad = view.baseSquad.map(swap);
+          view.starters = view.starters.map(swap);
+          if (view.captain === out1) view.captain = in1;
+          if (view.captain === out2) view.captain = in2;
+        } else {
+          recordTransfer(model, gw, out1, in1);
+          recordTransfer(model, gw, out2, in2);
         }
       }
       if (act === 'bestxi') {

@@ -761,7 +761,13 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .face-wrap.lu-bench { border: 2px solid var(--text-faint); opacity: 0.75; }
 
 /* Explicit label - the ring alone read as decoration, not a stated
-   fact, so it's paired with the actual word. */
+   fact, so it's paired with the actual word. "Starts" gets the same
+   bold solid-fill treatment as .pp-in (transferred-in badge) so it
+   actually pops, not the same soft tint every other pill on the page
+   already uses. "Bench" stays muted on purpose - it's the
+   unremarkable default, not the thing that should catch the eye.
+   Uses --accent rather than green: these pills sit on the pitch's
+   green background, so a green pill read as camouflage, not a badge. */
 .lineup-pill {
   display: inline-block;
   font-size: 9px;
@@ -770,9 +776,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding: 1px 7px;
   vertical-align: middle;
 }
-.lineup-pill.lu-start { background: #d9f2e2; color: #0f5c33; }
+.lineup-pill.lu-start { background: var(--accent); color: #fff; }
 .lineup-pill.lu-bench { background: #eceef3; color: #5b6478; }
-[data-theme="dark"] .lineup-pill.lu-start { background: #143c26; color: #7fdca4; }
 [data-theme="dark"] .lineup-pill.lu-bench { background: #232b3d; color: #aab3c9; }
 .pp-cap {
   position: absolute;

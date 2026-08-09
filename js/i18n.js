@@ -546,6 +546,8 @@ const STRINGS = {
   'pl.asIncomplete': ["Your squad has {n}/15 players - hit <strong>Auto-build squad</strong> and I'll take it from there.", 'בסגל שלכם {n}/15 שחקנים - לחצו על <strong>בנייה אוטומטית</strong> ומשם אני ממשיך.'],
   'pl.asSubtitle': ['· amitfpl xP model · {n}-GW plan incl. transfer hits', '· מודל הצפי של amitfpl · תוכנית ל-{n} מחזורים כולל קנסות העברה'],
   'pl.asInFor': ['<strong>{in}</strong> in for <strong>{out}</strong>', '<strong>{in}</strong> נכנס במקום <strong>{out}</strong>'],
+  'pl.asDoubleSwap': ['<strong>{in1}</strong> in for <strong>{out1}</strong>, <strong>{in2}</strong> in for <strong>{out2}</strong>', '<strong>{in1}</strong> נכנס במקום <strong>{out1}</strong>, <strong>{in2}</strong> נכנס במקום <strong>{out2}</strong>'],
+  'pl.asDoubleNote': ['two moves together', 'שתי העברות במקביל'],
   'pl.asBaseChange': ['base squad change', 'שינוי בסגל הבסיס'],
   'pl.asGwTransfer': ['as a {gw} transfer', 'כהעברה ב{gw}'],
   'pl.asApply': ['Apply', 'החלה'],

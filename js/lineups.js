@@ -160,13 +160,22 @@ function teamCard(team, squad) {
 // Predicted-XI lookup for other tabs (Planner) to flag "does this
 // player actually start for his club right now" - same model as the
 // Lineups tab, just exposed as a per-team Set instead of a rendered
-// card. Recomputed on every call rather than cached across renders,
-// so it never goes stale after a data refresh - a formation search
-// over one club's ~25-player squad is cheap enough not to need it.
+// card. Cached per team, keyed off the current state.bootstrap object
+// itself: cheap to reuse (Planner's squad optimizer now calls this
+// inside its hot loop, once per candidate XI), and it can't go stale
+// because a data refresh always replaces state.bootstrap with a new
+// object, which invalidates the cache automatically.
+let xiCache = null;
 export function getPredictedXI(teamId) {
+  if (!xiCache || xiCache.bootstrap !== state.bootstrap) {
+    xiCache = { bootstrap: state.bootstrap, byTeam: new Map() };
+  }
+  if (xiCache.byTeam.has(teamId)) return xiCache.byTeam.get(teamId);
   const squad = state.bootstrap.elements.filter((p) => p.team === teamId);
   const pred = predictXI(squad);
-  return pred ? new Set(pred.xi.map((p) => p.id)) : new Set();
+  const ids = pred ? new Set(pred.xi.map((p) => p.id)) : new Set();
+  xiCache.byTeam.set(teamId, ids);
+  return ids;
 }
 
 export async function renderLineups(root) {
