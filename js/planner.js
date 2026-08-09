@@ -59,6 +59,7 @@ const CHIPS = [
 
 const view = {
   horizon: 5,
+  formationLock: null, // null = auto; otherwise '3-4-3' etc, one of FORMATIONS
   planGw: null,
   baseSquad: [],   // 15 ids at the start of the plan
   starters: [],    // manual XI for the first GW
@@ -103,7 +104,7 @@ window.addEventListener('scroll', () => {
 const encodePlan = () => {
   const payload = JSON.stringify({
     h: view.horizon, s: view.baseSquad, x: view.starters,
-    c: view.captain, ch: view.chips, t: view.transfers,
+    c: view.captain, ch: view.chips, t: view.transfers, fl: view.formationLock,
   });
   return btoa(unescape(encodeURIComponent(payload))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
@@ -121,6 +122,7 @@ function importPlanFromHash() {
       captain: d.c || null,
       chips: d.ch || {},
       transfers: d.t || {},
+      formationLock: FORMATION_STRINGS.includes(d.fl) ? d.fl : null,
     });
     save();
     history.replaceState(null, '', '#planner');
@@ -144,6 +146,7 @@ function load() {
     if (saved) {
       Object.assign(view, {
         horizon: saved.horizon || 5,
+        formationLock: FORMATION_STRINGS.includes(saved.formationLock) ? saved.formationLock : null,
         baseSquad: (saved.baseSquad || []).filter((id) => state.playersById[id]),
         starters: (saved.starters || []).filter((id) => state.playersById[id]),
         captain: saved.captain || null,
@@ -174,6 +177,7 @@ function load() {
 const save = () =>
   localStorage.setItem(slotKey(slot), JSON.stringify({
     horizon: view.horizon,
+    formationLock: view.formationLock,
     baseSquad: view.baseSquad,
     starters: view.starters,
     captain: view.captain,
@@ -293,18 +297,32 @@ function dropTransfer(gw, idx) {
 // XI slots count in full, bench slots barely. Optimizing this - instead
 // of the raw sum of all 15 - keeps the budget in the starting lineup,
 // so near-zero "enabler" picks sit on the bench instead of up front.
-const SLOT_WEIGHTS = {
-  1: [1, 0.1],
-  2: [1, 1, 1, 0.7, 0.25],
-  3: [1, 1, 1, 0.7, 0.25],
-  4: [1, 0.8, 0.35],
-};
+// The default assumes a squad has to cover whatever formation it ends
+// up needing, so it guarantees real weight to a 4th DEF/MID and treats
+// a 3rd FWD as a pure cheap enabler - which is why an un-targeted build
+// almost always suits 4-4-2 best. slotWeightsFor([d,m,f]) derives the
+// same shape of table but targeted at one specific formation: full
+// weight for exactly the starters that formation needs, tapering off
+// for whatever's left over as bench depth.
+const TAIL_DM = [0.7, 0.25, 0.1];
+const TAIL_FWD = [0.8, 0.35, 0.15];
+function slotWeightsFor([d, m, f] = [3, 3, 1]) {
+  const tail = (req, total, taper) =>
+    Array.from({ length: total }, (_, i) => (i < req ? 1 : taper[i - req] ?? 0.05));
+  return {
+    1: [1, 0.1],
+    2: tail(d, 5, TAIL_DM),
+    3: tail(m, 5, TAIL_DM),
+    4: tail(f, 3, TAIL_FWD),
+  };
+}
+const SLOT_WEIGHTS = slotWeightsFor();
 
-function weightedSquadScore(squad, score) {
+function weightedSquadScore(squad, score, weights = SLOT_WEIGHTS) {
   let total = 0;
   for (const pos of [1, 2, 3, 4]) {
     const vals = squad.filter((id) => posOf(id) === pos).map((id) => score[id]).sort((a, b) => b - a);
-    for (let i = 0; i < vals.length; i++) total += vals[i] * (SLOT_WEIGHTS[pos][i] ?? 0);
+    for (let i = 0; i < vals.length; i++) total += vals[i] * (weights[pos][i] ?? 0);
   }
   return total;
 }
@@ -332,8 +350,8 @@ const xiWeight = (id) => (isRealStarter(id) ? 1 : REAL_BENCH_DISCOUNT);
 // keep the search - one pair of nested position pools per candidate
 // pair - fast enough to run inside the existing iteration budget.
 const COMPOUND_SHORTLIST = 15;
-function bestCompoundSwap(squad, score, pools) {
-  const curScore = weightedSquadScore(squad, score);
+function bestCompoundSwap(squad, score, pools, weights) {
+  const curScore = weightedSquadScore(squad, score, weights);
   let best = null;
   for (let i = 0; i < squad.length; i++) {
     const curI = state.playersById[squad[i]];
@@ -343,18 +361,24 @@ function bestCompoundSwap(squad, score, pools) {
       .slice(0, COMPOUND_SHORTLIST);
     for (const donor of donors) {
       const trial1 = squad.map((id, k) => (k === i ? donor.id : id));
+      const trial1Cost = cost(trial1);
       for (let j = 0; j < squad.length; j++) {
         if (j === i) continue;
         const curJ = state.playersById[squad[j]];
+        // Filter to what's actually affordable with the money this
+        // donor swap freed *before* ranking by score - otherwise the
+        // top-15-by-score shortlist can be entirely out of reach and
+        // the search finds nothing, even when an affordable recipient
+        // further down the ranking would have been a real upgrade.
+        const maxAffordable = BUDGET - trial1Cost + curJ.now_cost;
         const recipients = pools[curJ.element_type]
-          .filter((p) => !trial1.includes(p.id))
+          .filter((p) => !trial1.includes(p.id) && p.now_cost <= maxAffordable)
           .sort((a, b) => score[b.id] - score[a.id])
           .slice(0, COMPOUND_SHORTLIST);
         for (const rec of recipients) {
           const trial2 = trial1.map((id, k) => (k === j ? rec.id : id));
-          if (cost(trial2) > BUDGET) continue;
           if (Object.values(clubCounts(trial2)).some((c) => c > MAX_PER_CLUB)) continue;
-          const s = weightedSquadScore(trial2, score);
+          const s = weightedSquadScore(trial2, score, weights);
           if (s > curScore + 0.001 && (!best || s > best.s)) best = { i, donorId: donor.id, j, recId: rec.id, s };
         }
       }
@@ -367,7 +391,8 @@ function bestCompoundSwap(squad, score, pools) {
 // option lands on a genuinely different squad - not the same 15 again.
 // jitter: random per-player noise so every click of the build button
 // reshuffles the marginal picks instead of repeating the same answer.
-function buildOptimalSquad(model, avoid = null, jitter = 0) {
+function buildOptimalSquad(model, avoid = null, jitter = 0, formation = null) {
+  const weights = slotWeightsFor(formation);
   const score = {};
   const pools = { 1: [], 2: [], 3: [], 4: [] };
   for (const p of state.bootstrap.elements) {
@@ -394,7 +419,7 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
       taken++;
     }
   }
-  let curScore = weightedSquadScore(squad, score);
+  let curScore = weightedSquadScore(squad, score, weights);
   for (let iter = 0; iter < 300; iter++) {
     let best = null;
     for (let i = 0; i < squad.length; i++) {
@@ -405,7 +430,7 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
         const counts = clubCounts(squad.filter((id) => id !== cur.id));
         if ((counts[cand.team] || 0) >= MAX_PER_CLUB) continue;
         const trial = squad.map((id, j) => (j === i ? cand.id : id));
-        const s = weightedSquadScore(trial, score);
+        const s = weightedSquadScore(trial, score, weights);
         if (s > curScore + 0.001 && (!best || s > best.s)) best = { i, cand: cand.id, s };
       }
     }
@@ -414,7 +439,7 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
       curScore = best.s;
       continue;
     }
-    const compound = bestCompoundSwap(squad, score, pools);
+    const compound = bestCompoundSwap(squad, score, pools, weights);
     if (!compound) break;
     squad[compound.i] = compound.donorId;
     squad[compound.j] = compound.recId;
@@ -428,6 +453,19 @@ for (let d = 3; d <= 5; d++)
   for (let m = 2; m <= 5; m++)
     for (let f = 1; f <= 3; f++)
       if (d + m + f === 10) FORMATIONS.push([d, m, f]);
+
+// Every squad always has the standard 2/5/5/3 split, so all 8 of
+// these are reachable from any complete squad - no feasibility check
+// needed when a user locks one in.
+const FORMATION_STRINGS = FORMATIONS.map(([d, m, f]) => `${d}-${m}-${f}`);
+const parseFormationLock = (s) => (FORMATION_STRINGS.includes(s) ? FORMATIONS.find(([d, m, f]) => `${d}-${m}-${f}` === s) : null);
+
+// When nothing's locked, auto-build compares one squad genuinely built
+// for each of these three shapes - defensive, balanced, attacking -
+// instead of three jittered near-duplicates that (per slotWeightsFor's
+// default) almost always land on 4-4-2 anyway. Each is scored on its
+// own true forecast, so the choice is a real formation-vs-xP tradeoff.
+const COMPARE_FORMATIONS = ['5-3-2', '4-4-2', '3-4-3'];
 
 // If picking purely for total xp left the bench with zero real-club
 // starters, FPL's auto-substitution has nothing useful to bring on if
@@ -449,12 +487,16 @@ function ensureBenchHasRealStarter(model, eventId, squadIds, xi) {
   return swap ? xi.map((id) => (id === swap.outId ? swap.inId : id)) : xi;
 }
 
-export function bestXI(model, squadIds, eventId) {
+// formationLock: '4-4-2' etc to restrict the search to just that
+// formation, or omit/null to auto-pick whichever formation scores
+// highest (the normal behavior).
+export function bestXI(model, squadIds, eventId, formationLock) {
   const byPos = { 1: [], 2: [], 3: [], 4: [] };
   for (const id of squadIds) byPos[posOf(id)].push({ id, xp: model.xp(id, eventId) });
   for (const pos of [1, 2, 3, 4]) byPos[pos].sort((a, b) => b.xp * xiWeight(b.id) - a.xp * xiWeight(a.id));
+  const lock = parseFormationLock(formationLock);
   let best = null;
-  for (const [d, m, f] of FORMATIONS) {
+  for (const [d, m, f] of lock ? [lock] : FORMATIONS) {
     if (byPos[2].length < d || byPos[3].length < m || byPos[4].length < f || !byPos[1].length) continue;
     const xi = [byPos[1][0], ...byPos[2].slice(0, d), ...byPos[3].slice(0, m), ...byPos[4].slice(0, f)];
     // Formations are compared on the discounted total, not raw xp - a
@@ -476,9 +518,9 @@ export function bestXI(model, squadIds, eventId) {
 // Comparable forecast for an arbitrary squad: best XI + captain, summed
 // over the horizon. Labels the auto-build options so picking between
 // them is a number, not a guess.
-function squadForecast(model, squad) {
+function squadForecast(model, squad, formationLock = view.formationLock) {
   return model.gws.reduce((s, gw) => {
-    const xi = bestXI(model, squad, gw);
+    const xi = bestXI(model, squad, gw, formationLock);
     if (!xi) return s;
     return s + xi.total + Math.max(...xi.xi.map((id) => model.xp(id, gw)));
   }, 0);
@@ -503,7 +545,7 @@ function ensureConsistency(model) {
     if (!view.transfers[e].length) delete view.transfers[e];
   }
   if (view.baseSquad.length === 15 && !formationValid(view.starters)) {
-    const xi = bestXI(model, view.baseSquad, firstGw(model));
+    const xi = bestXI(model, view.baseSquad, firstGw(model), view.formationLock);
     if (xi) view.starters = xi.xi;
   }
   if (view.captain && !view.starters.includes(view.captain)) view.captain = null;
@@ -554,7 +596,7 @@ function lineupFor(model, gw) {
     const cap = view.captain;
     return { squad, starters: view.starters, captain: cap, formation: null, manual: true };
   }
-  const xi = bestXI(model, squad, gw);
+  const xi = bestXI(model, squad, gw, view.formationLock);
   if (!xi) return { squad, starters: [], captain: null, formation: null, manual: false };
   const captain = [...xi.xi].sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0];
   return { squad, starters: xi.xi, captain, formation: xi.formation, manual: false };
@@ -639,16 +681,21 @@ function compoundUpgradeSuggestion(model, gw) {
       .slice(0, COMPOUND_SHORTLIST);
     for (const donor of donors) {
       const trial1 = squad.map((id, k) => (k === i ? donor.id : id));
+      const trial1Cost = cost(trial1);
       for (let j = 0; j < squad.length; j++) {
         if (j === i) continue;
         const curJ = state.playersById[squad[j]];
+        // Same fix as bestCompoundSwap: rank only what's actually
+        // affordable with the money this donor swap freed, so the
+        // shortlist isn't wasted on recipients the freed cash can't
+        // reach.
+        const maxAffordable = BUDGET - trial1Cost + curJ.now_cost;
         const recipients = byPos[curJ.element_type]
-          .filter((p) => !trial1.includes(p.id))
+          .filter((p) => !trial1.includes(p.id) && p.now_cost <= maxAffordable)
           .sort((a, b) => wscore(model, b.id) - wscore(model, a.id))
           .slice(0, COMPOUND_SHORTLIST);
         for (const rec of recipients) {
           const trial2 = trial1.map((id, k) => (k === j ? rec.id : id));
-          if (cost(trial2) > BUDGET) continue;
           if (Object.values(clubCounts(trial2)).some((c) => c > MAX_PER_CLUB)) continue;
           const s = trial2.reduce((sum, id) => sum + wscore(model, id), 0);
           if (s > curScore + 0.001 && (!best || s > best.s)) {
@@ -715,7 +762,7 @@ function assistantPanel(model, gw) {
   }
 
   if (isFirst && view.starters.length) {
-    const xi = bestXI(model, view.baseSquad, gw);
+    const xi = bestXI(model, view.baseSquad, gw, view.formationLock);
     const curXi = view.starters.reduce((s, id) => s + model.xp(id, gw), 0);
     if (xi && xi.total > curXi + 0.3) {
       items.push(`<div class="as-item">
@@ -1193,6 +1240,11 @@ export async function renderPlanner(root) {
         <select id="pl-horizon">
           ${[3, 5, 8].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${t('common.nGws', { n })}</option>`).join('')}
         </select>
+        <label>${t('pl.formation')}</label>
+        <select id="pl-formation" title="${t('pl.formationTitle')}">
+          <option value="" ${view.formationLock ? '' : 'selected'}>${t('pl.formationAuto')}</option>
+          ${FORMATION_STRINGS.map((f) => `<option value="${f}" ${view.formationLock === f ? 'selected' : ''}>${f}</option>`).join('')}
+        </select>
         <button class="btn" id="pl-build">${view.baseSquad.length ? t('pl.reOptimize') : t('pl.autoBuild')}</button>
         <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">${t('pl.assistant')}</button>
         <span class="spacer"></span>
@@ -1226,7 +1278,7 @@ export async function renderPlanner(root) {
       </div>
       ${view.buildOptions?.length ? `<div class="toolbar build-opts">
         <span class="build-opts-label">${t('pl.buildOpts')}</span>
-        ${view.buildOptions.map((o, i) => `<button class="gw-chip ${sameSquad(o.squad, view.baseSquad) ? 'active' : ''}" data-build-opt="${i}">${t('pl.buildOptN', { n: i + 1 })} · ${o.xp}</button>`).join('')}
+        ${view.buildOptions.map((o, i) => `<button class="gw-chip ${sameSquad(o.squad, view.baseSquad) ? 'active' : ''}" data-build-opt="${i}">${o.label ?? t('pl.buildOptN', { n: i + 1 })} · ${o.xp}</button>`).join('')}
         ${infoNote('info.buildOpts')}
         <button class="link-btn" id="pl-build-opts-x" title="${t('common.close')}">✕</button>
       </div>` : ''}
@@ -1265,6 +1317,20 @@ export async function renderPlanner(root) {
     rerender();
   });
 
+  root.querySelector('#pl-formation').addEventListener('change', (e) => {
+    view.formationLock = e.target.value || null;
+    // Re-run the auto XI for the base squad right away so locking a
+    // formation is felt immediately on the pitch, not just on the
+    // next re-optimize or future GW.
+    if (view.baseSquad.length === 15) {
+      const xi = bestXI(model, view.baseSquad, firstGw(model), view.formationLock);
+      if (xi) { view.starters = xi.xi; view.captain = null; }
+    }
+    ensureConsistency(model);
+    save();
+    rerender();
+  });
+
   const applyBuildOption = (i) => {
     const opt = view.buildOptions?.[i];
     if (!opt) return;
@@ -1272,13 +1338,23 @@ export async function renderPlanner(root) {
     view.starters = [];
     view.captain = null;
     view.transfers = {};
+    // Picking a squad that was built for a specific shape should keep
+    // that shape - otherwise bestXI's own auto-pick could immediately
+    // reformat it into whatever formation happens to score highest for
+    // these particular 15 players, silently contradicting the label the
+    // user just chose.
+    if (opt.formation) view.formationLock = opt.formation;
     ensureConsistency(model);
-    console.log('DEBUG applyBuildOption result ' + JSON.stringify({ starters: view.starters, bench: view.baseSquad.filter((id) => !view.starters.includes(id)) }));
   };
 
-  // The build makes three different strong squads (each pass mildly
-  // penalizes players the previous ones used), so "auto build" offers a
-  // choice of lineups instead of the same single answer every time.
+  // The build makes three different strong squads, so "auto build"
+  // offers a choice instead of the same single answer every time.
+  // Locked to one formation: three jittered takes on that shape (each
+  // pass mildly penalizes players the previous ones used, for variety).
+  // Unlocked: one real squad per formation in COMPARE_FORMATIONS - a
+  // genuine defensive/balanced/attacking tradeoff, each scored on its
+  // own true forecast, rather than three near-duplicates that almost
+  // always land on 4-4-2 anyway.
   root.querySelector('#pl-build').addEventListener('click', () => {
     if (view.building) return;
     view.building = true;
@@ -1287,14 +1363,27 @@ export async function renderPlanner(root) {
     btn.disabled = true;
     setTimeout(() => {
       const options = [];
-      const used = new Set();
-      // First run: option 1 is the pure optimum. Every run after that
-      // jitters all three, so re-clicking keeps surfacing new squads.
-      const again = !!view.buildOptions;
-      for (let k = 0; k < 3; k++) {
-        const squad = buildOptimalSquad(model, k ? used : null, k || again ? 0.06 : 0);
-        options.push({ squad, xp: Math.round(squadForecast(model, squad)) });
-        squad.forEach((id) => used.add(id));
+      if (view.formationLock) {
+        const used = new Set();
+        const again = !!view.buildOptions;
+        const target = parseFormationLock(view.formationLock);
+        for (let k = 0; k < 3; k++) {
+          const squad = buildOptimalSquad(model, k ? used : null, k || again ? 0.06 : 0, target);
+          options.push({
+            squad,
+            formation: view.formationLock,
+            label: t('pl.buildOptN', { n: k + 1 }),
+            xp: Math.round(squadForecast(model, squad, view.formationLock)),
+          });
+          squad.forEach((id) => used.add(id));
+        }
+      } else {
+        for (const formation of COMPARE_FORMATIONS) {
+          const target = parseFormationLock(formation);
+          const squad = buildOptimalSquad(model, null, 0, target);
+          options.push({ squad, formation, label: formation, xp: Math.round(squadForecast(model, squad, formation)) });
+        }
+        options.sort((a, b) => b.xp - a.xp);
       }
       view.buildOptions = options;
       applyBuildOption(0);
@@ -1357,7 +1446,7 @@ export async function renderPlanner(root) {
         }
       }
       if (act === 'bestxi') {
-        const xi = bestXI(model, view.baseSquad, gw);
+        const xi = bestXI(model, view.baseSquad, gw, view.formationLock);
         if (xi) { view.starters = xi.xi; view.captain = null; }
       }
       if (act === 'captain') view.captain = +b.dataset.id;
