@@ -909,7 +909,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--text);
   width: 100%;
 }
-.side-filters { display: flex; gap: 8px; }
+/* Five filters (price, position, club, starts/bench, sort) don't fit
+   one row at the sidebar's width - wrap instead of silently
+   overflowing past the panel's `overflow: hidden` and clipping the
+   last control or two out of view. */
+.side-filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .side-filters select {
   font: inherit;
   font-size: 12px;
@@ -918,7 +922,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  flex: 1;
+  flex: 1 1 84px;
+  min-width: 0;
 }
 .side-list { overflow-y: auto; flex: 1; }
 .side-row {

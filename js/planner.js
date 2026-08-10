@@ -8,7 +8,7 @@ import { playerPhoto, teamBadge, inlinePhoto, fixtureChips, infoNote } from './u
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
 import { getPredictedXI } from './lineups.js';
-import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort } from './i18n.js';
+import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort, teamName } from './i18n.js';
 
 // Does this player actually start for his real club right now, per
 // the same model behind the Lineups tab? A fantasy squad slot scoring
@@ -67,6 +67,8 @@ const view = {
   chips: {},       // eventId -> 'WC' | 'FH' | 'BB' | 'TC'
   transfers: {},   // eventId -> [{out, in}] for GWs after the first
   filterPos: 'all',
+  filterTeam: 'all',
+  filterStart: 'all', // 'all' | 'start' | 'bench' - real-life predicted lineup status
   search: '',
   maxPrice: '',
   sortKey: 'xp',
@@ -1141,6 +1143,12 @@ function sideList(model, gw) {
     if (p.status === 'u' || p.status === 'n') return false;
     if (pendingOut && p.element_type !== pendingOut.element_type) return false;
     if (view.filterPos !== 'all' && p.element_type !== +view.filterPos) return false;
+    if (view.filterTeam !== 'all' && p.team !== +view.filterTeam) return false;
+    if (view.filterStart !== 'all') {
+      const starting = getPredictedXI(p.team).has(p.id);
+      if (view.filterStart === 'start' && !starting) return false;
+      if (view.filterStart === 'bench' && starting) return false;
+    }
     if (view.maxPrice && p.now_cost / 10 > +view.maxPrice) return false;
     if (q && !`${p.first_name} ${p.second_name} ${p.web_name} ${playerName(p)}`.toLowerCase().includes(q)) return false;
     return true;
@@ -1186,6 +1194,15 @@ function sideList(model, gw) {
         <select id="sd-pos">
           <option value="all">${t('common.all')}</option>
           ${state.bootstrap.element_types.map((et) => `<option value="${et.id}" ${view.filterPos == et.id ? 'selected' : ''}>${posPlural(et.plural_name_short)}</option>`).join('')}
+        </select>
+        <select id="sd-team">
+          <option value="all">${t('common.allClubs')}</option>
+          ${[...state.bootstrap.teams].sort((a, b) => teamName(a).localeCompare(teamName(b))).map((tm) => `<option value="${tm.id}" ${view.filterTeam == tm.id ? 'selected' : ''}>${escapeHtml(teamName(tm))}</option>`).join('')}
+        </select>
+        <select id="sd-lineup">
+          <option value="all" ${view.filterStart === 'all' ? 'selected' : ''}>${t('pl.lineupAll')}</option>
+          <option value="start" ${view.filterStart === 'start' ? 'selected' : ''}>${t('common.starts')}</option>
+          <option value="bench" ${view.filterStart === 'bench' ? 'selected' : ''}>${t('common.bench')}</option>
         </select>
         <select id="sd-sort">
           <option value="xp" ${view.sortKey === 'xp' ? 'selected' : ''}>${t('pl.sortXp')}</option>
@@ -1537,6 +1554,8 @@ export async function renderPlanner(root) {
     });
   });
   root.querySelector('#sd-pos').addEventListener('change', (e) => { view.filterPos = e.target.value; sideScroll = 0; rerender(); });
+  root.querySelector('#sd-team').addEventListener('change', (e) => { view.filterTeam = e.target.value; sideScroll = 0; rerender(); });
+  root.querySelector('#sd-lineup').addEventListener('change', (e) => { view.filterStart = e.target.value; sideScroll = 0; rerender(); });
   root.querySelector('#sd-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; sideScroll = 0; rerender(); });
   root.querySelector('#sd-sort').addEventListener('change', (e) => { view.sortKey = e.target.value; sideScroll = 0; rerender(); });
   sideEl?.addEventListener('scroll', () => { sideScroll = sideEl.scrollTop; });
