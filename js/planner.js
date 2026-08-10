@@ -415,20 +415,27 @@ function bestCompoundSwap(squad, score, pools, weights) {
 // jitter: random per-player noise so every click of the build button
 // reshuffles the marginal picks instead of repeating the same answer.
 // mode: 'xp' (default) maximizes expected points; 'owned' maximizes
-// total ownership %, for a safe/template squad; 'differential'
-// minimizes ownership among real-life starters only (xP as tiebreak),
-// for a low-risk-of-blank punt squad that still has a shot at playing.
+// total ownership %, for a safe/template squad; 'differential' picks
+// only real-life starters under DIFFERENTIAL_OWNERSHIP_CAP, then
+// maximizes spend + xP within that pool. A soft ownership penalty in
+// the score (rather than a hard cutoff) would let a couple of extra
+// points of xP or price buy back several points of ownership one
+// swap at a time, drifting the "differential" squad toward the same
+// popular picks "most owned" would choose - the cap keeps every slot
+// genuinely low-owned, and once that's guaranteed, nothing left in
+// the score should be pulling away from using the full budget.
+const DIFFERENTIAL_OWNERSHIP_CAP = 10;
 function buildOptimalSquad(model, avoid = null, jitter = 0, formation = null, mode = 'xp') {
   const weights = mode === 'xp' ? slotWeightsFor(formation) : UNIFORM_WEIGHTS;
   const score = {};
   const pools = { 1: [], 2: [], 3: [], 4: [] };
   for (const p of state.bootstrap.elements) {
     if (p.status === 'u' || p.status === 'n') continue;
-    if (mode === 'differential' && !isRealStarter(p.id)) continue;
+    if (mode === 'differential' && (!isRealStarter(p.id) || num(p.selected_by_percent) > DIFFERENTIAL_OWNERSHIP_CAP)) continue;
     if (mode === 'owned') {
       score[p.id] = num(p.selected_by_percent);
     } else if (mode === 'differential') {
-      score[p.id] = (100 - num(p.selected_by_percent)) * 1000 + model.horizonTotal(p.id);
+      score[p.id] = p.now_cost * 10 + model.horizonTotal(p.id);
     } else {
       score[p.id] = model.horizonTotal(p.id)
         * xiWeight(p.id)
