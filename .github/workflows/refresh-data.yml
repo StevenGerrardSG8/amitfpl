@@ -37,10 +37,14 @@ jobs:
         run: |
           git config user.name "fpl-data-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
+          git add data/ js/names-he.js
           if git diff --cached --quiet; then
             echo "No data changes."
           else
-            git commit -m "data: refresh $(date -u +'%Y-%m-%d %H:%MZ')"
+            msg="data: refresh $(date -u +'%Y-%m-%d %H:%MZ')"
+            if ! git diff --cached --quiet -- js/names-he.js; then
+              msg="$msg (+ names-he auto-resolve via Wikidata)"
+            fi
+            git commit -m "$msg"
             git push
           fi
