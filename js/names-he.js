@@ -503,6 +503,7 @@ export const PLAYER_NAMES_HE = {
   'Thomas': 'תומאס',
   'Thomas-Asante': 'תומאס-אסאנטה',
   'Tielemans': 'טילמנס',
+  'Tomiyasu': 'טומיאסו',
   'Tonali': 'טונאלי',
   'Torp': 'טורפ',
   'Tosin': 'טוסין',
