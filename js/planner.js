@@ -36,6 +36,20 @@ try { slot = localStorage.getItem(SLOT_KEY) || 'A'; } catch { /* private mode */
 const slotKey = (s) => `amitfpl:planner:v3:${s}`;
 const LEGACY_KEY = 'amitfpl:planner:v3';
 
+// Custom draft names live in their own key, not inside each slot's own
+// saved plan - naming slot B shouldn't require ever loading B as the
+// active slot, and a name shouldn't vanish just because that slot's
+// plan gets cleared.
+const DRAFT_NAMES_KEY = 'amitfpl:planner:draftNames';
+let draftNames = {};
+try { draftNames = JSON.parse(localStorage.getItem(DRAFT_NAMES_KEY)) || {}; } catch { /* private mode */ }
+const draftLabel = (s) => (draftNames[s] || '').trim() || t(`draft.${s}`);
+function setDraftName(s, name) {
+  const trimmed = name.trim().slice(0, 24);
+  if (trimmed) draftNames[s] = trimmed; else delete draftNames[s];
+  try { localStorage.setItem(DRAFT_NAMES_KEY, JSON.stringify(draftNames)); } catch { /* private mode */ }
+}
+
 function draftMeta(s) {
   try {
     const d = JSON.parse(localStorage.getItem(slotKey(s)));
@@ -60,6 +74,7 @@ const CHIPS = [
 const view = {
   horizon: 5,
   formationLock: null, // null = auto; otherwise '3-4-3' etc, one of FORMATIONS
+  buildMode: 'xp', // 'xp' | 'owned' | 'differential' - what auto-build optimizes for
   planGw: null,
   baseSquad: [],   // 15 ids at the start of the plan
   starters: [],    // manual XI for the first GW
@@ -320,6 +335,12 @@ function slotWeightsFor([d, m, f] = [3, 3, 1]) {
 }
 const SLOT_WEIGHTS = slotWeightsFor();
 
+// "Most owned" and "most differential" builds aren't optimizing a
+// starting XI's shape at all - they want the best sum across the
+// whole 15, bench included, so every slot counts the same instead of
+// tapering off after the depth a formation would need.
+const UNIFORM_WEIGHTS = { 1: [1, 1], 2: [1, 1, 1, 1, 1], 3: [1, 1, 1, 1, 1], 4: [1, 1, 1] };
+
 function weightedSquadScore(squad, score, weights = SLOT_WEIGHTS) {
   let total = 0;
   for (const pos of [1, 2, 3, 4]) {
@@ -393,16 +414,27 @@ function bestCompoundSwap(squad, score, pools, weights) {
 // option lands on a genuinely different squad - not the same 15 again.
 // jitter: random per-player noise so every click of the build button
 // reshuffles the marginal picks instead of repeating the same answer.
-function buildOptimalSquad(model, avoid = null, jitter = 0, formation = null) {
-  const weights = slotWeightsFor(formation);
+// mode: 'xp' (default) maximizes expected points; 'owned' maximizes
+// total ownership %, for a safe/template squad; 'differential'
+// minimizes ownership among real-life starters only (xP as tiebreak),
+// for a low-risk-of-blank punt squad that still has a shot at playing.
+function buildOptimalSquad(model, avoid = null, jitter = 0, formation = null, mode = 'xp') {
+  const weights = mode === 'xp' ? slotWeightsFor(formation) : UNIFORM_WEIGHTS;
   const score = {};
   const pools = { 1: [], 2: [], 3: [], 4: [] };
   for (const p of state.bootstrap.elements) {
     if (p.status === 'u' || p.status === 'n') continue;
-    score[p.id] = model.horizonTotal(p.id)
-      * xiWeight(p.id)
-      * (avoid?.has(p.id) ? 0.9 : 1)
-      * (jitter ? 1 + (Math.random() - 0.5) * jitter : 1);
+    if (mode === 'differential' && !isRealStarter(p.id)) continue;
+    if (mode === 'owned') {
+      score[p.id] = num(p.selected_by_percent);
+    } else if (mode === 'differential') {
+      score[p.id] = (100 - num(p.selected_by_percent)) * 1000 + model.horizonTotal(p.id);
+    } else {
+      score[p.id] = model.horizonTotal(p.id)
+        * xiWeight(p.id)
+        * (avoid?.has(p.id) ? 0.9 : 1)
+        * (jitter ? 1 + (Math.random() - 0.5) * jitter : 1);
+    }
     pools[p.element_type].push(p);
   }
   for (const pos of [1, 2, 3, 4]) {
@@ -820,10 +852,16 @@ function openDraftCompare(model, root) {
   const activeSet = new Set(active.sq);
   const names = (ids) => ids.map((id) => escapeHtml(playerName(state.playersById[id]))).join(', ');
 
+  // Editable right in the comparison table - this is the "manage all
+  // three drafts" view, so it's the natural place to name one without
+  // first having to switch to it.
+  const nameCell = (s) => `<input class="draft-name-input" data-draft="${s}"
+    value="${escapeHtml(draftNames[s] || '')}" placeholder="${escapeHtml(t(`draft.${s}`))}"
+    maxlength="24" />${s === slot ? ' ●' : ''}`;
+
   const rows = drafts.map(({ s, sq, chips, xp }) => {
-    const letter = t(`draft.${s}`);
     if (!sq.length) {
-      return `<tr><td class="team-cell">${letter}${s === slot ? ' ●' : ''}</td>
+      return `<tr><td class="team-cell">${nameCell(s)}</td>
         <td colspan="4" class="muted">${t('pl.cmpEmpty')}</td></tr>`;
     }
     const chipStr = Object.entries(chips)
@@ -839,7 +877,7 @@ function openDraftCompare(model, root) {
         : `<span class="muted">${t('pl.cmpSame')}</span>`;
     }
     return `<tr>
-      <td class="team-cell">${letter}${s === slot ? ' ●' : ''}</td>
+      <td class="team-cell">${nameCell(s)}</td>
       <td class="num">${fmtPrice(cost(sq))}</td>
       <td class="num"><strong>${xp ?? '-'}</strong></td>
       <td>${chipStr}</td>
@@ -865,6 +903,12 @@ function openDraftCompare(model, root) {
     </div>`;
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay || e.target.closest('#cmp-close')) overlay.remove();
+  });
+  overlay.querySelectorAll('.draft-name-input').forEach((input) => {
+    input.addEventListener('change', () => {
+      setDraftName(input.dataset.draft, input.value);
+      renderPlanner(root); // toolbar chips show the new name right away
+    });
   });
   document.body.appendChild(overlay);
 }
@@ -1262,6 +1306,12 @@ export async function renderPlanner(root) {
           <option value="" ${view.formationLock ? '' : 'selected'}>${t('pl.formationAuto')}</option>
           ${FORMATION_STRINGS.map((f) => `<option value="${f}" ${view.formationLock === f ? 'selected' : ''}>${f}</option>`).join('')}
         </select>
+        <label>${t('pl.buildMode')}</label>
+        <select id="pl-buildmode" title="${t('pl.buildModeTitle')}">
+          <option value="xp" ${view.buildMode === 'xp' ? 'selected' : ''}>${t('pl.buildModeXp')}</option>
+          <option value="owned" ${view.buildMode === 'owned' ? 'selected' : ''}>${t('pl.buildModeOwned')}</option>
+          <option value="differential" ${view.buildMode === 'differential' ? 'selected' : ''}>${t('pl.buildModeDiff')}</option>
+        </select>
         <button class="btn" id="pl-build">${view.baseSquad.length ? t('pl.reOptimize') : t('pl.autoBuild')}</button>
         <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">${t('pl.assistant')}</button>
         <span class="spacer"></span>
@@ -1282,9 +1332,9 @@ export async function renderPlanner(root) {
         <div class="gw-chips" id="pl-drafts" title="${t('pl.draftsTitle')}">
           ${DRAFTS.map((s) => {
             const meta = s === slot ? { n: view.baseSquad.length, xp: Math.round(horizonTotal) } : draftMeta(s);
-            const letter = t(`draft.${s}`);
+            const letter = draftLabel(s);
             const label = meta && meta.n ? `${letter} · ${meta.xp ?? meta.n}` : letter;
-            return `<button class="gw-chip ${s === slot ? 'active' : ''}" data-draft="${s}">${label}</button>`;
+            return `<button class="gw-chip ${s === slot ? 'active' : ''}" data-draft="${s}" title="${escapeHtml(letter)}">${escapeHtml(label)}</button>`;
           }).join('')}
         </div>
       </div>
@@ -1348,6 +1398,11 @@ export async function renderPlanner(root) {
     rerender();
   });
 
+  root.querySelector('#pl-buildmode').addEventListener('change', (e) => {
+    view.buildMode = e.target.value;
+    rerender();
+  });
+
   const applyBuildOption = (i) => {
     const opt = view.buildOptions?.[i];
     if (!opt) return;
@@ -1379,6 +1434,22 @@ export async function renderPlanner(root) {
     btn.textContent = t('pl.optimizing');
     btn.disabled = true;
     setTimeout(() => {
+      // "Most owned"/"most differential" aren't a formation tradeoff -
+      // there's exactly one squad that best fits the metric, so build
+      // and apply it directly instead of offering 3 options to compare.
+      if (view.buildMode !== 'xp') {
+        const target = parseFormationLock(view.formationLock);
+        const squad = buildOptimalSquad(model, null, 0, target, view.buildMode);
+        view.buildOptions = null;
+        view.baseSquad = [...squad];
+        view.starters = [];
+        view.captain = null;
+        view.transfers = {};
+        ensureConsistency(model);
+        view.building = false;
+        rerender();
+        return;
+      }
       const options = [];
       if (view.formationLock) {
         const used = new Set();

@@ -12,6 +12,17 @@ function yellowThreshold(gw) {
 
 const statusLabel = (s) => (['d', 'i', 's', 'u', 'n'].includes(s) ? t(`status.${s}`) : s);
 
+// How stale is this flag? A "75% chance of playing" posted this
+// morning reads very differently from the same line sitting there
+// since last week.
+function newsAge(iso) {
+  if (!iso) return '';
+  const days = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
+  if (days <= 0) return t('time.today');
+  if (days === 1) return t('time.oneDayAgo');
+  return t('time.daysAgo', { n: days });
+}
+
 let onlyDoubtful = false;
 
 export function renderStatus(root) {
@@ -34,7 +45,7 @@ export function renderStatus(root) {
         <td class="num">${p.selected_by_percent}%</td>
         <td><span class="status-flag status-${p.status}" style="margin:0">${statusLabel(p.status)}</span>
             ${chance != null ? `<span class="muted"> · ${chance}%</span>` : ''}</td>
-        <td class="news-cell">${escapeHtml(translateNews(p.news) || '')}</td>
+        <td class="news-cell">${escapeHtml(translateNews(p.news) || '')}${p.news_added ? `<br><span class="muted" style="font-size:11px">${newsAge(p.news_added)}</span>` : ''}</td>
       </tr>`;
     })
     .join('');

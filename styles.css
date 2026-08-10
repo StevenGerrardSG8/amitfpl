@@ -558,6 +558,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .fdr-blank { background: transparent; color: var(--text-faint); font-weight: 500; }
 
 .team-cell { font-weight: 700; }
+.draft-name-input {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  width: 90px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+}
+.draft-name-input:hover { border-color: var(--border); }
+.draft-name-input:focus { border-color: var(--accent); background: var(--surface); outline: none; }
 .avg-pill {
   display: inline-block;
   font-weight: 700;
