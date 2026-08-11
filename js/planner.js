@@ -649,11 +649,25 @@ function simulateTransferPlan(model, squad) {
   return plan;
 }
 
+// FPL's own `form` (avg points over their last 30 days) is 0.0 for
+// every player before a ball's been kicked this season - so this nudge
+// is a genuine no-op right now, same as the Free Hit blank-gameweek
+// detection above. The moment real matches start feeding real form
+// numbers into the normal data refresh, a Wildcard/Free Hit rebuild
+// (and the weekly single-swap search below) starts actually favouring
+// whoever's hot, the way a real manager would, with no code change.
+const FORM_WEIGHT = 4;
+const formNudge = (id) => FORM_WEIGHT * num(state.playersById[id].form);
+
 // A model whose horizonTotal only sums a sub-window of gws instead of
 // the full remaining season - buildOptimalSquad only ever reads
 // model.xp/model.horizonTotal, so this is enough to make it rebuild
 // "the best squad for just this window" without touching it at all.
-const windowedModel = (model, gws) => ({ xp: model.xp, gws, horizonTotal: (id) => gws.reduce((s, e) => s + model.xp(id, e), 0) });
+const windowedModel = (model, gws) => ({
+  xp: model.xp,
+  gws,
+  horizonTotal: (id) => gws.reduce((s, e) => s + model.xp(id, e), 0) + formNudge(id),
+});
 
 // Pairs the players two same-quota squads don't share, position by
 // position (both squads satisfy the same GK/DEF/MID/FWD quota, so the
@@ -670,9 +684,15 @@ function squadDiff(fromSquad, toSquad) {
 
 const SEASON_WC_COUNT = 2;
 const SEASON_WC_WINDOW = 8; // gws a Wildcard rebuild is aimed at, not the whole rest of the season
-const SEASON_WC_MIN_GAIN = 3; // over that window - a scarce resource, so only fire for a real swing
+const SEASON_WC_MIN_GAIN = 1; // over that window - low bar, since a free full rebuild has no real downside
 const SEASON_FH_MIN_BLANKS = 4; // squad players with no fixture that gw before Free Hit is even considered
-const SEASON_FH_MIN_GAIN = 6;
+const SEASON_FH_MIN_GAIN = 2;
+// Lower than simulateTransferPlan's 1.5/4.5 - a season is 38 chances
+// to improve, not 3-8, and a squad built with full-season foresight
+// only clears a high bar rarely, which read as "no strategy at all"
+// rather than the deliberately conservative plan it actually was.
+const SEASON_SWAP_BAR_FREE = 0.5;
+const SEASON_SWAP_BAR_HIT = 3;
 
 // Rest-of-season plan: the same week-by-week single swap as
 // simulateTransferPlan, but with FPL's bigger season-shaping tools
@@ -754,14 +774,14 @@ function simulateSeasonPlan(model, baseSquad) {
         if (cand.now_cost > outP.now_cost + itb) continue;
         const clubCount = (clubs[cand.team] || 0) - (cand.team === outP.team ? 1 : 0);
         if (clubCount >= MAX_PER_CLUB) continue;
-        let gain = 0;
+        let gain = formNudge(cand.id) - formNudge(outId);
         for (let j = i; j < gws.length; j++) {
           gain += model.xp(cand.id, gws[j]) * xiWeight(cand.id) - model.xp(outId, gws[j]) * xiWeight(outId);
         }
         if (gain > 0 && (!best || gain > best.gain)) best = { outId, inId: cand.id, gain };
       }
     }
-    const bar = ft > 0 ? 1.5 : 4.5;
+    const bar = ft > 0 ? SEASON_SWAP_BAR_FREE : SEASON_SWAP_BAR_HIT;
     if (best && best.gain > bar) {
       plan.push({ gw, outId: best.outId, inId: best.inId, gain: best.gain, hit: ft === 0 });
       cur = cur.map((id) => (id === best.outId ? best.inId : id));
