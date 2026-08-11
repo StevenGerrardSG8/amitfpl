@@ -323,7 +323,13 @@ function dropTransfer(gw, idx) {
 // for whatever's left over as bench depth.
 const TAIL_DM = [0.7, 0.25, 0.1];
 const TAIL_FWD = [0.8, 0.35, 0.15];
-function slotWeightsFor([d, m, f] = [3, 3, 1]) {
+function slotWeightsFor(formation) {
+  // Default parameter destructuring only kicks in for `undefined`, but
+  // `null` is this file's own convention for "no formation" everywhere
+  // else (parseFormationLock, view.formationLock) - callers legitimately
+  // pass it here too, so it has to fall back the same way `undefined`
+  // does instead of crashing on `[d, m, f] = null`.
+  const [d, m, f] = formation || [3, 3, 1];
   const tail = (req, total, taper) =>
     Array.from({ length: total }, (_, i) => (i < req ? 1 : taper[i - req] ?? 0.05));
   return {
@@ -502,11 +508,11 @@ const FORMATION_STRINGS = FORMATIONS.map(([d, m, f]) => `${d}-${m}-${f}`);
 const parseFormationLock = (s) => (FORMATION_STRINGS.includes(s) ? FORMATIONS.find(([d, m, f]) => `${d}-${m}-${f}` === s) : null);
 
 // When nothing's locked, auto-build compares one squad genuinely built
-// for each of these three shapes - defensive, balanced, attacking -
-// instead of three jittered near-duplicates that (per slotWeightsFor's
-// default) almost always land on 4-4-2 anyway. Each is scored on its
-// own true forecast, so the choice is a real formation-vs-xP tradeoff.
-const COMPARE_FORMATIONS = ['5-3-2', '4-4-2', '3-4-3'];
+// for each of these three horizons - a short-term push, a medium-term
+// balance, a season-long hold - each with its own true forecast and
+// its own simulated transfer/chip plan, so the choice is a real
+// short-vs-long-term tradeoff instead of three near-duplicates.
+const COMPARE_HORIZONS = [3, 5, 8];
 
 // If picking purely for total xp left the bench with zero real-club
 // starters, FPL's auto-substitution has nothing useful to bring on if
@@ -565,6 +571,107 @@ function squadForecast(model, squad, formationLock = view.formationLock) {
     if (!xi) return s;
     return s + xi.total + Math.max(...xi.xi.map((id) => model.xp(id, gw)));
   }, 0);
+}
+
+// Same as squadForecast, but the squad is allowed to change gw to gw
+// (for a squad plus the transfer plan simulated for it below, where the
+// whole point is that the squad on gw 5 isn't the squad on gw 1
+// anymore), and it matches gwForecast's own accounting - captain
+// double, chip bonus, hit cost - instead of a bare XI sum, so the
+// number shown for an option is the same number "Plan xP" would show
+// once you actually pick it, not a smaller one that omits chips.
+function planForecast(model, squadTimeline, chips = {}, plan = []) {
+  const hitsByGw = {};
+  for (const tr of plan) if (tr.hit) hitsByGw[tr.gw] = (hitsByGw[tr.gw] || 0) + 4;
+  return model.gws.reduce((s, gw, i) => {
+    const squad = squadTimeline[i];
+    const xi = bestXI(model, squad, gw, null);
+    if (!xi) return s;
+    const capPts = Math.max(...xi.xi.map((id) => model.xp(id, gw)));
+    const benchPts = squad.filter((id) => !xi.xi.includes(id)).reduce((a, id) => a + model.xp(id, gw), 0);
+    let pts = xi.total + capPts;
+    if (chips.tc?.gw === gw) pts += capPts;
+    if (chips.bb?.gw === gw) pts += benchPts;
+    return s + pts - (hitsByGw[gw] || 0);
+  }, 0);
+}
+
+// A greedy week-by-week transfer plan for one horizon-built squad: at
+// each gw after the first, look for the single swap worth the most
+// xp over the rest of the horizon (not just that one week - a transfer
+// made in gw 2 pays for itself over gws 2..N, so it's judged on that
+// full remaining value, same logic a human would use to decide "is
+// this transfer worth it"). Takes it only if the gain clears a bar
+// that's higher when it would cost a hit (no free transfer banked) -
+// this is a real, if simplified, single-transfer-per-week planner, not
+// a globally optimal one; like the squad builder itself, a good greedy
+// heuristic beats no plan at all.
+function simulateTransferPlan(model, squad) {
+  const plan = [];
+  let cur = [...squad];
+  let ft = 1;
+  for (let i = 1; i < model.gws.length; i++) {
+    const gw = model.gws[i];
+    const itb = BUDGET - cost(cur);
+    const clubs = clubCounts(cur);
+    let best = null;
+    for (const outId of cur) {
+      const outP = state.playersById[outId];
+      for (const cand of state.bootstrap.elements) {
+        if (cand.element_type !== outP.element_type || cur.includes(cand.id)) continue;
+        if (cand.status !== 'a' && cand.status !== 'd') continue;
+        if (cand.now_cost > outP.now_cost + itb) continue;
+        const clubCount = (clubs[cand.team] || 0) - (cand.team === outP.team ? 1 : 0);
+        if (clubCount >= MAX_PER_CLUB) continue;
+        let gain = 0;
+        for (let j = i; j < model.gws.length; j++) {
+          gain += model.xp(cand.id, model.gws[j]) * xiWeight(cand.id) - model.xp(outId, model.gws[j]) * xiWeight(outId);
+        }
+        if (gain > 0 && (!best || gain > best.gain)) best = { outId, inId: cand.id, gain };
+      }
+    }
+    const bar = ft > 0 ? 1.5 : 4.5; // clearing a hit needs a bigger payoff
+    if (best && best.gain > bar) {
+      plan.push({ gw, outId: best.outId, inId: best.inId, gain: best.gain, hit: ft === 0 });
+      cur = cur.map((id) => (id === best.outId ? best.inId : id));
+      ft = Math.max(0, ft - 1);
+    }
+    ft = Math.min(MAX_FT, ft + 1);
+  }
+  return plan;
+}
+
+// The squad at each gw in model.gws, after applying a plan from
+// simulateTransferPlan in order.
+function squadTimelineFromPlan(model, baseSquad, plan) {
+  let cur = [...baseSquad];
+  let planIdx = 0;
+  return model.gws.map((gw) => {
+    while (planIdx < plan.length && plan[planIdx].gw === gw) {
+      const t = plan[planIdx];
+      cur = cur.map((id) => (id === t.outId ? t.inId : id));
+      planIdx++;
+    }
+    return cur;
+  });
+}
+
+// Best Triple Captain / Bench Boost weeks for a simulated timeline -
+// same idea as the Assistant's chipAdvice, but off a squad that's
+// allowed to evolve with the plan instead of the live view state.
+function simulateChipAdvice(model, timeline) {
+  let tc = null;
+  let bb = null;
+  model.gws.forEach((gw, i) => {
+    const squad = timeline[i];
+    const xi = bestXI(model, squad, gw, null);
+    if (!xi) return;
+    const capXp = Math.max(...xi.xi.map((id) => model.xp(id, gw)));
+    const benchXp = squad.filter((id) => !xi.xi.includes(id)).reduce((s, id) => s + model.xp(id, gw), 0);
+    if (!tc || capXp > tc.v) tc = { gw, v: capXp };
+    if (!bb || benchXp > bb.v) bb = { gw, v: benchXp };
+  });
+  return { tc, bb };
 }
 
 const sameSquad = (a, b) =>
@@ -1417,12 +1524,26 @@ export async function renderPlanner(root) {
     view.starters = [];
     view.captain = null;
     view.transfers = {};
+    view.chips = {};
     // Picking a squad that was built for a specific shape should keep
     // that shape - otherwise bestXI's own auto-pick could immediately
     // reformat it into whatever formation happens to score highest for
     // these particular 15 players, silently contradicting the label the
     // user just chose.
     if (opt.formation) view.formationLock = opt.formation;
+    // Horizon options come with their own simulated transfer/chip plan -
+    // apply it through the same recordTransfer used everywhere else, so
+    // it shows up exactly like a hand-built plan would (GW-tab badges,
+    // chip bar, Assistant panel), not a separate display to maintain.
+    if (opt.horizon) {
+      view.horizon = opt.horizon;
+      const hModel = buildModel(opt.horizon);
+      for (const tr of opt.plan || []) recordTransfer(hModel, tr.gw, tr.outId, tr.inId);
+      const tcGw = opt.chips?.tc?.gw;
+      const bbGw = opt.chips?.bb?.gw;
+      if (tcGw) view.chips[tcGw] = 'TC';
+      if (bbGw && bbGw !== tcGw) view.chips[bbGw] = 'BB';
+    }
     ensureConsistency(model);
   };
 
@@ -1430,10 +1551,11 @@ export async function renderPlanner(root) {
   // offers a choice instead of the same single answer every time.
   // Locked to one formation: three jittered takes on that shape (each
   // pass mildly penalizes players the previous ones used, for variety).
-  // Unlocked: one real squad per formation in COMPARE_FORMATIONS - a
-  // genuine defensive/balanced/attacking tradeoff, each scored on its
-  // own true forecast, rather than three near-duplicates that almost
-  // always land on 4-4-2 anyway.
+  // Unlocked: one real squad per horizon in COMPARE_HORIZONS - a
+  // genuine short/medium/long-term tradeoff, each with its own
+  // simulated transfer-and-chip plan for that horizon (see
+  // simulateTransferPlan/simulateChipAdvice), instead of three
+  // near-duplicate single-GW snapshots.
   root.querySelector('#pl-build').addEventListener('click', () => {
     if (view.building) return;
     view.building = true;
@@ -1473,10 +1595,20 @@ export async function renderPlanner(root) {
           squad.forEach((id) => used.add(id));
         }
       } else {
-        for (const formation of COMPARE_FORMATIONS) {
-          const target = parseFormationLock(formation);
-          const squad = buildOptimalSquad(model, null, 0, target);
-          options.push({ squad, formation, label: formation, xp: Math.round(squadForecast(model, squad, formation)) });
+        for (const h of COMPARE_HORIZONS) {
+          const hModel = buildModel(h);
+          const squad = buildOptimalSquad(hModel, null, 0, null, 'xp');
+          const plan = simulateTransferPlan(hModel, squad);
+          const timeline = squadTimelineFromPlan(hModel, squad, plan);
+          const chips = simulateChipAdvice(hModel, timeline);
+          options.push({
+            squad,
+            horizon: h,
+            label: t('common.nGws', { n: h }),
+            xp: Math.round(planForecast(hModel, timeline, chips, plan)),
+            plan,
+            chips,
+          });
         }
         options.sort((a, b) => b.xp - a.xp);
       }
