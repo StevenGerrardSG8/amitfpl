@@ -171,7 +171,7 @@ function load() {
         transfers: saved.transfers || {},
         buildOptions: (saved.buildOptions || []).filter(
           (o) => (o?.squad || []).every((id) => state.playersById[id])
-        ).slice(0, 3) || null,
+        ) || null,
       });
       if (!view.buildOptions?.length) view.buildOptions = null;
       return;
@@ -649,18 +649,150 @@ function simulateTransferPlan(model, squad) {
   return plan;
 }
 
+// A model whose horizonTotal only sums a sub-window of gws instead of
+// the full remaining season - buildOptimalSquad only ever reads
+// model.xp/model.horizonTotal, so this is enough to make it rebuild
+// "the best squad for just this window" without touching it at all.
+const windowedModel = (model, gws) => ({ xp: model.xp, gws, horizonTotal: (id) => gws.reduce((s, e) => s + model.xp(id, e), 0) });
+
+// Pairs the players two same-quota squads don't share, position by
+// position (both squads satisfy the same GK/DEF/MID/FWD quota, so the
+// outs and ins for a given position always come out the same length).
+function squadDiff(fromSquad, toSquad) {
+  const moves = [];
+  for (const pos of [1, 2, 3, 4]) {
+    const outs = fromSquad.filter((id) => posOf(id) === pos && !toSquad.includes(id));
+    const ins = toSquad.filter((id) => posOf(id) === pos && !fromSquad.includes(id));
+    outs.forEach((outId, i) => moves.push({ outId, inId: ins[i] }));
+  }
+  return moves;
+}
+
+const SEASON_WC_COUNT = 2;
+const SEASON_WC_WINDOW = 8; // gws a Wildcard rebuild is aimed at, not the whole rest of the season
+const SEASON_WC_MIN_GAIN = 3; // over that window - a scarce resource, so only fire for a real swing
+const SEASON_FH_MIN_BLANKS = 4; // squad players with no fixture that gw before Free Hit is even considered
+const SEASON_FH_MIN_GAIN = 6;
+
+// Rest-of-season plan: the same week-by-week single swap as
+// simulateTransferPlan, but with FPL's bigger season-shaping tools
+// folded in too, since a real manager wouldn't hold the same 15 all
+// year:
+//  - two Wildcards (free full-squad rebuilds), placed a quarter and
+//    three-quarters of the way through so each targets a fresh
+//    SEASON_WC_WINDOW-gw fixture swing instead of the literal rest of
+//    the season - and only taken if the rebuild clears a real bar,
+//    since it's a resource you only get twice.
+//  - one Free Hit, reserved for the squad's single blankest gameweek
+//    (a one-week-only rebuild that reverts after, same semantics as
+//    the manual FH chip already has via squadAt/ftInfo). FPL doesn't
+//    confirm blank/double gameweeks until cup replays force
+//    reschedules well into the season, so against today's fixture
+//    list this never finds a candidate - the moment fixtures.json
+//    picks up a real blank via the normal data refresh, this starts
+//    suggesting Free Hit for it with no further code changes.
+function simulateSeasonPlan(model, baseSquad) {
+  const gws = model.gws;
+  const wcPoints = new Set([gws[Math.floor(gws.length / 4)], gws[Math.floor((gws.length * 3) / 4)]].filter(Boolean));
+
+  let fhGw = null;
+  let fhBlanks = SEASON_FH_MIN_BLANKS - 1;
+  for (const gw of gws.slice(1)) {
+    const blanks = baseSquad.filter((id) =>
+      !(state.upcomingByTeam[state.playersById[id].team] || []).some((f) => f.event === gw)).length;
+    if (blanks > fhBlanks) { fhBlanks = blanks; fhGw = gw; }
+  }
+
+  const plan = [];
+  let cur = [...baseSquad];
+  let ft = 1;
+  let wcUsed = 0;
+  for (let i = 1; i < gws.length; i++) {
+    const gw = gws[i];
+
+    if (wcPoints.has(gw) && wcUsed < SEASON_WC_COUNT) {
+      wcUsed++;
+      const window = gws.slice(i, i + SEASON_WC_WINDOW);
+      const wModel = windowedModel(model, window);
+      const rebuilt = buildOptimalSquad(wModel, null, 0, null, 'xp');
+      // squadForecast is the same real-XI-plus-captain yardstick every
+      // other comparison in this file uses - a flat sum of raw per-
+      // player xp would rate buildOptimalSquad's own output as *worse*
+      // than the squad it's replacing, since the builder optimizes for
+      // slot-weighted XI value (bench barely counts), not a flat total.
+      if (squadForecast(wModel, rebuilt, null) - squadForecast(wModel, cur, null) > SEASON_WC_MIN_GAIN) {
+        plan.push({ gw, wc: true, moves: squadDiff(cur, rebuilt) });
+        cur = rebuilt;
+      }
+      // Neither chip spends or grants a free transfer, but banking still
+      // proceeds as normal - same real-FT semantics ftInfo already
+      // applies to the applied plan, kept in sync here so the sim's own
+      // hit/no-hit calls for the following weeks match what actually
+      // shows up once this plan is applied.
+      ft = Math.min(MAX_FT, ft + 1);
+      continue; // a Wildcard week already moved the squad - skip the single-swap check below
+    }
+
+    if (gw === fhGw) {
+      const wModel = windowedModel(model, [gw]);
+      const fhSquad = buildOptimalSquad(wModel, null, 0, null, 'xp');
+      if (squadForecast(wModel, fhSquad, null) - squadForecast(wModel, cur, null) > SEASON_FH_MIN_GAIN) {
+        plan.push({ gw, fh: true, moves: squadDiff(cur, fhSquad) });
+      }
+      ft = Math.min(MAX_FT, ft + 1);
+      continue; // Free Hit reverts after its own gw - `cur` carries on unchanged
+    }
+
+    const itb = BUDGET - cost(cur);
+    const clubs = clubCounts(cur);
+    let best = null;
+    for (const outId of cur) {
+      const outP = state.playersById[outId];
+      for (const cand of state.bootstrap.elements) {
+        if (cand.element_type !== outP.element_type || cur.includes(cand.id)) continue;
+        if (cand.status !== 'a' && cand.status !== 'd') continue;
+        if (cand.now_cost > outP.now_cost + itb) continue;
+        const clubCount = (clubs[cand.team] || 0) - (cand.team === outP.team ? 1 : 0);
+        if (clubCount >= MAX_PER_CLUB) continue;
+        let gain = 0;
+        for (let j = i; j < gws.length; j++) {
+          gain += model.xp(cand.id, gws[j]) * xiWeight(cand.id) - model.xp(outId, gws[j]) * xiWeight(outId);
+        }
+        if (gain > 0 && (!best || gain > best.gain)) best = { outId, inId: cand.id, gain };
+      }
+    }
+    const bar = ft > 0 ? 1.5 : 4.5;
+    if (best && best.gain > bar) {
+      plan.push({ gw, outId: best.outId, inId: best.inId, gain: best.gain, hit: ft === 0 });
+      cur = cur.map((id) => (id === best.outId ? best.inId : id));
+      ft = Math.max(0, ft - 1);
+    }
+    ft = Math.min(MAX_FT, ft + 1);
+  }
+  return plan;
+}
+
 // The squad at each gw in model.gws, after applying a plan from
-// simulateTransferPlan in order.
+// simulateTransferPlan/simulateSeasonPlan in order. Free Hit entries
+// deliberately don't update `cur` - they revert after their own gw,
+// same as the manual FH chip.
 function squadTimelineFromPlan(model, baseSquad, plan) {
   let cur = [...baseSquad];
   let planIdx = 0;
   return model.gws.map((gw) => {
+    let fhSquad = null;
     while (planIdx < plan.length && plan[planIdx].gw === gw) {
       const t = plan[planIdx];
-      cur = cur.map((id) => (id === t.outId ? t.inId : id));
+      if (t.wc) {
+        for (const m of t.moves) cur = cur.map((id) => (id === m.outId ? m.inId : id));
+      } else if (t.fh) {
+        fhSquad = cur.map((id) => t.moves.find((m) => m.outId === id)?.inId ?? id);
+      } else {
+        cur = cur.map((id) => (id === t.outId ? t.inId : id));
+      }
       planIdx++;
     }
-    return cur;
+    return fhSquad || cur;
   });
 }
 
@@ -1558,11 +1690,25 @@ export async function renderPlanner(root) {
     if (opt.horizon) {
       view.horizon = opt.horizon;
       const hModel = buildModel(opt.horizon);
-      for (const tr of opt.plan || []) recordTransfer(hModel, tr.gw, tr.outId, tr.inId);
+      for (const tr of opt.plan || []) {
+        if (tr.wc || tr.fh) {
+          // A batch chip move (Wildcard/Free Hit) is already validated as
+          // a whole by buildOptimalSquad (budget, club limits) - pushing
+          // it straight into view.transfers skips recordTransfer's
+          // per-swap budget check, which only makes sense for one move
+          // applied to a stable squad, not an interim step of a full
+          // rebuild that could overshoot mid-sequence before landing back
+          // on a valid total.
+          (view.transfers[tr.gw] = view.transfers[tr.gw] || []).push(...tr.moves.map((m) => ({ out: m.outId, in: m.inId })));
+          view.chips[tr.gw] = tr.wc ? 'WC' : 'FH';
+        } else {
+          recordTransfer(hModel, tr.gw, tr.outId, tr.inId);
+        }
+      }
       const tcGw = opt.chips?.tc?.gw;
       const bbGw = opt.chips?.bb?.gw;
-      if (tcGw) view.chips[tcGw] = 'TC';
-      if (bbGw && bbGw !== tcGw) view.chips[bbGw] = 'BB';
+      if (tcGw && !view.chips[tcGw]) view.chips[tcGw] = 'TC';
+      if (bbGw && bbGw !== tcGw && !view.chips[bbGw]) view.chips[bbGw] = 'BB';
     }
     ensureConsistency(model);
   };
@@ -1618,7 +1764,7 @@ export async function renderPlanner(root) {
         for (const h of COMPARE_HORIZONS) {
           const hModel = buildModel(h);
           const squad = buildOptimalSquad(hModel, null, 0, null, 'xp');
-          const plan = simulateTransferPlan(hModel, squad);
+          const plan = h === SEASON_HORIZON ? simulateSeasonPlan(hModel, squad) : simulateTransferPlan(hModel, squad);
           const timeline = squadTimelineFromPlan(hModel, squad, plan);
           const chips = simulateChipAdvice(hModel, timeline);
           options.push({
