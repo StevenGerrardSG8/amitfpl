@@ -662,14 +662,20 @@ function squadTimelineFromPlan(model, baseSquad, plan) {
 function simulateChipAdvice(model, timeline) {
   let tc = null;
   let bb = null;
+  let bbWeighted = -Infinity;
   model.gws.forEach((gw, i) => {
     const squad = timeline[i];
     const xi = bestXI(model, squad, gw, null);
     if (!xi) return;
     const capXp = Math.max(...xi.xi.map((id) => model.xp(id, gw)));
-    const benchXp = squad.filter((id) => !xi.xi.includes(id)).reduce((s, id) => s + model.xp(id, gw), 0);
+    const bench = squad.filter((id) => !xi.xi.includes(id));
+    const benchXp = bench.reduce((s, id) => s + model.xp(id, gw), 0);
+    // Same xiWeight ranking as chipAdvice - pick the gw where the bench
+    // is actually made of real starters squeezed out by the XI, not
+    // one propped up by a fringe player's raw (unrealistic) xp.
+    const benchWeighted = bench.reduce((s, id) => s + model.xp(id, gw) * xiWeight(id), 0);
     if (!tc || capXp > tc.v) tc = { gw, v: capXp };
-    if (!bb || benchXp > bb.v) bb = { gw, v: benchXp };
+    if (benchWeighted > bbWeighted) { bbWeighted = benchWeighted; bb = { gw, v: benchXp }; }
   });
   return { tc, bb };
 }
@@ -862,13 +868,19 @@ function compoundUpgradeSuggestion(model, gw) {
 function chipAdvice(model) {
   let tc = null;
   let bb = null;
+  let bbWeighted = -Infinity;
   for (const e of model.gws) {
     const { squad, starters, captain } = lineupFor(model, e);
     const capXp = captain ? model.xp(captain, e) : 0;
-    const benchXp = squad.filter((id) => !starters.includes(id))
-      .reduce((s, id) => s + model.xp(id, e), 0);
+    const bench = squad.filter((id) => !starters.includes(id));
+    const benchXp = bench.reduce((s, id) => s + model.xp(id, e), 0);
+    // Ranked by xiWeight, same reasoning as wscore: a bench full of
+    // real starters who are just squeezed out by the XI beats a bench
+    // with a higher raw total propped up by players their own club
+    // benches, since those are the ones actually likely to return it.
+    const benchWeighted = bench.reduce((s, id) => s + model.xp(id, e) * xiWeight(id), 0);
     if (!tc || capXp > tc.v) tc = { e, v: capXp };
-    if (!bb || benchXp > bb.v) bb = { e, v: benchXp };
+    if (benchWeighted > bbWeighted) { bbWeighted = benchWeighted; bb = { e, v: benchXp }; }
   }
   return { tc, bb };
 }
