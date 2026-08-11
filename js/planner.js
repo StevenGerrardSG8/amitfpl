@@ -507,12 +507,20 @@ for (let d = 3; d <= 5; d++)
 const FORMATION_STRINGS = FORMATIONS.map(([d, m, f]) => `${d}-${m}-${f}`);
 const parseFormationLock = (s) => (FORMATION_STRINGS.includes(s) ? FORMATIONS.find(([d, m, f]) => `${d}-${m}-${f}` === s) : null);
 
+// buildModel(horizon) walks forward from the current gw and stops at
+// gw 38 regardless of how large `horizon` is, so any value at least
+// that large means "every remaining gameweek" - this sentinel just
+// documents the intent at call sites instead of a bare magic number.
+const SEASON_HORIZON = 99;
+
 // When nothing's locked, auto-build compares one squad genuinely built
-// for each of these three horizons - a short-term push, a medium-term
+// for each of these horizons - a short-term push, a medium-term
 // balance, a season-long hold - each with its own true forecast and
 // its own simulated transfer/chip plan, so the choice is a real
-// short-vs-long-term tradeoff instead of three near-duplicates.
-const COMPARE_HORIZONS = [3, 5, 8];
+// short-vs-long-term tradeoff instead of near-duplicates.
+const COMPARE_HORIZONS = [3, 5, 8, SEASON_HORIZON];
+
+const horizonLabel = (h) => (h === SEASON_HORIZON ? t('pl.seasonHorizon') : t('common.nGws', { n: h }));
 
 // If picking purely for total xp left the bench with zero real-club
 // starters, FPL's auto-substitution has nothing useful to bring on if
@@ -954,7 +962,7 @@ function assistantPanel(model, gw) {
   }
 
   return `<div class="assistant-card">
-    <div class="assistant-head">${t('pl.assistant')} <span class="muted" style="font-weight:500">${t('pl.asSubtitle', { n: view.horizon })}</span></div>
+    <div class="assistant-head">${t('pl.assistant')} <span class="muted" style="font-weight:500">${view.horizon === SEASON_HORIZON ? t('pl.asSubtitleSeason') : t('pl.asSubtitle', { n: view.horizon })}</span></div>
     ${items.join('')}
   </div>`;
 }
@@ -1425,7 +1433,7 @@ export async function renderPlanner(root) {
       <div class="toolbar">
         <label>${t('common.horizon')}</label>
         <select id="pl-horizon">
-          ${[3, 5, 8].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${t('common.nGws', { n })}</option>`).join('')}
+          ${[3, 5, 8, SEASON_HORIZON].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${horizonLabel(n)}</option>`).join('')}
         </select>
         <label>${t('pl.formation')}</label>
         <select id="pl-formation" title="${t('pl.formationTitle')}">
@@ -1616,7 +1624,7 @@ export async function renderPlanner(root) {
           options.push({
             squad,
             horizon: h,
-            label: t('common.nGws', { n: h }),
+            label: horizonLabel(h),
             xp: Math.round(planForecast(hModel, timeline, chips, plan)),
             plan,
             chips,
