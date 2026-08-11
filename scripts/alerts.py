@@ -23,6 +23,7 @@ CONFIG_PATH = os.path.join(ROOT, "config.local.json")
 PUBLIC_CONFIG_PATH = os.path.join(ROOT, "config.json")
 STATE_PATH = os.path.join(ROOT, "data", "alerts-state.json")
 BOOTSTRAP_PATH = os.path.join(ROOT, "data", "bootstrap.json")
+MYTEAM_PATH = os.path.join(ROOT, "data", "myteam.json")
 
 
 def load_json(path, default=None):
@@ -143,6 +144,35 @@ def check(config):
             if 0 < hours_left <= window and key not in sent:
                 local = deadline.astimezone().strftime("%A %H:%M")
                 messages.append((key, f"⏰ <b>{nxt['name']} deadline in under {label}</b>\n{local} — final call for transfers and captain!"))
+
+        # --- your actual starting XI, flagged players ---
+        # Only checks the live squad (data/myteam.json, via config.json's
+        # teamId) against official FPL status flags - it can't see the
+        # Planner's draft plans, since those live in browser localStorage
+        # and never reach this script. Keyed on the whole flagged set, not
+        # per player or per window, so it fires once when the risk picture
+        # changes (a new flag appears, or one clears) instead of repeating
+        # the same names every 30 minutes for the entire pre-deadline window.
+        if 0 < hours_left <= 48:
+            myteam = load_json(MYTEAM_PATH)
+            picks = (myteam or {}).get("picks", {}).get("picks") if myteam else None
+            if picks:
+                by_id = {p["id"]: p for p in boot["elements"]}
+                risky = []
+                for pk in picks:
+                    if pk.get("position", 99) > 11:
+                        continue  # bench - FPL auto-subs cover this on its own
+                    p = by_id.get(pk["element"])
+                    if not p or p["status"] not in ("d", "i", "s", "u", "n"):
+                        continue
+                    chance = p.get("chance_of_playing_next_round")
+                    tag = f"{p['web_name']} ({p['status']}{f', {chance}%' if chance is not None else ''})"
+                    risky.append(tag)
+                if risky:
+                    key = f"squadrisk:{nxt['id']}:{stable_hash('|'.join(sorted(risky)))}"
+                    if key not in sent:
+                        names = "\n".join(f"• {r}" for r in sorted(risky))
+                        messages.append((key, f"⚠️ <b>{len(risky)} starter(s) flagged</b> before {nxt['name']} deadline:\n{names}"))
 
     # --- watchlist: news + price changes ---
     watch = [w.lower() for w in config.get("watchlist", [])]
