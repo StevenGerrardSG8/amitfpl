@@ -1799,7 +1799,16 @@ export async function renderPlanner(root) {
         options.sort((a, b) => b.xp - a.xp);
       }
       view.buildOptions = options;
-      applyBuildOption(0);
+      // Sorted by total xp for display, but total xp isn't a fair pick
+      // for which one to auto-apply - it structurally favours whichever
+      // horizon sums the most gameweeks, so "highest score wins" would
+      // always land on the Season option regardless of what's actually
+      // best, making the comparison pointless. Auto-apply whichever
+      // option matches the Horizon dropdown's current value instead
+      // (falls back to the top-scoring one only for the formation-
+      // locked jittered squads, which don't have a horizon to match).
+      const defaultIdx = Math.max(0, options.findIndex((o) => o.horizon === view.horizon));
+      applyBuildOption(defaultIdx);
       view.building = false;
       rerender();
     }, 30);
