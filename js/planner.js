@@ -1894,12 +1894,55 @@ export async function renderPlanner(root) {
     const pitchEl = root.querySelector('.planner-main');
     if (!pitchEl || typeof window.html2canvas !== 'function') { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
     btn.textContent = t('pl.shareImageWorking');
+    // Player photos come straight from FotMob/the official PL CDN, and
+    // neither sends CORS headers, so html2canvas can't read their pixels
+    // at all - they'd render as blank circles. images.weserv.nl is a free
+    // public image proxy that re-serves any URL with a permissive CORS
+    // header; routing just the *visible* photos through it for the
+    // ~couple of seconds this capture takes gets the real faces into the
+    // screenshot without permanently changing how photos load on every
+    // other page view.
+    const imgs = [...pitchEl.querySelectorAll('img.face-img')];
+    const originalSrcs = imgs.map((img) => img.src);
+    const originalWatchdogFlags = imgs.map((img) => img.dataset.f);
+    // app.js's photo watchdog (setInterval, 1s) flags any img[data-shirt]
+    // as "hung" once >4s have passed since it first noticed that element
+    // still loading - but img.dataset.t is stamped from the page's very
+    // first paint, long before now. Resetting src below makes the image
+    // pending again, so on its very next 1s tick the watchdog reads that
+    // stale timestamp, decides it's been hanging for hours, and swaps the
+    // src to an initials placeholder mid-capture - the exact DOM mutation
+    // that made html2canvas's "Unable to find element in cloned iframe"
+    // bug fire reliably here. img.dataset.f = '2' is the watchdog's own
+    // "already handled, skip" flag.
+    imgs.forEach((img) => { img.dataset.f = '2'; });
+    await Promise.all(imgs.map((img) => new Promise((resolve) => {
+      const real = img.src;
+      // These <img>s already finished loading their original (non-CORS)
+      // src once - browsers keep that request's CORS mode pinned to the
+      // element until its src is cleared, so just setting crossOrigin
+      // and a new src is silently ignored (onload never fires, image
+      // stays blank) without this reset first.
+      img.src = '';
+      img.crossOrigin = 'anonymous';
+      img.onload = resolve;
+      img.onerror = resolve; // missing/blocked photo - leave that one blank, don't hold up the rest
+      img.src = `https://images.weserv.nl/?url=${encodeURIComponent(real.replace(/^https?:\/\//, ''))}&output=png`;
+      setTimeout(resolve, 4000); // a slow/hung proxy fetch shouldn't stall the whole capture
+    })));
     try {
-      const canvas = await window.html2canvas(pitchEl, {
+      // A background data refresh (app.js revalidates on tab focus if the
+      // cache looks stale) can replace the whole Planner subtree - and
+      // thus detach pitchEl - while the image swap above was in flight.
+      // Re-grab it fresh rather than hand html2canvas a node that's no
+      // longer in the document: a rare mid-capture refresh then just
+      // degrades to "today's direct-CDN photos, blank circles" instead of
+      // throwing "Unable to find element in cloned iframe".
+      const liveEl = root.querySelector('.planner-main') || pitchEl;
+      const canvas = await window.html2canvas(liveEl, {
         backgroundColor: null,
         scale: 2,
-        useCORS: true, // player photos are cross-origin and unlikely to allow it - html2canvas
-        // just leaves those spots blank rather than failing the whole capture.
+        useCORS: true, // now meaningful - the proxied photo URLs above actually allow it
         ignoreElements: (el) => el.classList?.contains('pc-actions'), // captain/swap/remove controls mean nothing in a static image
       });
       const filename = `amitfpl-squad-gw${gw}.png`;
@@ -1914,10 +1957,27 @@ export async function renderPlanner(root) {
         a.click();
       }
       reset();
-    } catch {
+    } catch (err) {
       // AbortError from a cancelled share sheet is a normal outcome, not a
       // capture failure - don't flash an error over the user's own cancel.
-      reset();
+      if (err?.name === 'AbortError') reset();
+      else { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); }
+    } finally {
+      // Back to the direct CDN URLs and the watchdog's normal monitoring -
+      // the proxy (and the pause) are only for the moment of capture, not
+      // how photos load on every other page view.
+      imgs.forEach((img, i) => {
+        img.onload = img.onerror = null;
+        img.removeAttribute('crossorigin');
+        img.src = originalSrcs[i];
+        // The restored src is pending again for a moment even though it's
+        // the same URL the browser just showed (cache makes it near-
+        // instant) - clear the watchdog's timestamp so it re-arms a fresh
+        // 4s grace period instead of judging the reload against whenever
+        // it first noticed this element, hours ago.
+        delete img.dataset.t;
+        if (originalWatchdogFlags[i] === undefined) delete img.dataset.f; else img.dataset.f = originalWatchdogFlags[i];
+      });
     }
   });
 
