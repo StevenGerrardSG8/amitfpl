@@ -1888,21 +1888,16 @@ export async function renderPlanner(root) {
     } catch { /* clipboard unavailable */ }
   });
 
-  root.querySelector('#pl-share-image')?.addEventListener('click', async (e) => {
-    const btn = e.target;
-    const reset = () => { btn.textContent = t('pl.shareImage'); };
+  // Swaps the visible player photos/team badges to a CORS-safe proxy URL
+  // so html2canvas can actually read their pixels (the FotMob/PL CDNs
+  // send none), captures `.planner-main`, and always restores the
+  // originals - even the swap is aimed at whatever .planner-main exists
+  // at call time, so a caller that re-queries it after a detach is
+  // swapping a *live* element, not chasing the one it started with.
+  const captureSquadImage = async () => {
     const pitchEl = root.querySelector('.planner-main');
-    if (!pitchEl || typeof window.html2canvas !== 'function') { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
-    btn.textContent = t('pl.shareImageWorking');
-    // Player photos come straight from FotMob/the official PL CDN, and
-    // neither sends CORS headers, so html2canvas can't read their pixels
-    // at all - they'd render as blank circles. images.weserv.nl is a free
-    // public image proxy that re-serves any URL with a permissive CORS
-    // header; routing just the *visible* photos through it for the
-    // ~couple of seconds this capture takes gets the real faces into the
-    // screenshot without permanently changing how photos load on every
-    // other page view.
-    const imgs = [...pitchEl.querySelectorAll('img.face-img')];
+    if (!pitchEl) return null;
+    const imgs = [...pitchEl.querySelectorAll('img.face-img, img.chip-badge')];
     const originalSrcs = imgs.map((img) => img.src);
     const originalWatchdogFlags = imgs.map((img) => img.dataset.f);
     // app.js's photo watchdog (setInterval, 1s) flags any img[data-shirt]
@@ -1916,35 +1911,67 @@ export async function renderPlanner(root) {
     // bug fire reliably here. img.dataset.f = '2' is the watchdog's own
     // "already handled, skip" flag.
     imgs.forEach((img) => { img.dataset.f = '2'; });
-    await Promise.all(imgs.map((img) => new Promise((resolve) => {
-      const real = img.src;
-      // These <img>s already finished loading their original (non-CORS)
-      // src once - browsers keep that request's CORS mode pinned to the
-      // element until its src is cleared, so just setting crossOrigin
-      // and a new src is silently ignored (onload never fires, image
-      // stays blank) without this reset first.
-      img.src = '';
-      img.crossOrigin = 'anonymous';
-      img.onload = resolve;
-      img.onerror = resolve; // missing/blocked photo - leave that one blank, don't hold up the rest
-      img.src = `https://images.weserv.nl/?url=${encodeURIComponent(real.replace(/^https?:\/\//, ''))}&output=png`;
-      setTimeout(resolve, 4000); // a slow/hung proxy fetch shouldn't stall the whole capture
-    })));
     try {
+      await Promise.all(imgs.map((img) => new Promise((resolve) => {
+        const real = img.src;
+        // These <img>s already finished loading their original (non-CORS)
+        // src once - browsers keep that request's CORS mode pinned to the
+        // element until its src is cleared, so just setting crossOrigin
+        // and a new src is silently ignored (onload never fires, image
+        // stays blank) without this reset first.
+        img.src = '';
+        img.crossOrigin = 'anonymous';
+        img.onload = resolve;
+        img.onerror = resolve; // missing/blocked photo - leave that one blank, don't hold up the rest
+        img.src = `https://images.weserv.nl/?url=${encodeURIComponent(real.replace(/^https?:\/\//, ''))}&output=png`;
+        setTimeout(resolve, 4000); // a slow/hung proxy fetch shouldn't stall the whole capture
+      })));
       // A background data refresh (app.js revalidates on tab focus if the
       // cache looks stale) can replace the whole Planner subtree - and
       // thus detach pitchEl - while the image swap above was in flight.
-      // Re-grab it fresh rather than hand html2canvas a node that's no
-      // longer in the document: a rare mid-capture refresh then just
-      // degrades to "today's direct-CDN photos, blank circles" instead of
-      // throwing "Unable to find element in cloned iframe".
-      const liveEl = root.querySelector('.planner-main') || pitchEl;
-      const canvas = await window.html2canvas(liveEl, {
+      // Bail out (the caller retries against a fresh element) instead of
+      // handing html2canvas a node that's no longer in the document -
+      // that's what "Unable to find element in cloned iframe" turned out
+      // to be.
+      if (!document.contains(pitchEl)) return null;
+      return await window.html2canvas(pitchEl, {
         backgroundColor: null,
         scale: 2,
-        useCORS: true, // now meaningful - the proxied photo URLs above actually allow it
+        useCORS: true, // meaningful now - the proxied URLs above actually allow it
         ignoreElements: (el) => el.classList?.contains('pc-actions'), // captain/swap/remove controls mean nothing in a static image
       });
+    } finally {
+      // Back to the direct CDN URLs and the watchdog's normal monitoring -
+      // the proxy (and the pause) are only for the moment of capture, not
+      // how photos load on every other page view.
+      imgs.forEach((img, i) => {
+        img.onload = img.onerror = null;
+        img.removeAttribute('crossorigin');
+        img.src = originalSrcs[i];
+        // The restored src is pending again for a moment even though it's
+        // the same URL the browser just showed (cache makes it near-
+        // instant) - clear the watchdog's timestamp so it re-arms a fresh
+        // 4s grace period instead of judging the reload against whenever
+        // it first noticed this element, hours ago.
+        delete img.dataset.t;
+        if (originalWatchdogFlags[i] === undefined) delete img.dataset.f; else img.dataset.f = originalWatchdogFlags[i];
+      });
+    }
+  };
+
+  root.querySelector('#pl-share-image')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const reset = () => { btn.textContent = t('pl.shareImage'); };
+    if (typeof window.html2canvas !== 'function') { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
+    btn.textContent = t('pl.shareImageWorking');
+    try {
+      // A mid-capture background refresh can detach the element being
+      // swapped/shot (see captureSquadImage) - retry a couple of times
+      // against a freshly-queried .planner-main rather than settling for
+      // blank photos on the first hiccup.
+      let canvas = null;
+      for (let attempt = 0; attempt < 3 && !canvas; attempt++) canvas = await captureSquadImage();
+      if (!canvas) { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
       const filename = `amitfpl-squad-gw${gw}.png`;
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       const file = blob && new File([blob], filename, { type: 'image/png' });
@@ -1962,22 +1989,6 @@ export async function renderPlanner(root) {
       // capture failure - don't flash an error over the user's own cancel.
       if (err?.name === 'AbortError') reset();
       else { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); }
-    } finally {
-      // Back to the direct CDN URLs and the watchdog's normal monitoring -
-      // the proxy (and the pause) are only for the moment of capture, not
-      // how photos load on every other page view.
-      imgs.forEach((img, i) => {
-        img.onload = img.onerror = null;
-        img.removeAttribute('crossorigin');
-        img.src = originalSrcs[i];
-        // The restored src is pending again for a moment even though it's
-        // the same URL the browser just showed (cache makes it near-
-        // instant) - clear the watchdog's timestamp so it re-arms a fresh
-        // 4s grace period instead of judging the reload against whenever
-        // it first noticed this element, hours ago.
-        delete img.dataset.t;
-        if (originalWatchdogFlags[i] === undefined) delete img.dataset.f; else img.dataset.f = originalWatchdogFlags[i];
-      });
     }
   });
 
