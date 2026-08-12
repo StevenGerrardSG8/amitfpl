@@ -1611,6 +1611,7 @@ export async function renderPlanner(root) {
           <button class="link-btn" id="pl-tools-btn" aria-haspopup="true" aria-expanded="${view.showPlanTools ? 'true' : 'false'}">${t('pl.moreTools')} ⋯</button>
           <div class="pl-tools-menu" id="pl-tools-menu" ${view.showPlanTools ? '' : 'hidden'}>
             <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareTitle')}">${t('pl.share')}</button>
+            <button class="link-btn" id="pl-share-image" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareImageTitle')}">${t('pl.shareImage')}</button>
             <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>${t('pl.copy')}</button>
             <button class="link-btn" id="pl-drafts-cmp" title="${t('pl.cmpTitle')}">${t('pl.compareDrafts')}</button>
           </div>
@@ -1885,6 +1886,39 @@ export async function renderPlanner(root) {
       e.target.textContent = t('pl.linkCopied');
       setTimeout(() => { e.target.textContent = t('pl.share'); }, 1800);
     } catch { /* clipboard unavailable */ }
+  });
+
+  root.querySelector('#pl-share-image')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const reset = () => { btn.textContent = t('pl.shareImage'); };
+    const pitchEl = root.querySelector('.planner-main');
+    if (!pitchEl || typeof window.html2canvas !== 'function') { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
+    btn.textContent = t('pl.shareImageWorking');
+    try {
+      const canvas = await window.html2canvas(pitchEl, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true, // player photos are cross-origin and unlikely to allow it - html2canvas
+        // just leaves those spots blank rather than failing the whole capture.
+        ignoreElements: (el) => el.classList?.contains('pc-actions'), // captain/swap/remove controls mean nothing in a static image
+      });
+      const filename = `amitfpl-squad-gw${gw}.png`;
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      const file = blob && new File([blob], filename, { type: 'image/png' });
+      if (file && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = filename;
+        a.click();
+      }
+      reset();
+    } catch {
+      // AbortError from a cancelled share sheet is a normal outcome, not a
+      // capture failure - don't flash an error over the user's own cancel.
+      reset();
+    }
   });
 
   root.querySelector('#pl-copy')?.addEventListener('click', async (e) => {
