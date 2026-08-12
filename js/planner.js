@@ -1961,8 +1961,12 @@ export async function renderPlanner(root) {
 
   root.querySelector('#pl-share-image')?.addEventListener('click', async (e) => {
     const btn = e.target;
-    const reset = () => { btn.textContent = t('pl.shareImage'); };
+    const reset = () => { btn.textContent = t('pl.shareImage'); btn.disabled = false; };
     if (typeof window.html2canvas !== 'function') { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
+    // The capture takes a few seconds - without this, an impatient second
+    // tap while it's still working starts a whole second capture and
+    // downloads/shares a second file, which read as "it made 2 screenshots".
+    btn.disabled = true;
     btn.textContent = t('pl.shareImageWorking');
     try {
       // A mid-capture background refresh can detach the element being
