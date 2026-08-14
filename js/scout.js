@@ -1,8 +1,8 @@
 // Scout tab: captaincy shortlist, differentials, best value.
 import { state, fmtPrice, num, escapeHtml, statusInfo } from './state.js';
 import { fixtureChips, posBadge, playerCell, inlinePhoto, teamBadge, infoNote } from './ui.js';
-import { loadBaseline, buildModel } from './model.js';
-import { t, haMark, gwLabel, playerName, teamShort } from './i18n.js';
+import { loadBaseline, buildModel, getCalibrationInfo } from './model.js';
+import { t, haMark, gwLabel, playerName, teamShort, posShort } from './i18n.js';
 
 // Every list below defaults to a short, glanceable cut - 5 stacked
 // 15-row tables was a wall of numbers. "Show more" (per section)
@@ -42,6 +42,26 @@ function rowsHtml(key, players, extraCols) {
 const HEAD = () => `<th class="no-sort">${t('common.player')}</th><th class="no-sort">${t('common.pos')}</th>
   <th class="num no-sort">${t('common.price')}</th><th class="num no-sort">${t('common.sel')}</th>
   <th class="num no-sort" title="${t('scout.xpTitle')}">${t('stat.xp')}</th>`;
+
+// Transparency card: how close have our predictions actually landed,
+// once real results exist to check against? Empty/waiting state until
+// scripts/calibrate.py has its own 3-finished-gameweek minimum.
+function accuracyCard() {
+  const calib = getCalibrationInfo();
+  const body = !calib?.samples
+    ? `<div class="note" style="padding-top:2px">${t('scout.accWaiting')}</div>`
+    : `<div class="note" style="padding-top:2px">${t('scout.accReady', {
+        gws: calib.gws.length,
+        n: calib.samples,
+        pct: Math.round(calib.overallRatio * 100),
+        mae: calib.mae,
+        scale: [1, 2, 3, 4].map((et) => `${posShort(state.positionsById[et].singular_name_short)} ×${calib.scale[et]}`).join(' · '),
+      })}</div>`;
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="section-title">${t('scout.accTitle')} ${infoNote('info.accuracy')}</div>
+    ${body}
+  </div>`;
+}
 
 export async function renderScout(root) {
   const els = state.bootstrap.elements;
@@ -153,6 +173,7 @@ export async function renderScout(root) {
     .join('') + moreRow('topXp', topXp.length);
 
   root.innerHTML = `
+    ${accuracyCard()}
     <div class="card" style="margin-bottom:16px">
       <div class="section-title">${t('scout.topXpTitle', { gw: gwLabel(nextGw) })} ${infoNote('info.model')}</div>
       <div class="table-wrap">

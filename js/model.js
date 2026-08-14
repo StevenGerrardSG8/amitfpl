@@ -55,6 +55,13 @@ export function setCalibration(c) {
   calibration = c;
 }
 
+// Raw calibration.json for the UI's "model accuracy" card - null until
+// scripts/calibrate.py has 3+ finished gameweeks of predictions vs real
+// results to compare (its own MIN_GWS gate, mirrored in the UI's copy).
+export function getCalibrationInfo() {
+  return calibration;
+}
+
 const calFactor = (elementType) => {
   const f = calibration?.scale?.[elementType];
   return typeof f === 'number' ? Math.min(1.4, Math.max(0.6, f)) : 1;
