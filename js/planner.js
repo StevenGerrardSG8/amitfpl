@@ -305,10 +305,6 @@ const persist = () => {
 // the last one, it becomes a new Undo step.
 const save = () => { pushEditHistoryIfChanged(); persist(); };
 
-// Every save is a checkpoint: if the squad/lineup actually changed since
-// the last one, it becomes a new Undo step.
-const save = () => { pushEditHistoryIfChanged(); persist(); };
-
 // Import a real FPL squad (from the My Team tab) into the active draft
 // slot, replacing whatever plan is there.
 export function importSquad({ squad, starters, captain }) {
