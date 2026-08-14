@@ -3,7 +3,19 @@ import { fixtureChips, playerPhoto, teamBadge, spBadges, isNewSigning } from './
 import { loadBaseline, buildModel } from './model.js';
 import { t, posShort, posPlural, playerName, teamName, teamShort, isHe } from './i18n.js';
 
-let model = null; // built once in renderPlayers, reused on every re-render
+let model = null; // rebuilt in renderPlayers() whenever view.horizon changes
+let modelHorizon = null; // the horizon `model` was last built for
+
+// Horizon presets for the xP column, same idea as the Planner's -
+// "next GW only" (1) stays the default so nothing changes for anyone
+// who never touches this, with wider windows and a custom GW count
+// available for anyone comparing players over a longer run. Whether
+// "custom" is showing is its own flag (view.horizonCustom) rather than
+// inferred from the number - a custom value can legitimately equal a
+// preset (5 GWs typed in by hand is still 5), and inferring from the
+// number alone made picking "Custom" while already on a preset
+// silently snap right back to the preset option.
+const HORIZON_PRESETS = [1, 3, 5, 8];
 
 // Labels/titles resolve at render time so a language switch re-renders
 // with the right strings. xG/xA/xGI/PPG stay Latin in both languages.
@@ -14,7 +26,12 @@ const COLUMNS = [
   { key: 'web_name', label: () => t('common.player'), numeric: false },
   { key: 'position', label: () => t('common.pos'), numeric: false },
   { key: 'now_cost', label: () => t('common.price'), numeric: true },
-  { key: 'ep_next', label: () => t('common.xpNext'), numeric: true, title: () => t('common.xpNextTitle') },
+  {
+    key: 'ep_next',
+    label: () => (view.horizon === 1 ? t('common.xpNext') : t('common.xpHorizon', { n: view.horizon })),
+    numeric: true,
+    title: () => (view.horizon === 1 ? t('common.xpNextTitle') : t('common.xpHorizonTitle', { n: view.horizon })),
+  },
   { key: 'form', label: () => t('common.form'), numeric: true },
   { key: 'total_points', label: () => t('common.pts'), numeric: true },
   { key: 'selected_by_percent', label: () => t('common.sel'), numeric: true, extra: true },
@@ -37,9 +54,14 @@ const view = {
   sortDir: 'desc',
   limit: 100,
   moreStats: false,
+  horizon: 1,
+  horizonCustom: false, // is the "Custom" option active (independent of the number itself)?
 };
 
-const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
+// horizonTotal() over a 1-GW model reduces to the same single xp() call
+// this used before the horizon picker existed, so no separate branch is
+// needed for the "next GW only" case.
+const modelXp = (p) => (model ? model.horizonTotal(p.id) : num(p.ep_next));
 
 function playerValue(p, key) {
   if (key === 'web_name') return p.web_name.toLowerCase();
@@ -140,6 +162,12 @@ function render(root) {
         </select>
         <input type="number" id="pl-price" placeholder="${t('common.maxPrice')}" step="0.5" min="3.5" max="16" style="width:90px" value="${view.maxPrice}" />
         <label class="chk"><input type="checkbox" id="pl-new" ${view.newOnly ? 'checked' : ''} /> ${t('players.newSignings')}</label>
+        <label>${t('common.horizon')}</label>
+        <select id="pls-horizon">
+          ${HORIZON_PRESETS.map((n) => `<option value="${n}" ${!view.horizonCustom && view.horizon === n ? 'selected' : ''}>${n === 1 ? t('common.xpNext') : t('common.nGws', { n })}</option>`).join('')}
+          <option value="custom" ${view.horizonCustom ? 'selected' : ''}>${t('common.customHorizon')}</option>
+        </select>
+        ${view.horizonCustom ? `<input type="number" id="pls-horizon-custom" min="1" max="38" style="width:60px" value="${view.horizon}" title="${t('common.customHorizonTitle')}" />` : ''}
         <span class="spacer"></span>
         <button class="link-btn" id="pl-more-stats">${view.moreStats ? t('players.fewerStats') : t('players.moreStats')}</button>
         <button class="link-btn" id="pl-csv" title="${t('players.exportTitle')}">${t('players.exportCsv')}</button>
@@ -165,6 +193,16 @@ function render(root) {
   root.querySelector('#pl-team').addEventListener('change', (e) => { view.team = e.target.value; render(root); });
   root.querySelector('#pl-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; render(root); });
   root.querySelector('#pl-new').addEventListener('change', (e) => { view.newOnly = e.target.checked; render(root); });
+  root.querySelector('#pls-horizon').addEventListener('change', (e) => {
+    const v = e.target.value;
+    view.horizonCustom = v === 'custom';
+    if (!view.horizonCustom) view.horizon = +v;
+    renderPlayers(root);
+  });
+  root.querySelector('#pls-horizon-custom')?.addEventListener('change', (e) => {
+    view.horizon = Math.max(1, Math.min(38, +e.target.value || 1));
+    renderPlayers(root);
+  });
   root.querySelector('#pl-more')?.addEventListener('click', () => { view.limit += 100; render(root); });
   root.querySelector('#pl-more-stats').addEventListener('click', () => { view.moreStats = !view.moreStats; render(root); });
 
@@ -172,7 +210,8 @@ function render(root) {
     const cols = ['web_name', 'position', 'team', 'now_cost', 'selected_by_percent', 'ep_next', 'form',
       'total_points', 'points_per_game', 'expected_goals', 'expected_assists',
       'expected_goal_involvements', 'defensive_contribution', 'minutes'];
-    const header = 'name,pos,team,price,sel%,xp_next,form,pts,ppg,xg,xa,xgi,dc,min';
+    const xpCol = view.horizon === 1 ? 'xp_next' : `xp_${view.horizon}gw`;
+    const header = `name,pos,team,price,sel%,${xpCol},form,pts,ppg,xg,xa,xgi,dc,min`;
     const lines = filtered().map((p) => [
       `"${p.web_name.replace(/"/g, '""')}"`,
       state.positionsById[p.element_type].singular_name_short,
@@ -217,9 +256,10 @@ function renderPreservingFocus(root, selector) {
 }
 
 export async function renderPlayers(root) {
-  if (!model) {
+  if (modelHorizon !== view.horizon) {
     await loadBaseline();
-    model = buildModel(1);
+    model = buildModel(view.horizon);
+    modelHorizon = view.horizon;
   }
   render(root);
 }

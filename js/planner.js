@@ -88,6 +88,7 @@ const BUILD_STYLES = [
 
 const view = {
   horizon: 5,
+  horizonCustom: false, // is the "Custom" option active (independent of the number itself)?
   formationLock: null, // null = auto; otherwise '3-4-3' etc, one of FORMATIONS
   buildMode: 'xp', // 'xp' | 'owned' | 'differential' - what auto-build optimizes for
   planGw: null,
@@ -687,6 +688,7 @@ const SEASON_HORIZON = 99;
 const COMPARE_HORIZONS = [3, 5, 8, SEASON_HORIZON];
 
 const horizonLabel = (h) => (h === SEASON_HORIZON ? t('pl.seasonHorizon') : t('common.nGws', { n: h }));
+const HORIZON_SELECT_PRESETS = [3, 5, 8, SEASON_HORIZON];
 
 // If picking purely for total xp left the bench with zero real-club
 // starters, FPL's auto-substitution has nothing useful to bring on if
@@ -1769,8 +1771,10 @@ export async function renderPlanner(root) {
       <div class="toolbar">
         <label>${t('common.horizon')}</label>
         <select id="pl-horizon">
-          ${[3, 5, 8, SEASON_HORIZON].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${horizonLabel(n)}</option>`).join('')}
+          ${HORIZON_SELECT_PRESETS.map((n) => `<option value="${n}" ${!view.horizonCustom && view.horizon === n ? 'selected' : ''}>${horizonLabel(n)}</option>`).join('')}
+          <option value="custom" ${view.horizonCustom ? 'selected' : ''}>${t('common.customHorizon')}</option>
         </select>
+        ${view.horizonCustom ? `<input type="number" id="pl-horizon-custom" min="1" max="38" style="width:60px" value="${view.horizon}" title="${t('common.customHorizonTitle')}" />` : ''}
         <label>${t('pl.formation')}</label>
         <select id="pl-formation" title="${t('pl.formationTitle')}">
           <option value="" ${view.formationLock ? '' : 'selected'}>${t('pl.formationAuto')}</option>
@@ -1852,7 +1856,14 @@ export async function renderPlanner(root) {
   }
 
   root.querySelector('#pl-horizon').addEventListener('change', (e) => {
-    view.horizon = +e.target.value;
+    const v = e.target.value;
+    view.horizonCustom = v === 'custom';
+    if (!view.horizonCustom) view.horizon = +v;
+    view.planGw = null;
+    rerender();
+  });
+  root.querySelector('#pl-horizon-custom')?.addEventListener('change', (e) => {
+    view.horizon = Math.max(1, Math.min(38, +e.target.value || 1));
     view.planGw = null;
     rerender();
   });
