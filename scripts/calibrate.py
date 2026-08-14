@@ -77,6 +77,9 @@ def main():
 
     # Per position: sum of predicted vs actual points over all GWs.
     sums = {et: {"pred": 0.0, "act": 0.0, "n": 0} for et in (1, 2, 3, 4)}
+    overall_pred = 0.0
+    overall_act = 0.0
+    abs_err_sum = 0.0
     for gw in gws:
         preds = load_json(os.path.join(pred_dir, f"gw{gw}.json"), {})
         try:
@@ -87,10 +90,14 @@ def main():
         for pid, xp in preds.items():
             if xp < MIN_PREDICTED or pid not in pos_of:
                 continue
+            act = actuals.get(pid, 0)
             s = sums[pos_of[pid]]
             s["pred"] += xp
-            s["act"] += actuals.get(pid, 0)
+            s["act"] += act
             s["n"] += 1
+            overall_pred += xp
+            overall_act += act
+            abs_err_sum += abs(xp - act)
 
     scale = {}
     total_n = 0
@@ -105,6 +112,11 @@ def main():
         "scale": scale,
         "gws": gws,
         "samples": total_n,
+        # Headline numbers for the UI's "model accuracy" card - separate
+        # from `scale` (which js/model.js applies internally) since these
+        # are for display only, not fed back into the model.
+        "overallRatio": round(overall_act / overall_pred, 3) if overall_pred > 0 else None,
+        "mae": round(abs_err_sum / total_n, 2) if total_n > 0 else None,
         "updated": datetime.now(timezone.utc).isoformat(),
     }
     with open(os.path.join(DATA, "calibration.json"), "w") as f:

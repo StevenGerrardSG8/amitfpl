@@ -284,6 +284,9 @@ const STRINGS = {
   'players.showMore': ['Show {n} more', 'הצג עוד {n}'],
 
   /* ---- scout ---- */
+  'scout.accTitle': ['Model accuracy', 'דיוק המודל'],
+  'scout.accWaiting': ['Tracking starts once 3 gameweeks finish - check back after GW3 for real numbers.', 'המעקב מתחיל לאחר סיום 3 מחזורים - חזרו לבדוק אחרי מחזור 3 למספרים אמיתיים.'],
+  'scout.accReady': ['Calibrated across {gws} finished GWs ({n} player-GWs tracked) · predicted vs actual: <strong>{pct}%</strong> · avg error ±{mae} pts/player · adjustments: {scale}', 'כויל על פני {gws} מחזורים שהסתיימו ({n} שחקן-מחזור במעקב) · צפי מול בפועל: <strong>{pct}%</strong> · טעות ממוצעת ±{mae} נק׳/שחקן · התאמות: {scale}'],
   'scout.topXpTitle': ['Expected points - the model\'s top picks for {gw}', 'נקודות צפויות - הבחירות המובילות של המודל ל{gw}'],
   'scout.topXpCol': ['xP', 'צפי נק׳'],
   'scout.topXpColTitle': ['Expected points in the upcoming gameweek (amitfpl model)', 'נקודות צפויות במחזור הקרוב (מודל amitfpl)'],
@@ -659,6 +662,7 @@ const STRINGS = {
   /* ---- ⓘ method explainers ---- */
   'info.how': ['How is this computed?', 'איך זה מחושב?'],
   'info.model': ['Our expected-points (xP) model blends each player\'s per-90 numbers (xG, xA, saves, bonus, defensive contribution) with projected minutes, then adjusts for the fixture using daily ClubElo team ratings - opponent strength, clean-sheet odds and home advantage. Data: the official FPL API + ClubElo, refreshed every 30 minutes.', 'מודל הנקודות הצפויות (צפי) משלב את נתוני ה-90 דקות של כל שחקן (שערים ובישולים צפויים, הצלות, בונוס, תרומה הגנתית) עם צפי דקות משחק, ומתאם לפי המשחק באמצעות דירוגי ClubElo יומיים - חוזק היריבה, סיכויי שער נקי ויתרון ביתיות. הנתונים: ה-API הרשמי של FPL ‏+ ClubElo, מתעדכנים כל 30 דקות.'],
+  'info.accuracy': ['After each gameweek finishes, we compare our pre-deadline predictions to real FPL points and use the gap to auto-correct the model (small per-position adjustments, capped ±40%). This card shows how close the predictions have actually been - it refreshes automatically as more gameweeks complete.', 'אחרי כל מחזור שמסתיים, אנחנו משווים את התחזיות שלנו (מלפני הדדליין) לנקודות האמיתיות ב-FPL ומשתמשים בפער כדי לתקן את המודל אוטומטית (התאמות קטנות לפי עמדה, מוגבלות ל-40%±). הכרטיס הזה מראה עד כמה התחזיות היו קרובות בפועל - הוא מתעדכן אוטומטית ככל שמסתיימים עוד מחזורים.'],
   'info.goalChance': ['Scoring chance = the probability of at least one goal, from a Poisson distribution over the player\'s expected goals (xG per 90 × projected minutes), scaled by how many goals his team is expected to score against this specific opponent (Elo-based).', 'סיכוי הבקעה = ההסתברות לפחות לשער אחד, לפי התפלגות פואסון על השערים הצפויים של השחקן (xG ל-90 דקות × צפי דקות), מותאם לכמות השערים שהקבוצה שלו צפויה להבקיע מול היריבה הספציפית (מבוסס Elo).'],
   'info.assistChance': ['Assist chance = the probability of at least one assist, from a Poisson distribution over the player\'s expected assists, adjusted for the fixture the same way as goals.', 'סיכוי בישול = ההסתברות לפחות לבישול אחד, לפי התפלגות פואסון על הבישולים הצפויים של השחקן, מותאם למשחק באותה שיטה כמו שערים.'],
   'info.captaincy': ['For each gameweek we rank every available player by model xP - the top three become the armband picks. Captain doubling isn\'t shown because it doesn\'t change the ranking.', 'לכל מחזור אנחנו מדרגים את כל השחקנים הזמינים לפי צפי המודל - שלושת הראשונים הם המועמדים לסרט. הכפלת הקפטן לא מוצגת כי היא לא משנה את הדירוג.'],
