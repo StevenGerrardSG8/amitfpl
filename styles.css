@@ -875,6 +875,22 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .pitch-build .pitch-row { min-height: 118px; align-items: flex-start; }
 .pitch-build .slot-empty .slot-circle { background: rgba(255,255,255,0.08); }
 
+.build-style-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 10px;
+}
+.build-style-row select {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
 .gw-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .gw-chip {
   font: inherit;
@@ -1471,6 +1487,25 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .spark { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .spark-val { font-weight: 800; font-variant-numeric: tabular-nums; }
 .spark-range { font-size: 11px; }
+
+.exp-mins-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.exp-mins-row input[type="number"] {
+  width: 56px;
+  font: inherit;
+  font-weight: 700;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
 
 /* ---------- Help ---------- */
 .help-list p { margin: 6px 0; font-size: 13px; color: var(--text-soft); }

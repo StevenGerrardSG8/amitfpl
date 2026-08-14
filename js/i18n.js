@@ -481,6 +481,9 @@ const STRINGS = {
   'dw.season': ['Season', 'עונה'],
   'dw.cs': ['CS', 'ש״נ'],
   'dw.historyNote': ['Detailed history needs the live API - available when running locally.', 'היסטוריה מפורטת דורשת את ה-API החי - זמין בהרצה מקומית.'],
+  'dw.expMins': ['Expected mins/match', 'דקות צפויות למשחק'],
+  'dw.expMinsEdited': ['edited', 'נערך'],
+  'dw.expMinsReset': ['reset', 'איפוס'],
 
   /* ---- planner ---- */
   'pl.chipWC': ['Wildcard', 'וויילדקארד'],
@@ -538,6 +541,13 @@ const STRINGS = {
   'pl.cancelLower': ['cancel', 'ביטול'],
   'pl.buildHint': ['Pick your 15 - tap an empty spot to filter the list, or let <strong>Auto-build</strong> do it.', 'בחרו את ה-15 שלכם - הקישו על משבצת ריקה לסינון הרשימה, או תנו ל<strong>בנייה האוטומטית</strong> לעבוד.'],
   'pl.pickedCount': ['{n}/15 picked · max 3 per club', 'נבחרו {n}/15 · מקס׳ 3 ממועדון'],
+  'pl.styleOptimal': ['Optimal squad', 'הסגל האופטימלי'],
+  'pl.styleSetPieces': ['Penalty & set-piece takers', 'בועטי פנדלים ונייחים'],
+  'pl.styleFixtures': ['Best run of fixtures', 'הלו״ז הכי טוב'],
+  'pl.styleDiffs': ['Differentials', 'דיפרנציאלים'],
+  'pl.fillEmpty': ['Fill empty slots', 'מילוי משבצות ריקות'],
+  'pl.fillEmptyTitle': ['Keeps the players you already picked and fills whatever\'s left, in this style', 'משאיר את השחקנים שכבר נבחרו וממלא את השאר, בסגנון הזה'],
+  'pl.noEmptySlots': ['Squad already full', 'הסגל כבר מלא'],
   'pl.add': ['Add', 'הוספה'],
   'pl.addTitle': ['Pick players from the list', 'בחרו שחקנים מהרשימה'],
   'pl.pickPos': ['Pick a {pos} from the list', 'בחרו {pos} מהרשימה'],

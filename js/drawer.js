@@ -3,7 +3,7 @@
 // this season's gameweek log, and past-season history.
 import { state, fmtPrice, num, statusInfo, escapeHtml } from './state.js';
 import { playerPhoto, teamBadge, spBadges, fixtureDifficulty, infoNote } from './ui.js';
-import { loadBaseline, buildModel } from './model.js';
+import { loadBaseline, buildModel, setMinOverride } from './model.js';
 import { t, haMark, gwLabel, posShort, playerName, teamName, teamShort, isHe } from './i18n.js';
 
 let overlay = null;
@@ -105,6 +105,23 @@ function toggleWatch(id) {
 
 function statTile(k, v) {
   return `<div class="stat-tile"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+}
+
+// "Don't agree with a player's predicted minutes? Edit it yourself and
+// see the forecast change immediately." Only shown for players with a
+// minutes-based estimate - new/no-history signings use a price prior
+// instead, which this control doesn't drive.
+function expMinsControl(model, p) {
+  const { estimate, override } = model.expectedMinutes(p.id);
+  if (!estimate && override == null) return '';
+  const val = override ?? estimate;
+  return `<div class="exp-mins-row">
+    <label for="dw-min-input">${t('dw.expMins')}</label>
+    <input type="number" id="dw-min-input" min="0" max="90" step="1" value="${val}" />
+    ${override != null
+      ? `<span class="muted">(${t('dw.expMinsEdited')})</span><button class="link-btn" id="dw-min-reset">${t('dw.expMinsReset')}</button>`
+      : ''}
+  </div>`;
 }
 
 function upcomingRows(model, p) {
@@ -230,6 +247,7 @@ export async function openDrawer(id) {
   sections.push(`
     <div class="section-title" style="padding-inline-start:0">${t('dw.upcoming')} ${infoNote('info.model')}
       <span class="muted" style="font-weight:600">${t('dw.nextN', { n: model.gws.length, xp: model.gws.reduce((s, e) => s + model.xp(p.id, e), 0).toFixed(1) })}</span></div>
+    ${expMinsControl(model, p)}
     <div class="table-wrap"><table class="data">
       <thead><tr><th class="no-sort">${t('common.gw')}</th><th class="no-sort">${t('common.fixture')}</th><th class="num no-sort">${t('stat.xp')}</th></tr></thead>
       <tbody>${upcomingRows(model, p)}</tbody>
@@ -260,6 +278,19 @@ export async function openDrawer(id) {
   }
 
   body.innerHTML = sections.join('');
+
+  const minInput = body.querySelector('#dw-min-input');
+  if (minInput) {
+    minInput.addEventListener('change', () => {
+      const v = +minInput.value;
+      setMinOverride(id, Number.isFinite(v) ? v : null);
+      openDrawer(id); // recompute the model with the new override and re-render
+    });
+  }
+  body.querySelector('#dw-min-reset')?.addEventListener('click', () => {
+    setMinOverride(id, null);
+    openDrawer(id);
+  });
 }
 
 export function initDrawer() {
