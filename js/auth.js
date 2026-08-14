@@ -165,7 +165,17 @@ const AUTH_ERRORS = {
   'auth/wrong-password': 'auth.errCreds',
   'auth/user-not-found': 'auth.errCreds',
   'auth/too-many-requests': 'auth.errTooMany',
-  'auth/popup-closed-by-user': null, // user changed their mind - not an error
+  // Google popup sign-in: closing/cancelling the popup isn't an error,
+  // but the site being unrecognized, the popup getting blocked, the
+  // provider not being turned on, or a dropped connection are all real,
+  // actionable failures - each gets its own message instead of falling
+  // into the unhelpful generic one.
+  'auth/popup-closed-by-user': null,
+  'auth/cancelled-popup-request': null,
+  'auth/unauthorized-domain': 'auth.errUnauthorizedDomain',
+  'auth/popup-blocked': 'auth.errPopupBlocked',
+  'auth/operation-not-allowed': 'auth.errNotEnabled',
+  'auth/network-request-failed': 'auth.errNetwork',
 };
 
 function openModal(autoShown = false) {
@@ -221,7 +231,12 @@ function openModal(autoShown = false) {
       const key = AUTH_ERRORS[code];
       if (key === null) return; // benign (closed popup)
       const el = overlay.querySelector('#auth-error');
-      el.textContent = key ? t(key) : t('auth.errGeneric');
+      el.textContent = key
+        ? t(key, { domain: location.hostname })
+        // Unmapped code shown verbatim (not just a generic "something
+        // went wrong") so it's actually possible to look up and fix,
+        // e.g. from a screenshot.
+        : t('auth.errGeneric', { code: code || '?' });
       el.hidden = false;
     };
     const creds = () => [
