@@ -65,19 +65,56 @@ function apply(data) {
   return changed;
 }
 
+// Caps how many times pull() will reload the page to resolve a sync
+// mismatch, within one browser session (sessionStorage, so a genuinely
+// fresh visit later gets a fresh budget). Without this, a mismatch that
+// can't resolve itself by reloading - e.g. the cloud copy still has a
+// field a newer app version no longer writes, so every fresh load keeps
+// looking "different" from what's stored - reloads forever: the reload
+// always lands before the 15s push() interval gets a chance to fire and
+// overwrite the stale cloud copy, so the loop never gets a chance to
+// self-heal. After a couple of attempts, stop reloading and push this
+// device's own (currently-running-code) state up instead, so the cloud
+// catches up rather than the two sides fighting on every load.
+const RELOAD_ATTEMPTS_KEY = 'amitfpl:syncReloadAttempts';
+const MAX_RELOAD_ATTEMPTS = 2;
+
 async function pull() {
   const { doc, getDoc } = sdk.fs;
   const snap = await getDoc(doc(sdk.db, 'users', user.uid));
   if (snap.exists()) {
     const data = snap.data()?.data || {};
-    lastPushed = JSON.stringify({ ...snapshot(), ...data });
+    const localBefore = snapshot(); // this device's own state, before apply() can touch it
+    lastPushed = JSON.stringify({ ...localBefore, ...data });
     if (apply(data)) {
-      // Cloud data differs from this device - reload so every tab,
-      // the language and the theme pick it up cleanly.
-      location.reload();
+      let attempts = 0;
+      try { attempts = +sessionStorage.getItem(RELOAD_ATTEMPTS_KEY) || 0; } catch { /* private mode */ }
+      if (attempts < MAX_RELOAD_ATTEMPTS) {
+        try { sessionStorage.setItem(RELOAD_ATTEMPTS_KEY, String(attempts + 1)); } catch { /* private mode */ }
+        // Cloud data differs from this device - reload so every tab,
+        // the language and the theme pick it up cleanly.
+        location.reload();
+        return;
+      }
+      // Reloading hasn't resolved it - most likely the cloud copy is
+      // stuck in a format an older push() wrote that this device's
+      // current code no longer produces, so it can never match no
+      // matter how many times we reload. apply() just overwrote local
+      // with that same stale cloud data above, which would only
+      // perpetuate the mismatch forever - undo that and push this
+      // device's own (pre-overwrite, currently-running-code) state up
+      // instead, so the cloud actually catches up.
+      for (const k of SYNC_KEYS) {
+        try {
+          if (localBefore[k] != null) localStorage.setItem(k, localBefore[k]);
+          else localStorage.removeItem(k);
+        } catch { /* private mode */ }
+      }
+      await push(true);
       return;
     }
   }
+  try { sessionStorage.removeItem(RELOAD_ATTEMPTS_KEY); } catch { /* private mode */ }
   await push(true);
 }
 
