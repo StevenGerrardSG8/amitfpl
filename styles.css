@@ -1611,6 +1611,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ---------- ⓘ method explainers ---------- */
 .info-wrap { position: relative; display: inline-flex; }
 .info-btn {
+  position: relative;
   font: inherit;
   font-size: 11px;
   line-height: 1;
@@ -1622,6 +1623,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
+}
+/* The glyph stays small (fits inline with running text), but 18x18 is
+   too tight a tap target on a phone - this expands the actual hit area
+   without taking any extra space in the layout. */
+.info-btn::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
 }
 .info-btn:hover { color: var(--accent); }
 .info-pop {
@@ -1977,6 +1986,13 @@ tr.league-me td { background: var(--accent-soft); font-weight: 700; }
   .deadline-chip .deadline-time { display: none; }
   .toolbar { padding: 10px 12px; gap: 8px; }
   .toolbar input[type="search"] { width: 100%; }
+  /* iOS Safari auto-zooms the whole page on focusing any control with a
+     computed font-size under 16px - every text input/select here inherits
+     a smaller size from its (often quite compact) container, and one
+     (#sd-price) sets it inline. !important so this floor always wins,
+     regardless of what any current or future component-specific rule
+     sets - tapping a filter shouldn't yank the viewport around. */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px !important; }
   table.data { font-size: 12px; }
   table.data th, table.data td { padding: 6px 8px; }
 
