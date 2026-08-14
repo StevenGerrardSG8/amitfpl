@@ -34,6 +34,9 @@ const DRAFTS = ['A', 'B', 'C'];
 let slot = 'A';
 try { slot = localStorage.getItem(SLOT_KEY) || 'A'; } catch { /* private mode */ }
 const slotKey = (s) => `amitfpl:planner:v3:${s}`;
+// Derived/local-only fields (planXp, buildOptions) live in their own key,
+// separate from the synced squad/lineup blob - see persist() for why.
+const cacheKey = (s) => `amitfpl:planner:v3:${s}:cache`;
 const LEGACY_KEY = 'amitfpl:planner:v3';
 
 // Custom draft names live in their own key, not inside each slot's own
@@ -54,7 +57,9 @@ function draftMeta(s) {
   try {
     const d = JSON.parse(localStorage.getItem(slotKey(s)));
     if (!d) return null;
-    return { n: (d.baseSquad || []).length, xp: d.planXp };
+    let xp = null;
+    try { xp = JSON.parse(localStorage.getItem(cacheKey(s)))?.planXp ?? null; } catch { /* no cache yet */ }
+    return { n: (d.baseSquad || []).length, xp };
   } catch {
     return null;
   }
@@ -245,11 +250,13 @@ function load() {
         captain: saved.captain || null,
         chips: saved.chips || {},
         transfers: saved.transfers || {},
-        buildOptions: (saved.buildOptions || []).filter(
-          (o) => (o?.squad || []).every((id) => state.playersById[id])
-        ) || null,
       });
-      if (!view.buildOptions?.length) view.buildOptions = null;
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem(cacheKey(slot))); } catch { /* none yet */ }
+      view.buildOptions = (cached?.buildOptions || []).filter(
+        (o) => (o?.squad || []).every((id) => state.playersById[id])
+      );
+      if (!view.buildOptions.length) view.buildOptions = null;
       return;
     }
     Object.assign(view, { baseSquad: [], starters: [], captain: null, chips: {}, transfers: {} });
@@ -267,7 +274,7 @@ function load() {
   } catch { /* nothing to migrate */ }
 }
 
-const persist = () =>
+const persist = () => {
   localStorage.setItem(slotKey(slot), JSON.stringify({
     horizon: view.horizon,
     formationLock: view.formationLock,
@@ -276,9 +283,23 @@ const persist = () =>
     captain: view.captain,
     chips: view.chips,
     transfers: view.transfers,
+  }));
+  // planXp/buildOptions are fully derived from the fields above (recomputed
+  // fresh on every render regardless of what was last stored) and deliberately
+  // kept OUT of the blob above: that key is also what the cross-device
+  // account sync (js/auth.js) compares to decide "is this device stale?".
+  // With planXp included, any natural drift in the live model (a price
+  // change, an injury flag, an Elo update) made the same squad compute a
+  // different forecast than what was last synced - sync saw a mismatch,
+  // overwrote local back to the stale synced copy, the next render
+  // recomputed the (still different) live number again, and so on: a
+  // genuine infinite reload loop for signed-in users, with no user action
+  // involved at all. This cache key is never synced, so it can't feed that.
+  localStorage.setItem(cacheKey(slot), JSON.stringify({
     planXp: view._planXp ?? null,
     buildOptions: view.buildOptions,
   }));
+};
 
 // Every save is a checkpoint: if the squad/lineup actually changed since
 // the last one, it becomes a new Undo step.
@@ -1271,13 +1292,16 @@ function assistantPanel(model, gw) {
 function openDraftCompare(model, root) {
   const drafts = DRAFTS.map((s) => {
     let d = null;
+    let xp = null;
     if (s === slot) {
-      d = { baseSquad: view.baseSquad, chips: view.chips, planXp: view._planXp };
+      d = { baseSquad: view.baseSquad, chips: view.chips };
+      xp = view._planXp ?? null;
     } else {
       try { d = JSON.parse(localStorage.getItem(slotKey(s))); } catch { /* empty */ }
+      try { xp = JSON.parse(localStorage.getItem(cacheKey(s)))?.planXp ?? null; } catch { /* no cache yet */ }
     }
     const sq = (d?.baseSquad || []).filter((id) => state.playersById[id]);
-    return { s, sq, chips: d?.chips || {}, xp: d?.planXp ?? null };
+    return { s, sq, chips: d?.chips || {}, xp };
   });
   const active = drafts.find((d) => d.s === slot);
   const activeSet = new Set(active.sq);
