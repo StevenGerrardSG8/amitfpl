@@ -109,6 +109,70 @@ const view = {
 let sideScroll = 0;
 let plannerRootEl = null;
 
+/* ---------------- undo/redo (squad & lineup only) ---------------- */
+
+// Every re-optimize, transfer, swap, captain change etc. should be
+// reversible - not just re-optimize. Scoped to the fields that make up
+// "the squad or lineup"; view preferences (horizon, filters, which GW
+// tab is open, the assistant panel toggle...) deliberately aren't part
+// of the snapshot, so switching those never clutters the undo trail.
+let editHistory = [];
+let editIdx = -1;
+let lastEditSnapshot = null;
+const EDIT_HISTORY_MAX = 50;
+
+const squadSnapshotStr = () => JSON.stringify({
+  baseSquad: view.baseSquad,
+  starters: view.starters,
+  captain: view.captain,
+  chips: view.chips,
+  transfers: view.transfers,
+  formationLock: view.formationLock,
+});
+
+// Called on every real load (fresh session, draft-slot switch, importing
+// a real squad, opening a shared plan link) - seeds history with the
+// just-loaded state as its own baseline, so Undo never reaches past it.
+function resetEditHistory() {
+  lastEditSnapshot = squadSnapshotStr();
+  editHistory = [lastEditSnapshot];
+  editIdx = 0;
+}
+
+function pushEditHistoryIfChanged() {
+  const snap = squadSnapshotStr();
+  if (snap === lastEditSnapshot) return;
+  editHistory = editHistory.slice(0, editIdx + 1);
+  editHistory.push(snap);
+  if (editHistory.length > EDIT_HISTORY_MAX) editHistory.shift();
+  editIdx = editHistory.length - 1;
+  lastEditSnapshot = snap;
+}
+
+// Time-travelling past a build/transfer invalidates the auto-build
+// strip's "which option is this" highlighting and any in-progress
+// swap/transfer selection, so those are cleared alongside the restore.
+function applyEditSnapshot(idx, model) {
+  Object.assign(view, JSON.parse(editHistory[idx]));
+  editIdx = idx;
+  lastEditSnapshot = editHistory[idx];
+  view.buildOptions = null;
+  view.swapId = null;
+  view.pending = null;
+  ensureConsistency(model);
+  persist();
+}
+
+const canUndo = () => editIdx > 0;
+const canRedo = () => editIdx < editHistory.length - 1;
+function undo(model) { if (canUndo()) applyEditSnapshot(editIdx - 1, model); }
+function redo(model) { if (canRedo()) applyEditSnapshot(editIdx + 1, model); }
+
+// Set right before a draft-slot switch triggers its own renderPlanner()
+// call (bypassing the local `rerender` closure) - tells the next render's
+// post-load hook to seed a fresh history for the newly active slot.
+let pendingHistoryReset = false;
+
 // The "⋯" plan-tools menu closes on any click outside it. Bound once at
 // module load (not per-render, since renderPlanner replaces the whole
 // subtree on every state change) - a no-op until the menu is actually open.
@@ -152,6 +216,7 @@ function importPlanFromHash() {
       transfers: d.t || {},
       formationLock: FORMATION_STRINGS.includes(d.fl) ? d.fl : null,
     });
+    resetEditHistory();
     save();
     history.replaceState(null, '', '#planner');
     return true;
@@ -202,7 +267,7 @@ function load() {
   } catch { /* nothing to migrate */ }
 }
 
-const save = () =>
+const persist = () =>
   localStorage.setItem(slotKey(slot), JSON.stringify({
     horizon: view.horizon,
     formationLock: view.formationLock,
@@ -214,6 +279,10 @@ const save = () =>
     planXp: view._planXp ?? null,
     buildOptions: view.buildOptions,
   }));
+
+// Every save is a checkpoint: if the squad/lineup actually changed since
+// the last one, it becomes a new Undo step.
+const save = () => { pushEditHistoryIfChanged(); persist(); };
 
 // Import a real FPL squad (from the My Team tab) into the active draft
 // slot, replacing whatever plan is there.
@@ -229,6 +298,7 @@ export function importSquad({ squad, starters, captain }) {
     swapId: null,
     buildOptions: null,
   });
+  resetEditHistory();
   save();
 }
 
@@ -1629,10 +1699,18 @@ function sideList(model, gw) {
 
 export async function renderPlanner(root) {
   plannerRootEl = root;
-  if (!root.dataset.booted) {
+  const firstRender = !root.dataset.booted;
+  if (firstRender) {
     root.innerHTML = '<div class="skel-page"><div class="skel skel-row"></div><div class="skel skel-block" style="height:420px"></div></div>';
   }
   load();
+  // A fresh session or a draft-slot switch both mean "this is a new plan
+  // to track" - anything importPlanFromHash()/importSquad() already
+  // reset for themselves is just reset again here, harmlessly.
+  if (firstRender || pendingHistoryReset) {
+    resetEditHistory();
+    pendingHistoryReset = false;
+  }
   await loadBaseline();
   const model = buildModel(view.horizon);
   ensureConsistency(model);
@@ -1681,6 +1759,8 @@ export async function renderPlanner(root) {
           <option value="differential" ${view.buildMode === 'differential' ? 'selected' : ''}>${t('pl.buildModeDiff')}</option>
         </select>
         <button class="btn" id="pl-build">${view.baseSquad.length ? t('pl.reOptimize') : t('pl.autoBuild')}</button>
+        <button class="btn ghost" id="pl-undo" ${canUndo() ? '' : 'disabled'} title="${t('pl.undoTitle')}" aria-label="${t('pl.undo')}">↶</button>
+        <button class="btn ghost" id="pl-redo" ${canRedo() ? '' : 'disabled'} title="${t('pl.redoTitle')}" aria-label="${t('pl.redo')}">↷</button>
         <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">${t('pl.assistant')}</button>
         <span class="spacer"></span>
         <span class="result-count">
@@ -1919,6 +1999,19 @@ export async function renderPlanner(root) {
     rerender();
   });
 
+  // Not rerender(): that re-saves through save() -> pushEditHistoryIfChanged(),
+  // which would immediately re-push the just-restored state as a "new"
+  // change and strand redo/undo respectively. persist() already ran
+  // inside undo()/redo(); this just needs the DOM to reflect it.
+  root.querySelector('#pl-undo')?.addEventListener('click', () => {
+    undo(model);
+    renderPlanner(root);
+  });
+  root.querySelector('#pl-redo')?.addEventListener('click', () => {
+    redo(model);
+    renderPlanner(root);
+  });
+
   root.querySelector('#pl-assist').addEventListener('click', () => {
     view.showAssistant = !view.showAssistant;
     rerender();
@@ -2125,6 +2218,7 @@ export async function renderPlanner(root) {
       slot = b.dataset.draft;
       try { localStorage.setItem(SLOT_KEY, slot); } catch { /* private mode */ }
       Object.assign(view, { planGw: null, swapId: null, pending: null });
+      pendingHistoryReset = true;
       renderPlanner(root);
     })
   );

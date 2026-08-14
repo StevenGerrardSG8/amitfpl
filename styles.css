@@ -1905,6 +1905,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .btn:hover { filter: brightness(1.08); }
 .btn.ghost { background: transparent; color: var(--accent); }
+.btn[disabled] { opacity: 0.4; cursor: default; filter: none; }
+
+/* Undo/Redo: same family as the other toolbar buttons, but a plain
+   glyph doesn't need .btn's wide text padding. */
+#pl-undo, #pl-redo { padding: 9px 12px; font-size: 16px; line-height: 1; }
 
 .summary-grid {
   display: grid;
