@@ -4,7 +4,7 @@
 // transfers per GW, free transfers bank up (max 5), extra moves cost
 // -4, Wildcard/Free Hit make a GW's moves free (FH reverts after).
 import { state, fmtPrice, num, escapeHtml, statusInfo } from './state.js';
-import { playerPhoto, teamBadge, inlinePhoto, fixtureChips, infoNote } from './ui.js';
+import { playerPhoto, teamBadge, inlinePhoto, fixtureChips, fixtureDifficulty, infoNote } from './ui.js';
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
 import { getPredictedXI } from './lineups.js';
@@ -50,6 +50,16 @@ const CHIPS = [
   { key: 'TC', label: () => t('pl.chipTC') },
 ];
 
+// "Team in one click": leave whatever slots you like empty and fill just
+// those, in a chosen style - keeps everyone you've already picked,
+// unlike Auto-build/Re-optimize which replaces the whole 15.
+const BUILD_STYLES = [
+  { key: 'optimal', label: () => t('pl.styleOptimal') },
+  { key: 'setpieces', label: () => t('pl.styleSetPieces') },
+  { key: 'fixtures', label: () => t('pl.styleFixtures') },
+  { key: 'differentials', label: () => t('pl.styleDiffs') },
+];
+
 const view = {
   horizon: 5,
   planGw: null,
@@ -68,6 +78,7 @@ const view = {
   building: false,
   buildOptions: null, // [{squad, xp}] - the auto-build's three takes
   showPlanTools: false, // Share/Copy/Compare-drafts tucked behind "⋯"
+  buildStyle: 'optimal', // style used by "Fill empty slots"
 };
 
 let sideScroll = 0;
@@ -354,6 +365,70 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
   return squad;
 }
 
+// Per-player score for a given "fill empty slots" style - xP stays the
+// tiebreak in every style so a style never surfaces a genuinely poor pick.
+function styleScore(model, style, p) {
+  const base = model.horizonTotal(p.id);
+  if (style === 'setpieces') {
+    const primary = p.penalties_order === 1 || p.direct_freekicks_order === 1 || p.corners_and_indirect_freekicks_order === 1;
+    return (primary ? 100 : 0) + base * 0.1;
+  }
+  if (style === 'fixtures') {
+    const fx = model.gws
+      .map((e) => (state.upcomingByTeam[p.team] || []).find((f) => f.event === e))
+      .filter(Boolean);
+    const avgFdr = fx.length ? fx.reduce((s, f) => s + fixtureDifficulty(f), 0) / fx.length : 3;
+    return -avgFdr * 12 + base * 0.15;
+  }
+  if (style === 'differentials') {
+    const own = num(p.selected_by_percent);
+    return base * (1 - Math.min(0.85, own / 100));
+  }
+  return base; // optimal
+}
+
+// Cheapest available price per position (excluding unavailable/unregistered
+// players) - GK/DEF and MID/FWD floors differ (£4.0m vs £4.5m in a typical
+// season), so a single flat constant either over- or under-reserves.
+function minPriceByPos() {
+  const m = { 1: Infinity, 2: Infinity, 3: Infinity, 4: Infinity };
+  for (const p of state.bootstrap.elements) {
+    if (p.status === 'u' || p.status === 'n') continue;
+    if (p.now_cost < m[p.element_type]) m[p.element_type] = p.now_cost;
+  }
+  return m;
+}
+
+// Fills only the currently-empty squad slots, leaving every already-picked
+// player untouched. A per-slot budget reservation (cheapest real price for
+// each position still to be filled) stops an early greedy pick from
+// starving later positions of any affordable options.
+function fillEmptySlotsStyled(model, style) {
+  const squad = [...view.baseSquad];
+  const need = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  for (const pos of [1, 2, 3, 4]) need[pos] = Math.max(0, QUOTA[pos] - posCounts(squad)[pos]);
+  if (![1, 2, 3, 4].some((pos) => need[pos] > 0)) return squad;
+  const minPrice = minPriceByPos();
+  const reserveAfter = () => [1, 2, 3, 4].reduce((s, pos) => s + need[pos] * minPrice[pos], 0);
+  for (const pos of [1, 2, 3, 4]) {
+    while (need[pos] > 0) {
+      need[pos]--; // this slot is being filled now - reserveAfter() reflects what's still left
+      const cap = BUDGET - cost(squad) - reserveAfter();
+      const clubs = clubCounts(squad);
+      const base = state.bootstrap.elements.filter((p) =>
+        p.element_type === pos && !squad.includes(p.id) &&
+        p.status !== 'u' && p.status !== 'n' &&
+        (clubs[p.team] || 0) < MAX_PER_CLUB);
+      const affordable = base.filter((p) => p.now_cost <= Math.max(minPrice[pos], cap));
+      const pool = affordable.length ? affordable : base;
+      if (!pool.length) continue;
+      pool.sort((a, b) => styleScore(model, style, b) - styleScore(model, style, a));
+      squad.push(pool[0].id);
+    }
+  }
+  return squad;
+}
+
 const FORMATIONS = [];
 for (let d = 3; d <= 5; d++)
   for (let m = 2; m <= 5; m++)
@@ -503,6 +578,31 @@ function upgradeSuggestions(model, gw) {
     .slice(0, 4);
 }
 
+// Beyond one-for-one upgrades: does moving TWO players at once beat
+// either move alone once the hit cost of a second transfer is counted?
+// A real combinatorial solver would search every pair in the squad; this
+// checks pairs among the already-ranked single-upgrade candidates, which
+// is where a genuinely worthwhile double move almost always lives.
+function bestComboSuggestion(model, gw, ft, upgrades) {
+  if (upgrades.length < 2) return null;
+  const avail = ft[gw]?.avail ?? 0;
+  const hitCost = (n) => Math.max(0, n - avail) * 4;
+  let best = null;
+  for (let i = 0; i < upgrades.length; i++) {
+    for (let j = i + 1; j < upgrades.length; j++) {
+      const a = upgrades[i];
+      const b = upgrades[j];
+      if (a.outId === b.outId || a.inId === b.inId || a.outId === b.inId || a.inId === b.outId) continue;
+      const net = (a.gain + b.gain) - hitCost(2);
+      const bestSingleNet = Math.max(a.gain - hitCost(1), b.gain - hitCost(1));
+      if (net > bestSingleNet + 0.3 && (!best || net > best.net)) {
+        best = { a, b, net, hits: hitCost(2) };
+      }
+    }
+  }
+  return best;
+}
+
 function chipAdvice(model) {
   let tc = null;
   let bb = null;
@@ -517,7 +617,7 @@ function chipAdvice(model) {
   return { tc, bb };
 }
 
-function assistantPanel(model, gw) {
+function assistantPanel(model, gw, ft) {
   if (view.baseSquad.length < 15) {
     return `<div class="assistant-card">
       <div class="assistant-head">${t('pl.assistant')}</div>
@@ -539,6 +639,22 @@ function assistantPanel(model, gw) {
   }
   if (!upgrades.length) {
     items.push(`<div class="as-item"><span>${t('pl.asNoUpgrades')}</span></div>`);
+  }
+
+  // Combos only make sense for a real transfer GW - the base squad (first
+  // GW) is edited for free, so there's no hit cost to weigh a double move
+  // against.
+  const combo = isFirst ? null : bestComboSuggestion(model, gw, ft, upgrades);
+  if (combo) {
+    items.push(`<div class="as-item">
+      <span>${t('pl.asCombo', {
+        inA: name(combo.a.inId), outA: name(combo.a.outId),
+        inB: name(combo.b.inId), outB: name(combo.b.outId),
+        n: combo.net.toFixed(1), pts: t('stat.xp'),
+        hitNote: combo.hits ? t('pl.asComboHit', { n: combo.hits }) : '',
+      })}</span>
+      <button class="as-apply" data-act="combo" data-out-a="${combo.a.outId}" data-in-a="${combo.a.inId}" data-out-b="${combo.b.outId}" data-in-b="${combo.b.inId}">${t('pl.asApplyBoth')}</button>
+    </div>`);
   }
 
   if (isFirst && view.starters.length) {
@@ -780,10 +896,17 @@ function buildModeHtml(model, gw) {
     for (let i = ids.length; i < QUOTA[pos]; i++) cards.push(emptySlot(pos));
     return `<div class="pitch-row" data-pos="${pos}">${cards.join('')}</div>`;
   }).join('');
+  const remaining = 15 - view.baseSquad.length;
   return `
     <div class="build-hint">
       <span>${t('pl.buildHint')}</span>
       <span class="muted">${t('pl.pickedCount', { n: view.baseSquad.length })}</span>
+    </div>
+    <div class="build-style-row">
+      <select id="pl-style">
+        ${BUILD_STYLES.map((s) => `<option value="${s.key}" ${view.buildStyle === s.key ? 'selected' : ''}>${s.label()}</option>`).join('')}
+      </select>
+      <button class="btn ghost" id="pl-fill-empty" ${remaining ? '' : 'disabled'} title="${remaining ? t('pl.fillEmptyTitle') : t('pl.noEmptySlots')}">${t('pl.fillEmpty')}</button>
     </div>
     <div class="pitch pitch-build">${rows}</div>`;
 }
@@ -1058,7 +1181,7 @@ export async function renderPlanner(root) {
       </div>` : ''}
       ${chipsBar(model, gw)}
       ${transfersBar(model, gw, ft)}
-      ${view.showAssistant ? assistantPanel(model, gw) : ''}
+      ${view.showAssistant ? assistantPanel(model, gw, ft) : ''}
       <div class="planner-layout">
         <div class="planner-main">${pitchHtml(model, gw)}</div>
         <aside class="planner-side">${sideList(model, gw)}</aside>
@@ -1140,6 +1263,16 @@ export async function renderPlanner(root) {
     rerender();
   });
 
+  root.querySelector('#pl-style')?.addEventListener('change', (e) => {
+    view.buildStyle = e.target.value;
+  });
+
+  root.querySelector('#pl-fill-empty')?.addEventListener('click', () => {
+    view.baseSquad = fillEmptySlotsStyled(model, view.buildStyle);
+    ensureConsistency(model);
+    rerender();
+  });
+
   root.querySelector('#pl-assist').addEventListener('click', () => {
     view.showAssistant = !view.showAssistant;
     rerender();
@@ -1171,6 +1304,10 @@ export async function renderPlanner(root) {
       }
       if (act === 'captain') view.captain = +b.dataset.id;
       if (act === 'chip') view.chips[+b.dataset.gw] = b.dataset.chip;
+      if (act === 'combo') {
+        recordTransfer(model, gw, +b.dataset.outA, +b.dataset.inA);
+        recordTransfer(model, gw, +b.dataset.outB, +b.dataset.inB);
+      }
       ensureConsistency(model);
       rerender();
     })

@@ -20,6 +20,25 @@ let baselineById = null;
 // computed by scripts/calibrate.py from prediction-vs-actual history.
 let calibration = null;
 
+// Per-player expected-minutes overrides: "don't agree with a player's
+// predicted minutes? edit it yourself and see the forecast change
+// immediately" - stored per device, read fresh (not cached) since the
+// drawer edits it and re-renders through a brand new buildModel() call.
+const MIN_OVERRIDE_KEY = 'amitfpl:minOverrides';
+function readMinOverrides() {
+  try { return JSON.parse(localStorage.getItem(MIN_OVERRIDE_KEY)) || {}; } catch { return {}; }
+}
+export function getMinOverride(id) {
+  const v = readMinOverrides()[id];
+  return typeof v === 'number' ? v : null;
+}
+export function setMinOverride(id, mins) {
+  const all = readMinOverrides();
+  if (mins == null) delete all[id];
+  else all[id] = Math.max(0, Math.min(90, mins));
+  localStorage.setItem(MIN_OVERRIDE_KEY, JSON.stringify(all));
+}
+
 // Frozen pre-season stats for a player (null if unknown).
 export function baselinePlayer(id) {
   return baselineById?.[id] || null;
@@ -207,7 +226,8 @@ export function buildModel(horizon) {
       }
     } else {
       const { startRate, minsPerStart } = blendedStarts(p, b?.minutes ? b : ref);
-      const expMins = startRate * minsPerStart * avail;
+      const override = getMinOverride(playerId);
+      const expMins = (override != null ? override : startRate * minsPerStart) * avail;
       const minFactor = expMins / 90;
       const p60 = Math.max(0, Math.min(1, (expMins - 30) / 45));
       const playProb = Math.max(p60, Math.min(1, expMins / 45));
@@ -262,6 +282,19 @@ export function buildModel(horizon) {
   }
 
   const horizonTotal = (playerId) => gws.reduce((s, e) => s + xp(playerId, e), 0);
+
+  // The model's own per-match minutes estimate (ignoring availability -
+  // that's applied separately per fixture) plus any active override, for
+  // the drawer's editable-minutes control.
+  function expectedMinutes(playerId) {
+    const p = state.playersById[playerId];
+    if (!p) return { estimate: 0, override: null };
+    const b = baselineById?.[playerId] || null;
+    const ref = b?.minutes ? b : p;
+    if (!ref.minutes) return { estimate: 0, override: null };
+    const { startRate, minsPerStart } = blendedStarts(p, b?.minutes ? b : ref);
+    return { estimate: Math.round(startRate * minsPerStart), override: getMinOverride(playerId) };
+  }
 
   // Probability the player scores at least one goal in the GW (Poisson
   // on his expected goals across that GW's fixtures).
@@ -331,7 +364,7 @@ export function buildModel(horizon) {
     return 1 - Math.exp(-xa);
   }
 
-  return { xp, gws, horizonTotal, goalChance, assistChance };
+  return { xp, gws, horizonTotal, goalChance, assistChance, expectedMinutes };
 }
 
 // Per-fixture team forecast for one gameweek: expected goals scored and
