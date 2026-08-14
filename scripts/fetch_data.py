@@ -6,12 +6,17 @@ and can be run locally too. Only stdlib — no dependencies.
 """
 import json
 import os
+import re
 import sys
 import time
+import unicodedata
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
 API = "https://fantasy.premierleague.com/api"
+WIKIDATA_API = "https://www.wikidata.org/w/api.php"
+FOOTBALLER_QID = "Q937857"  # Wikidata: "association football player"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
 HEADERS = {"User-Agent": "Mozilla/5.0 (amitfpl data refresh)"}
@@ -159,10 +164,159 @@ def snapshot_leagues(entry, team_id):
         write("leagues.json", {"teamId": str(team_id), "leagues": out})
 
 
+def wikidata_get(params):
+    url = f"{WIKIDATA_API}?{urllib.parse.urlencode(params)}"
+    req = urllib.request.Request(url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.load(resp)
+
+
+def hebrew_name_from_wikidata(full_name):
+    """A footballer's Hebrew Wikipedia title, via Wikidata - free, no
+    key. Full names are common enough (many "John Smith"s exist) that
+    a bare name search can't be trusted on its own, so every candidate
+    is checked for occupation = "association football player" (P106)
+    before its hewiki sitelink is used - silently borrowing some
+    unrelated same-named person's spelling would be worse than leaving
+    the name for the Telegram alert to flag instead."""
+    try:
+        search = wikidata_get({
+            "action": "wbsearchentities", "search": full_name, "language": "en",
+            "type": "item", "limit": 5, "format": "json",
+        })
+    except Exception as e:
+        print(f"wikidata search failed for {full_name!r}: {e}", file=sys.stderr)
+        return None
+    for hit in search.get("search", []):
+        qid = hit["id"]
+        try:
+            ent = wikidata_get({
+                "action": "wbgetentities", "ids": qid,
+                "props": "claims|sitelinks", "format": "json",
+            })
+        except Exception:
+            continue
+        time.sleep(0.2)
+        entity = ent.get("entities", {}).get(qid, {})
+        occupations = entity.get("claims", {}).get("P106", [])
+        is_footballer = any(
+            c.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id") == FOOTBALLER_QID
+            for c in occupations
+        )
+        if not is_footballer:
+            continue
+        hewiki = entity.get("sitelinks", {}).get("hewiki")
+        if not hewiki:
+            continue
+        # Hebrew Wikipedia adds a "(...)" disambiguator only when two
+        # people would otherwise share a title - strip it for display.
+        title = re.sub(r"\s*\([^)]*\)\s*$", "", hewiki["title"]).strip()
+        # Every existing entry uses the Hebrew geresh (׳) for the "tz/ch"
+        # sound, not a straight quote - some Wikipedia editors use the
+        # ASCII one instead, so normalize for visual consistency.
+        title = title.replace("'", "׳")
+        if title:
+            return title
+    return None
+
+
+def _ascii_fold(s):
+    """'Sánchez' -> 'sanchez': decompose accents (NFKD splits 'á' into
+    'a' + a combining mark) before dropping non-ASCII-letter chars, so
+    the base letter survives instead of vanishing with its accent."""
+    decomposed = unicodedata.normalize("NFKD", s or "")
+    return re.sub(r"[^a-zA-Z]", "", decomposed).lower()
+
+
+def display_slice(hebrew_title, web_name, first_name, second_name):
+    """Wikidata's title is the player's full name, but every other
+    entry in names-he.js is just the web_name-equivalent part - usually
+    the surname, occasionally the first name for players who go by it
+    (web_name itself already made that call, and FPL's first/second
+    name fields sometimes carry an extra middle name web_name drops,
+    e.g. web_name "Florentino" for first_name "Florentino Ibrain"). Match
+    web_name against a single word of either side rather than the whole
+    field, and take the corresponding single word of the Hebrew title;
+    if nothing lines up cleanly, keep the whole title rather than guess
+    which word(s) to drop."""
+    words = hebrew_title.split()
+    if not words:
+        return hebrew_title
+    wn = _ascii_fold(web_name)
+    second_words = (second_name or "").split()
+    if second_words and wn == _ascii_fold(second_words[-1]):
+        return words[-1]
+    first_words = (first_name or "").split()
+    if first_words and wn == _ascii_fold(first_words[0]):
+        return words[0]
+    return hebrew_title
+
+
+def resolve_hebrew_names(missing, elements):
+    """For each web_name missing from names-he.js, try Wikidata before
+    giving up on it entirely. Returns {web_name: hebrew} for whatever
+    it could confidently resolve; everything else is left for the
+    Telegram alert, same as before this existed."""
+    by_web_name = {}
+    for p in elements:
+        by_web_name.setdefault(p["web_name"], p)
+    resolved = {}
+    for name in missing:
+        p = by_web_name.get(name)
+        if not p:
+            continue
+        full_name = f"{p['first_name']} {p['second_name']}".strip()
+        if not full_name:
+            continue
+        hebrew = hebrew_name_from_wikidata(full_name)
+        if hebrew:
+            hebrew = display_slice(hebrew, name, p["first_name"], p["second_name"])
+            resolved[name] = hebrew
+            print(f"names-he: resolved {name} -> {hebrew} via Wikidata")
+    return resolved
+
+
+def update_names_he(resolved):
+    """Insert newly-resolved {web_name: hebrew} pairs into
+    js/names-he.js, in the same 'PLAYER_NAMES_HE[key] = value' line
+    format as every existing entry, keeping alphabetical order where
+    the comparison is unambiguous (falls back to appending at the end
+    otherwise - harmless, since object key order has no runtime
+    effect, only readability)."""
+    path = os.path.join(ROOT, "js", "names-he.js")
+    with open(path, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    def js_string(s):
+        return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+    for name, hebrew in resolved.items():
+        entry_line = f"  {js_string(name)}: {js_string(hebrew)},\n"
+        inserted = False
+        for i, line in enumerate(lines):
+            m = re.match(r"^  '((?:[^'\\]|\\.)*)':", line)
+            if m and m.group(1) > name:
+                lines.insert(i, entry_line)
+                inserted = True
+                break
+        if not inserted:
+            for i in range(len(lines) - 1, -1, -1):
+                if lines[i].strip() == "};":
+                    lines.insert(i, entry_line)
+                    break
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+    print(f"names-he.js: added {len(resolved)} auto-resolved name(s)")
+
+
 def report_missing_names(elements):
-    """Players whose web_name has no Hebrew mapping in js/names-he.js ->
-    data/names-missing.json (new signings after transfer windows)."""
-    import re
+    """Players whose web_name has no Hebrew mapping in js/names-he.js.
+    Tries Wikidata first (see resolve_hebrew_names) and commits
+    whatever that resolves straight into names-he.js; only genuine
+    misses end up in data/names-missing.json (new signings after
+    transfer windows) for the Telegram alert to flag for a manual
+    look."""
     try:
         with open(os.path.join(ROOT, "js", "names-he.js"), encoding="utf-8") as f:
             src = f.read()
@@ -172,6 +326,11 @@ def report_missing_names(elements):
         print(f"names-he.js parse failed: {e}", file=sys.stderr)
         return
     missing = sorted({p["web_name"] for p in elements} - keys)
+    if missing:
+        resolved = resolve_hebrew_names(missing, elements)
+        if resolved:
+            update_names_he(resolved)
+            missing = sorted(set(missing) - set(resolved))
     write("names-missing.json", {"count": len(missing), "names": missing})
     if missing:
         print(f"names-he: {len(missing)} unmapped: {', '.join(missing[:10])}")

@@ -531,10 +531,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .status-d { color: var(--amber); }
 .status-i, .status-s, .status-u, .status-n { color: var(--red); }
 
-.lineup-flag { font-size: 10px; margin-inline-start: 5px; cursor: help; }
-.lineup-flag.yes { color: var(--green); }
-.lineup-flag.no { color: var(--text-faint); }
-
 .hi { color: var(--green); font-weight: 600; }
 .lo { color: var(--red); }
 
@@ -562,6 +558,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .fdr-blank { background: transparent; color: var(--text-faint); font-weight: 500; }
 
 .team-cell { font-weight: 700; }
+.draft-name-input {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  width: 90px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+}
+.draft-name-input:hover { border-color: var(--border); }
+.draft-name-input:focus { border-color: var(--accent); background: var(--surface); outline: none; }
 .avg-pill {
   display: inline-block;
   font-weight: 700;
@@ -755,6 +764,34 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   display: block;
 }
 .pp-photo-sm { width: 42px; height: 42px; }
+
+/* Predicted-lineup status: a coloured ring around the photo itself
+   instead of another corner badge (club crest, armband and price tag
+   already occupy those) - reads at a glance across a whole pitch of
+   cards, and works the same way on the side-list's smaller photos
+   even though .row-photo has no border of its own to override. */
+.face-wrap.lu-start { border: 2px solid var(--green); }
+.face-wrap.lu-bench { border: 2px solid var(--text-faint); opacity: 0.75; }
+
+/* Explicit label - the ring alone read as decoration, not a stated
+   fact, so it's paired with the actual word. "Starts" gets the same
+   bold solid-fill treatment as .pp-in (transferred-in badge) so it
+   actually pops, not the same soft tint every other pill on the page
+   already uses. "Bench" stays muted on purpose - it's the
+   unremarkable default, not the thing that should catch the eye.
+   Uses --accent rather than green: these pills sit on the pitch's
+   green background, so a green pill read as camouflage, not a badge. */
+.lineup-pill {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+.lineup-pill.lu-start { background: var(--accent); color: #fff; }
+.lineup-pill.lu-bench { background: #eceef3; color: #5b6478; }
+[data-theme="dark"] .lineup-pill.lu-bench { background: #232b3d; color: #aab3c9; }
 .pp-cap {
   position: absolute;
   top: -4px;
@@ -901,7 +938,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--text);
   width: 100%;
 }
-.side-filters { display: flex; gap: 8px; }
+/* Five filters (price, position, club, starts/bench, sort) don't fit
+   one row at the sidebar's width - wrap instead of silently
+   overflowing past the panel's `overflow: hidden` and clipping the
+   last control or two out of view. */
+.side-filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .side-filters select {
   font: inherit;
   font-size: 12px;
@@ -910,7 +951,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  flex: 1;
+  flex: 1 1 84px;
+  min-width: 0;
 }
 .side-list { overflow-y: auto; flex: 1; }
 .side-row {

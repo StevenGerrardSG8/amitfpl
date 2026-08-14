@@ -69,19 +69,40 @@ def pick(options, team_hint):
 
 
 def main():
+    # Re-matching all ~600 players costs ~600 rate-limited FotMob calls
+    # (a couple of minutes) every run, for players that were already
+    # matched last time and haven't changed. Default to only chasing
+    # what's actually missing (new signings) so this is cheap enough to
+    # run on a schedule instead of "occasionally" by hand; --full still
+    # does the complete rebuild for when the matching logic itself changes.
+    full = "--full" in sys.argv
+    faces_path = os.path.join(ROOT, "data", "faces.json")
     boot = json.load(open(os.path.join(ROOT, "data", "bootstrap.json")))
     teams = {t["id"]: t["name"] for t in boot["teams"]}
-    faces = {}
+    try:
+        with open(faces_path) as f:
+            faces = {int(k): v for k, v in json.load(f).items()}
+    except Exception:
+        faces = {}
+
+    all_ids = {p["id"] for p in boot["elements"]}
+    faces = {pid: fid for pid, fid in faces.items() if pid in all_ids}  # drop departed players
+    players = boot["elements"] if full else [p for p in boot["elements"] if p["id"] not in faces]
+    if not players:
+        with open(faces_path, "w") as f:
+            json.dump(faces, f)
+        print("faces.json: nothing new to match")
+        return 0
+
     unmatched = []
-    players = boot["elements"]
     for i, p in enumerate(players):
         hint = TEAM_HINTS.get(teams[p["team"]], norm(teams[p["team"]]))
-        full = norm(f"{p['first_name']} {p['second_name']}")
-        fid = pick(suggest(full), hint)
+        full_name = norm(f"{p['first_name']} {p['second_name']}")
+        fid = pick(suggest(full_name), hint)
         if not fid:
             time.sleep(0.1)
             web = norm(p["web_name"])
-            if web and web != full:
+            if web and web != full_name:
                 fid = pick(suggest(web), hint)
         if not fid:
             time.sleep(0.1)
@@ -94,11 +115,12 @@ def main():
             unmatched.append(p["web_name"])
         time.sleep(0.12)
         if (i + 1) % 50 == 0:
-            print(f"{i + 1}/{len(players)} … matched {len(faces)}")
-    with open(os.path.join(ROOT, "data", "faces.json"), "w") as f:
+            print(f"{i + 1}/{len(players)} … matched {len(players) - len(unmatched)}")
+    with open(faces_path, "w") as f:
         json.dump(faces, f)
-    print(f"\nmatched {len(faces)}/{len(players)}")
-    print("unmatched:", ", ".join(unmatched[:25]), "…" if len(unmatched) > 25 else "")
+    print(f"\nmatched {len(players) - len(unmatched)}/{len(players)} ({'full rebuild' if full else 'new/missing'})")
+    if unmatched:
+        print("still unmatched:", ", ".join(unmatched[:25]), "…" if len(unmatched) > 25 else "")
     return 0
 
 

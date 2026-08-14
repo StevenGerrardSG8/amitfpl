@@ -8,15 +8,22 @@ import { playerPhoto, teamBadge, inlinePhoto, fixtureChips, fixtureDifficulty, i
 import { loadBaseline, buildModel } from './model.js';
 import { openDrawer } from './drawer.js';
 import { getPredictedXI } from './lineups.js';
-import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort } from './i18n.js';
+import { t, haMark, gwLabel, posShort, posPlural, playerName, teamShort, teamName } from './i18n.js';
 
-// Small badge: does this player actually start for his real club right
-// now, per the same model behind the Lineups tab? A fantasy squad slot
-// scoring 0 because its owner is on the bench is exactly the kind of
-// thing this planner should surface, not just fixtures and price.
-function lineupFlag(p) {
+// Does this player actually start for his real club right now, per
+// the same model behind the Lineups tab? A fantasy squad slot scoring
+// 0 because its owner is on the bench is exactly the kind of thing
+// this planner should surface, not just fixtures and price. The ring
+// around the photo alone read as decoration, not information - so it
+// pairs with an explicit "Starts"/"Bench" pill, same words the Lineups
+// tab itself and the rest of the app already use for this.
+function lineupStatus(p) {
   const starting = getPredictedXI(p.team).has(p.id);
-  return `<span class="lineup-flag ${starting ? 'yes' : 'no'}" title="${starting ? t('pl.predictedStart') : t('pl.predictedBench')}">${starting ? '●' : '○'}</span>`;
+  return {
+    cls: starting ? 'lu-start' : 'lu-bench',
+    label: starting ? t('common.starts') : t('common.bench'),
+    title: starting ? t('pl.predictedStart') : t('pl.predictedBench'),
+  };
 }
 
 // On phones the per-card action buttons become a bottom action sheet.
@@ -28,6 +35,20 @@ let slot = 'A';
 try { slot = localStorage.getItem(SLOT_KEY) || 'A'; } catch { /* private mode */ }
 const slotKey = (s) => `amitfpl:planner:v3:${s}`;
 const LEGACY_KEY = 'amitfpl:planner:v3';
+
+// Custom draft names live in their own key, not inside each slot's own
+// saved plan - naming slot B shouldn't require ever loading B as the
+// active slot, and a name shouldn't vanish just because that slot's
+// plan gets cleared.
+const DRAFT_NAMES_KEY = 'amitfpl:planner:draftNames';
+let draftNames = {};
+try { draftNames = JSON.parse(localStorage.getItem(DRAFT_NAMES_KEY)) || {}; } catch { /* private mode */ }
+const draftLabel = (s) => (draftNames[s] || '').trim() || t(`draft.${s}`);
+function setDraftName(s, name) {
+  const trimmed = name.trim().slice(0, 24);
+  if (trimmed) draftNames[s] = trimmed; else delete draftNames[s];
+  try { localStorage.setItem(DRAFT_NAMES_KEY, JSON.stringify(draftNames)); } catch { /* private mode */ }
+}
 
 function draftMeta(s) {
   try {
@@ -62,6 +83,8 @@ const BUILD_STYLES = [
 
 const view = {
   horizon: 5,
+  formationLock: null, // null = auto; otherwise '3-4-3' etc, one of FORMATIONS
+  buildMode: 'xp', // 'xp' | 'owned' | 'differential' - what auto-build optimizes for
   planGw: null,
   baseSquad: [],   // 15 ids at the start of the plan
   starters: [],    // manual XI for the first GW
@@ -69,6 +92,8 @@ const view = {
   chips: {},       // eventId -> 'WC' | 'FH' | 'BB' | 'TC'
   transfers: {},   // eventId -> [{out, in}] for GWs after the first
   filterPos: 'all',
+  filterTeam: 'all',
+  filterStart: 'all', // 'all' | 'start' | 'bench' - real-life predicted lineup status
   search: '',
   maxPrice: '',
   sortKey: 'xp',
@@ -107,7 +132,7 @@ window.addEventListener('scroll', () => {
 const encodePlan = () => {
   const payload = JSON.stringify({
     h: view.horizon, s: view.baseSquad, x: view.starters,
-    c: view.captain, ch: view.chips, t: view.transfers,
+    c: view.captain, ch: view.chips, t: view.transfers, fl: view.formationLock,
   });
   return btoa(unescape(encodeURIComponent(payload))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
@@ -125,6 +150,7 @@ function importPlanFromHash() {
       captain: d.c || null,
       chips: d.ch || {},
       transfers: d.t || {},
+      formationLock: FORMATION_STRINGS.includes(d.fl) ? d.fl : null,
     });
     save();
     history.replaceState(null, '', '#planner');
@@ -148,6 +174,7 @@ function load() {
     if (saved) {
       Object.assign(view, {
         horizon: saved.horizon || 5,
+        formationLock: FORMATION_STRINGS.includes(saved.formationLock) ? saved.formationLock : null,
         baseSquad: (saved.baseSquad || []).filter((id) => state.playersById[id]),
         starters: (saved.starters || []).filter((id) => state.playersById[id]),
         captain: saved.captain || null,
@@ -155,7 +182,7 @@ function load() {
         transfers: saved.transfers || {},
         buildOptions: (saved.buildOptions || []).filter(
           (o) => (o?.squad || []).every((id) => state.playersById[id])
-        ).slice(0, 3) || null,
+        ) || null,
       });
       if (!view.buildOptions?.length) view.buildOptions = null;
       return;
@@ -178,6 +205,7 @@ function load() {
 const save = () =>
   localStorage.setItem(slotKey(slot), JSON.stringify({
     horizon: view.horizon,
+    formationLock: view.formationLock,
     baseSquad: view.baseSquad,
     starters: view.starters,
     captain: view.captain,
@@ -297,34 +325,140 @@ function dropTransfer(gw, idx) {
 // XI slots count in full, bench slots barely. Optimizing this - instead
 // of the raw sum of all 15 - keeps the budget in the starting lineup,
 // so near-zero "enabler" picks sit on the bench instead of up front.
-const SLOT_WEIGHTS = {
-  1: [1, 0.1],
-  2: [1, 1, 1, 0.7, 0.25],
-  3: [1, 1, 1, 0.7, 0.25],
-  4: [1, 0.8, 0.35],
-};
+// The default assumes a squad has to cover whatever formation it ends
+// up needing, so it guarantees real weight to a 4th DEF/MID and treats
+// a 3rd FWD as a pure cheap enabler - which is why an un-targeted build
+// almost always suits 4-4-2 best. slotWeightsFor([d,m,f]) derives the
+// same shape of table but targeted at one specific formation: full
+// weight for exactly the starters that formation needs, tapering off
+// for whatever's left over as bench depth.
+const TAIL_DM = [0.7, 0.25, 0.1];
+const TAIL_FWD = [0.8, 0.35, 0.15];
+function slotWeightsFor(formation) {
+  // Default parameter destructuring only kicks in for `undefined`, but
+  // `null` is this file's own convention for "no formation" everywhere
+  // else (parseFormationLock, view.formationLock) - callers legitimately
+  // pass it here too, so it has to fall back the same way `undefined`
+  // does instead of crashing on `[d, m, f] = null`.
+  const [d, m, f] = formation || [3, 3, 1];
+  const tail = (req, total, taper) =>
+    Array.from({ length: total }, (_, i) => (i < req ? 1 : taper[i - req] ?? 0.05));
+  return {
+    1: [1, 0.1],
+    2: tail(d, 5, TAIL_DM),
+    3: tail(m, 5, TAIL_DM),
+    4: tail(f, 3, TAIL_FWD),
+  };
+}
+const SLOT_WEIGHTS = slotWeightsFor();
 
-function weightedSquadScore(squad, score) {
+// "Most owned" and "most differential" builds aren't optimizing a
+// starting XI's shape at all - they want the best sum across the
+// whole 15, bench included, so every slot counts the same instead of
+// tapering off after the depth a formation would need.
+const UNIFORM_WEIGHTS = { 1: [1, 1], 2: [1, 1, 1, 1, 1], 3: [1, 1, 1, 1, 1], 4: [1, 1, 1] };
+
+function weightedSquadScore(squad, score, weights = SLOT_WEIGHTS) {
   let total = 0;
   for (const pos of [1, 2, 3, 4]) {
     const vals = squad.filter((id) => posOf(id) === pos).map((id) => score[id]).sort((a, b) => b - a);
-    for (let i = 0; i < vals.length; i++) total += vals[i] * (SLOT_WEIGHTS[pos][i] ?? 0);
+    for (let i = 0; i < vals.length; i++) total += vals[i] * (weights[pos][i] ?? 0);
   }
   return total;
+}
+
+// A fantasy pick who's really benched by his own club is a
+// near-guaranteed blank whatever his underlying quality, so real
+// life's own starting XI gets a soft say here too - not just once the
+// squad is picked and the XI gets chosen from it, but already at
+// build time, so auto-build stops proposing real-bench players in the
+// first place instead of relying on bestXI to work around them later.
+const REAL_BENCH_DISCOUNT = 0.6;
+const isRealStarter = (id) => getPredictedXI(state.playersById[id].team).has(id);
+const xiWeight = (id) => (isRealStarter(id) ? 1 : REAL_BENCH_DISCOUNT);
+
+// Single-slot upgrades (below) only ever accept a swap that improves
+// the score on its own, so once the budget is fully committed they
+// stall: freeing money to afford a badly-needed upgrade in one
+// position means accepting a worse player in another, which no single
+// swap will ever do by itself. This pairs a downgrade with the
+// upgrade it funds and judges the two together, so a squad that's
+// paid for three premium picks and left, say, its forward line with
+// nothing but minimum-price fillers can still trade a little of that
+// premium away for a real second forward. Candidate shortlists are
+// capped (cheapest few to free money, best-scoring few to spend it) to
+// keep the search - one pair of nested position pools per candidate
+// pair - fast enough to run inside the existing iteration budget.
+const COMPOUND_SHORTLIST = 15;
+function bestCompoundSwap(squad, score, pools, weights) {
+  const curScore = weightedSquadScore(squad, score, weights);
+  let best = null;
+  for (let i = 0; i < squad.length; i++) {
+    const curI = state.playersById[squad[i]];
+    const donors = pools[curI.element_type]
+      .filter((p) => p.now_cost < curI.now_cost && !squad.includes(p.id))
+      .sort((a, b) => a.now_cost - b.now_cost)
+      .slice(0, COMPOUND_SHORTLIST);
+    for (const donor of donors) {
+      const trial1 = squad.map((id, k) => (k === i ? donor.id : id));
+      const trial1Cost = cost(trial1);
+      for (let j = 0; j < squad.length; j++) {
+        if (j === i) continue;
+        const curJ = state.playersById[squad[j]];
+        // Filter to what's actually affordable with the money this
+        // donor swap freed *before* ranking by score - otherwise the
+        // top-15-by-score shortlist can be entirely out of reach and
+        // the search finds nothing, even when an affordable recipient
+        // further down the ranking would have been a real upgrade.
+        const maxAffordable = BUDGET - trial1Cost + curJ.now_cost;
+        const recipients = pools[curJ.element_type]
+          .filter((p) => !trial1.includes(p.id) && p.now_cost <= maxAffordable)
+          .sort((a, b) => score[b.id] - score[a.id])
+          .slice(0, COMPOUND_SHORTLIST);
+        for (const rec of recipients) {
+          const trial2 = trial1.map((id, k) => (k === j ? rec.id : id));
+          if (Object.values(clubCounts(trial2)).some((c) => c > MAX_PER_CLUB)) continue;
+          const s = weightedSquadScore(trial2, score, weights);
+          if (s > curScore + 0.001 && (!best || s > best.s)) best = { i, donorId: donor.id, j, recId: rec.id, s };
+        }
+      }
+    }
+  }
+  return best;
 }
 
 // avoid: ids from earlier build options, mildly penalized so the next
 // option lands on a genuinely different squad - not the same 15 again.
 // jitter: random per-player noise so every click of the build button
 // reshuffles the marginal picks instead of repeating the same answer.
-function buildOptimalSquad(model, avoid = null, jitter = 0) {
+// mode: 'xp' (default) maximizes expected points; 'owned' maximizes
+// total ownership %, for a safe/template squad; 'differential' picks
+// only real-life starters under DIFFERENTIAL_OWNERSHIP_CAP, then
+// maximizes spend + xP within that pool. A soft ownership penalty in
+// the score (rather than a hard cutoff) would let a couple of extra
+// points of xP or price buy back several points of ownership one
+// swap at a time, drifting the "differential" squad toward the same
+// popular picks "most owned" would choose - the cap keeps every slot
+// genuinely low-owned, and once that's guaranteed, nothing left in
+// the score should be pulling away from using the full budget.
+const DIFFERENTIAL_OWNERSHIP_CAP = 10;
+function buildOptimalSquad(model, avoid = null, jitter = 0, formation = null, mode = 'xp') {
+  const weights = mode === 'xp' ? slotWeightsFor(formation) : UNIFORM_WEIGHTS;
   const score = {};
   const pools = { 1: [], 2: [], 3: [], 4: [] };
   for (const p of state.bootstrap.elements) {
     if (p.status === 'u' || p.status === 'n') continue;
-    score[p.id] = model.horizonTotal(p.id)
-      * (avoid?.has(p.id) ? 0.9 : 1)
-      * (jitter ? 1 + (Math.random() - 0.5) * jitter : 1);
+    if (mode === 'differential' && (!isRealStarter(p.id) || num(p.selected_by_percent) > DIFFERENTIAL_OWNERSHIP_CAP)) continue;
+    if (mode === 'owned') {
+      score[p.id] = num(p.selected_by_percent);
+    } else if (mode === 'differential') {
+      score[p.id] = p.now_cost * 10 + model.horizonTotal(p.id);
+    } else {
+      score[p.id] = model.horizonTotal(p.id)
+        * xiWeight(p.id)
+        * (avoid?.has(p.id) ? 0.9 : 1)
+        * (jitter ? 1 + (Math.random() - 0.5) * jitter : 1);
+    }
     pools[p.element_type].push(p);
   }
   for (const pos of [1, 2, 3, 4]) {
@@ -343,7 +477,7 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
       taken++;
     }
   }
-  let curScore = weightedSquadScore(squad, score);
+  let curScore = weightedSquadScore(squad, score, weights);
   for (let iter = 0; iter < 300; iter++) {
     let best = null;
     for (let i = 0; i < squad.length; i++) {
@@ -354,13 +488,20 @@ function buildOptimalSquad(model, avoid = null, jitter = 0) {
         const counts = clubCounts(squad.filter((id) => id !== cur.id));
         if ((counts[cand.team] || 0) >= MAX_PER_CLUB) continue;
         const trial = squad.map((id, j) => (j === i ? cand.id : id));
-        const s = weightedSquadScore(trial, score);
+        const s = weightedSquadScore(trial, score, weights);
         if (s > curScore + 0.001 && (!best || s > best.s)) best = { i, cand: cand.id, s };
       }
     }
-    if (!best) break;
-    squad[best.i] = best.cand;
-    curScore = best.s;
+    if (best) {
+      squad[best.i] = best.cand;
+      curScore = best.s;
+      continue;
+    }
+    const compound = bestCompoundSwap(squad, score, pools, weights);
+    if (!compound) break;
+    squad[compound.i] = compound.donorId;
+    squad[compound.j] = compound.recId;
+    curScore = compound.s;
   }
   return squad;
 }
@@ -435,29 +576,343 @@ for (let d = 3; d <= 5; d++)
     for (let f = 1; f <= 3; f++)
       if (d + m + f === 10) FORMATIONS.push([d, m, f]);
 
-export function bestXI(model, squadIds, eventId) {
+// Every squad always has the standard 2/5/5/3 split, so all 8 of
+// these are reachable from any complete squad - no feasibility check
+// needed when a user locks one in.
+const FORMATION_STRINGS = FORMATIONS.map(([d, m, f]) => `${d}-${m}-${f}`);
+const parseFormationLock = (s) => (FORMATION_STRINGS.includes(s) ? FORMATIONS.find(([d, m, f]) => `${d}-${m}-${f}` === s) : null);
+
+// buildModel(horizon) walks forward from the current gw and stops at
+// gw 38 regardless of how large `horizon` is, so any value at least
+// that large means "every remaining gameweek" - this sentinel just
+// documents the intent at call sites instead of a bare magic number.
+const SEASON_HORIZON = 99;
+
+// When nothing's locked, auto-build compares one squad genuinely built
+// for each of these horizons - a short-term push, a medium-term
+// balance, a season-long hold - each with its own true forecast and
+// its own simulated transfer/chip plan, so the choice is a real
+// short-vs-long-term tradeoff instead of near-duplicates.
+const COMPARE_HORIZONS = [3, 5, 8, SEASON_HORIZON];
+
+const horizonLabel = (h) => (h === SEASON_HORIZON ? t('pl.seasonHorizon') : t('common.nGws', { n: h }));
+
+// If picking purely for total xp left the bench with zero real-club
+// starters, FPL's auto-substitution has nothing useful to bring on if
+// an XI player doesn't play. Swap in whichever bench player restores
+// that safety net for the least xp given up - skipped entirely if the
+// bench already has one, so this never fires on a normal squad.
+function ensureBenchHasRealStarter(model, eventId, squadIds, xi) {
+  const bench = squadIds.filter((id) => !xi.includes(id));
+  if (!bench.length || bench.some(isRealStarter)) return xi;
+  let swap = null;
+  for (const outId of xi) {
+    if (!isRealStarter(outId)) continue;
+    for (const inId of bench) {
+      if (posOf(inId) !== posOf(outId)) continue;
+      const cost = model.xp(outId, eventId) - model.xp(inId, eventId);
+      if (!swap || cost < swap.cost) swap = { outId, inId, cost };
+    }
+  }
+  return swap ? xi.map((id) => (id === swap.outId ? swap.inId : id)) : xi;
+}
+
+// formationLock: '4-4-2' etc to restrict the search to just that
+// formation, or omit/null to auto-pick whichever formation scores
+// highest (the normal behavior).
+export function bestXI(model, squadIds, eventId, formationLock) {
   const byPos = { 1: [], 2: [], 3: [], 4: [] };
   for (const id of squadIds) byPos[posOf(id)].push({ id, xp: model.xp(id, eventId) });
-  for (const pos of [1, 2, 3, 4]) byPos[pos].sort((a, b) => b.xp - a.xp);
+  for (const pos of [1, 2, 3, 4]) byPos[pos].sort((a, b) => b.xp * xiWeight(b.id) - a.xp * xiWeight(a.id));
+  const lock = parseFormationLock(formationLock);
   let best = null;
-  for (const [d, m, f] of FORMATIONS) {
+  for (const [d, m, f] of lock ? [lock] : FORMATIONS) {
     if (byPos[2].length < d || byPos[3].length < m || byPos[4].length < f || !byPos[1].length) continue;
     const xi = [byPos[1][0], ...byPos[2].slice(0, d), ...byPos[3].slice(0, m), ...byPos[4].slice(0, f)];
-    const total = xi.reduce((s, e) => s + e.xp, 0);
-    if (!best || total > best.total) best = { xi: xi.map((e) => e.id), total, formation: `${d}-${m}-${f}` };
+    // Formations are compared on the discounted total, not raw xp - a
+    // 4-5-1 that forces in a confirmed real-life bench-warmer as its
+    // 5th mid should lose to a 3-4-3 that plays an actual starter up
+    // front instead, even if the bench-warmer's raw xp edges it out.
+    // The reported total below is still true xp, so the discount never
+    // inflates the displayed forecast.
+    const weighted = xi.reduce((s, e) => s + e.xp * xiWeight(e.id), 0);
+    if (!best || weighted > best.weighted) best = { xi: xi.map((e) => e.id), weighted, formation: `${d}-${m}-${f}` };
   }
+  if (!best) return best;
+  best.xi = ensureBenchHasRealStarter(model, eventId, squadIds, best.xi);
+  best.total = best.xi.reduce((s, id) => s + model.xp(id, eventId), 0);
+  delete best.weighted;
   return best;
 }
 
 // Comparable forecast for an arbitrary squad: best XI + captain, summed
 // over the horizon. Labels the auto-build options so picking between
 // them is a number, not a guess.
-function squadForecast(model, squad) {
+function squadForecast(model, squad, formationLock = view.formationLock) {
   return model.gws.reduce((s, gw) => {
-    const xi = bestXI(model, squad, gw);
+    const xi = bestXI(model, squad, gw, formationLock);
     if (!xi) return s;
     return s + xi.total + Math.max(...xi.xi.map((id) => model.xp(id, gw)));
   }, 0);
+}
+
+// Same as squadForecast, but the squad is allowed to change gw to gw
+// (for a squad plus the transfer plan simulated for it below, where the
+// whole point is that the squad on gw 5 isn't the squad on gw 1
+// anymore), and it matches gwForecast's own accounting - captain
+// double, chip bonus, hit cost - instead of a bare XI sum, so the
+// number shown for an option is the same number "Plan xP" would show
+// once you actually pick it, not a smaller one that omits chips.
+function planForecast(model, squadTimeline, chips = {}, plan = []) {
+  const hitsByGw = {};
+  for (const tr of plan) if (tr.hit) hitsByGw[tr.gw] = (hitsByGw[tr.gw] || 0) + 4;
+  return model.gws.reduce((s, gw, i) => {
+    const squad = squadTimeline[i];
+    const xi = bestXI(model, squad, gw, null);
+    if (!xi) return s;
+    const capPts = Math.max(...xi.xi.map((id) => model.xp(id, gw)));
+    const benchPts = squad.filter((id) => !xi.xi.includes(id)).reduce((a, id) => a + model.xp(id, gw), 0);
+    let pts = xi.total + capPts;
+    if (chips.tc?.gw === gw) pts += capPts;
+    if (chips.bb?.gw === gw) pts += benchPts;
+    return s + pts - (hitsByGw[gw] || 0);
+  }, 0);
+}
+
+// A greedy week-by-week transfer plan for one horizon-built squad: at
+// each gw after the first, look for the single swap worth the most
+// xp over the rest of the horizon (not just that one week - a transfer
+// made in gw 2 pays for itself over gws 2..N, so it's judged on that
+// full remaining value, same logic a human would use to decide "is
+// this transfer worth it"). Takes it only if the gain clears a bar
+// that's higher when it would cost a hit (no free transfer banked) -
+// this is a real, if simplified, single-transfer-per-week planner, not
+// a globally optimal one; like the squad builder itself, a good greedy
+// heuristic beats no plan at all.
+function simulateTransferPlan(model, squad) {
+  const plan = [];
+  let cur = [...squad];
+  let ft = 1;
+  for (let i = 1; i < model.gws.length; i++) {
+    const gw = model.gws[i];
+    const itb = BUDGET - cost(cur);
+    const clubs = clubCounts(cur);
+    let best = null;
+    for (const outId of cur) {
+      const outP = state.playersById[outId];
+      for (const cand of state.bootstrap.elements) {
+        if (cand.element_type !== outP.element_type || cur.includes(cand.id)) continue;
+        if (cand.status !== 'a' && cand.status !== 'd') continue;
+        if (cand.now_cost > outP.now_cost + itb) continue;
+        const clubCount = (clubs[cand.team] || 0) - (cand.team === outP.team ? 1 : 0);
+        if (clubCount >= MAX_PER_CLUB) continue;
+        let gain = 0;
+        for (let j = i; j < model.gws.length; j++) {
+          gain += model.xp(cand.id, model.gws[j]) * xiWeight(cand.id) - model.xp(outId, model.gws[j]) * xiWeight(outId);
+        }
+        if (gain > 0 && (!best || gain > best.gain)) best = { outId, inId: cand.id, gain };
+      }
+    }
+    const bar = ft > 0 ? 1.5 : 4.5; // clearing a hit needs a bigger payoff
+    if (best && best.gain > bar) {
+      plan.push({ gw, outId: best.outId, inId: best.inId, gain: best.gain, hit: ft === 0 });
+      cur = cur.map((id) => (id === best.outId ? best.inId : id));
+      ft = Math.max(0, ft - 1);
+    }
+    ft = Math.min(MAX_FT, ft + 1);
+  }
+  return plan;
+}
+
+// FPL's own `form` (avg points over their last 30 days) is 0.0 for
+// every player before a ball's been kicked this season - so this nudge
+// is a genuine no-op right now, same as the Free Hit blank-gameweek
+// detection above. The moment real matches start feeding real form
+// numbers into the normal data refresh, a Wildcard/Free Hit rebuild
+// (and the weekly single-swap search below) starts actually favouring
+// whoever's hot, the way a real manager would, with no code change.
+const FORM_WEIGHT = 4;
+const formNudge = (id) => FORM_WEIGHT * num(state.playersById[id].form);
+
+// A model whose horizonTotal only sums a sub-window of gws instead of
+// the full remaining season - buildOptimalSquad only ever reads
+// model.xp/model.horizonTotal, so this is enough to make it rebuild
+// "the best squad for just this window" without touching it at all.
+const windowedModel = (model, gws) => ({
+  xp: model.xp,
+  gws,
+  horizonTotal: (id) => gws.reduce((s, e) => s + model.xp(id, e), 0) + formNudge(id),
+});
+
+// Pairs the players two same-quota squads don't share, position by
+// position (both squads satisfy the same GK/DEF/MID/FWD quota, so the
+// outs and ins for a given position always come out the same length).
+function squadDiff(fromSquad, toSquad) {
+  const moves = [];
+  for (const pos of [1, 2, 3, 4]) {
+    const outs = fromSquad.filter((id) => posOf(id) === pos && !toSquad.includes(id));
+    const ins = toSquad.filter((id) => posOf(id) === pos && !fromSquad.includes(id));
+    outs.forEach((outId, i) => moves.push({ outId, inId: ins[i] }));
+  }
+  return moves;
+}
+
+const SEASON_WC_COUNT = 2;
+const SEASON_WC_WINDOW = 8; // gws a Wildcard rebuild is aimed at, not the whole rest of the season
+const SEASON_WC_MIN_GAIN = 1; // over that window - low bar, since a free full rebuild has no real downside
+const SEASON_FH_MIN_BLANKS = 4; // squad players with no fixture that gw before Free Hit is even considered
+const SEASON_FH_MIN_GAIN = 2;
+// Lower than simulateTransferPlan's 1.5/4.5 - a season is 38 chances
+// to improve, not 3-8, and a squad built with full-season foresight
+// only clears a high bar rarely, which read as "no strategy at all"
+// rather than the deliberately conservative plan it actually was.
+const SEASON_SWAP_BAR_FREE = 0.5;
+const SEASON_SWAP_BAR_HIT = 3;
+
+// Rest-of-season plan: the same week-by-week single swap as
+// simulateTransferPlan, but with FPL's bigger season-shaping tools
+// folded in too, since a real manager wouldn't hold the same 15 all
+// year:
+//  - two Wildcards (free full-squad rebuilds), placed a quarter and
+//    three-quarters of the way through so each targets a fresh
+//    SEASON_WC_WINDOW-gw fixture swing instead of the literal rest of
+//    the season - and only taken if the rebuild clears a real bar,
+//    since it's a resource you only get twice.
+//  - one Free Hit, reserved for the squad's single blankest gameweek
+//    (a one-week-only rebuild that reverts after, same semantics as
+//    the manual FH chip already has via squadAt/ftInfo). FPL doesn't
+//    confirm blank/double gameweeks until cup replays force
+//    reschedules well into the season, so against today's fixture
+//    list this never finds a candidate - the moment fixtures.json
+//    picks up a real blank via the normal data refresh, this starts
+//    suggesting Free Hit for it with no further code changes.
+function simulateSeasonPlan(model, baseSquad) {
+  const gws = model.gws;
+  const wcPoints = new Set([gws[Math.floor(gws.length / 4)], gws[Math.floor((gws.length * 3) / 4)]].filter(Boolean));
+
+  let fhGw = null;
+  let fhBlanks = SEASON_FH_MIN_BLANKS - 1;
+  for (const gw of gws.slice(1)) {
+    const blanks = baseSquad.filter((id) =>
+      !(state.upcomingByTeam[state.playersById[id].team] || []).some((f) => f.event === gw)).length;
+    if (blanks > fhBlanks) { fhBlanks = blanks; fhGw = gw; }
+  }
+
+  const plan = [];
+  let cur = [...baseSquad];
+  let ft = 1;
+  let wcUsed = 0;
+  for (let i = 1; i < gws.length; i++) {
+    const gw = gws[i];
+
+    if (wcPoints.has(gw) && wcUsed < SEASON_WC_COUNT) {
+      wcUsed++;
+      const window = gws.slice(i, i + SEASON_WC_WINDOW);
+      const wModel = windowedModel(model, window);
+      const rebuilt = buildOptimalSquad(wModel, null, 0, null, 'xp');
+      // squadForecast is the same real-XI-plus-captain yardstick every
+      // other comparison in this file uses - a flat sum of raw per-
+      // player xp would rate buildOptimalSquad's own output as *worse*
+      // than the squad it's replacing, since the builder optimizes for
+      // slot-weighted XI value (bench barely counts), not a flat total.
+      if (squadForecast(wModel, rebuilt, null) - squadForecast(wModel, cur, null) > SEASON_WC_MIN_GAIN) {
+        plan.push({ gw, wc: true, moves: squadDiff(cur, rebuilt) });
+        cur = rebuilt;
+      }
+      // Neither chip spends or grants a free transfer, but banking still
+      // proceeds as normal - same real-FT semantics ftInfo already
+      // applies to the applied plan, kept in sync here so the sim's own
+      // hit/no-hit calls for the following weeks match what actually
+      // shows up once this plan is applied.
+      ft = Math.min(MAX_FT, ft + 1);
+      continue; // a Wildcard week already moved the squad - skip the single-swap check below
+    }
+
+    if (gw === fhGw) {
+      const wModel = windowedModel(model, [gw]);
+      const fhSquad = buildOptimalSquad(wModel, null, 0, null, 'xp');
+      if (squadForecast(wModel, fhSquad, null) - squadForecast(wModel, cur, null) > SEASON_FH_MIN_GAIN) {
+        plan.push({ gw, fh: true, moves: squadDiff(cur, fhSquad) });
+      }
+      ft = Math.min(MAX_FT, ft + 1);
+      continue; // Free Hit reverts after its own gw - `cur` carries on unchanged
+    }
+
+    const itb = BUDGET - cost(cur);
+    const clubs = clubCounts(cur);
+    let best = null;
+    for (const outId of cur) {
+      const outP = state.playersById[outId];
+      for (const cand of state.bootstrap.elements) {
+        if (cand.element_type !== outP.element_type || cur.includes(cand.id)) continue;
+        if (cand.status !== 'a' && cand.status !== 'd') continue;
+        if (cand.now_cost > outP.now_cost + itb) continue;
+        const clubCount = (clubs[cand.team] || 0) - (cand.team === outP.team ? 1 : 0);
+        if (clubCount >= MAX_PER_CLUB) continue;
+        let gain = formNudge(cand.id) - formNudge(outId);
+        for (let j = i; j < gws.length; j++) {
+          gain += model.xp(cand.id, gws[j]) * xiWeight(cand.id) - model.xp(outId, gws[j]) * xiWeight(outId);
+        }
+        if (gain > 0 && (!best || gain > best.gain)) best = { outId, inId: cand.id, gain };
+      }
+    }
+    const bar = ft > 0 ? SEASON_SWAP_BAR_FREE : SEASON_SWAP_BAR_HIT;
+    if (best && best.gain > bar) {
+      plan.push({ gw, outId: best.outId, inId: best.inId, gain: best.gain, hit: ft === 0 });
+      cur = cur.map((id) => (id === best.outId ? best.inId : id));
+      ft = Math.max(0, ft - 1);
+    }
+    ft = Math.min(MAX_FT, ft + 1);
+  }
+  return plan;
+}
+
+// The squad at each gw in model.gws, after applying a plan from
+// simulateTransferPlan/simulateSeasonPlan in order. Free Hit entries
+// deliberately don't update `cur` - they revert after their own gw,
+// same as the manual FH chip.
+function squadTimelineFromPlan(model, baseSquad, plan) {
+  let cur = [...baseSquad];
+  let planIdx = 0;
+  return model.gws.map((gw) => {
+    let fhSquad = null;
+    while (planIdx < plan.length && plan[planIdx].gw === gw) {
+      const t = plan[planIdx];
+      if (t.wc) {
+        for (const m of t.moves) cur = cur.map((id) => (id === m.outId ? m.inId : id));
+      } else if (t.fh) {
+        fhSquad = cur.map((id) => t.moves.find((m) => m.outId === id)?.inId ?? id);
+      } else {
+        cur = cur.map((id) => (id === t.outId ? t.inId : id));
+      }
+      planIdx++;
+    }
+    return fhSquad || cur;
+  });
+}
+
+// Best Triple Captain / Bench Boost weeks for a simulated timeline -
+// same idea as the Assistant's chipAdvice, but off a squad that's
+// allowed to evolve with the plan instead of the live view state.
+function simulateChipAdvice(model, timeline) {
+  let tc = null;
+  let bb = null;
+  let bbWeighted = -Infinity;
+  model.gws.forEach((gw, i) => {
+    const squad = timeline[i];
+    const xi = bestXI(model, squad, gw, null);
+    if (!xi) return;
+    const capXp = Math.max(...xi.xi.map((id) => model.xp(id, gw)));
+    const bench = squad.filter((id) => !xi.xi.includes(id));
+    const benchXp = bench.reduce((s, id) => s + model.xp(id, gw), 0);
+    // Same xiWeight ranking as chipAdvice - pick the gw where the bench
+    // is actually made of real starters squeezed out by the XI, not
+    // one propped up by a fringe player's raw (unrealistic) xp.
+    const benchWeighted = bench.reduce((s, id) => s + model.xp(id, gw) * xiWeight(id), 0);
+    if (!tc || capXp > tc.v) tc = { gw, v: capXp };
+    if (benchWeighted > bbWeighted) { bbWeighted = benchWeighted; bb = { gw, v: benchXp }; }
+  });
+  return { tc, bb };
 }
 
 const sameSquad = (a, b) =>
@@ -479,7 +934,7 @@ function ensureConsistency(model) {
     if (!view.transfers[e].length) delete view.transfers[e];
   }
   if (view.baseSquad.length === 15 && !formationValid(view.starters)) {
-    const xi = bestXI(model, view.baseSquad, firstGw(model));
+    const xi = bestXI(model, view.baseSquad, firstGw(model), view.formationLock);
     if (xi) view.starters = xi.xi;
   }
   if (view.captain && !view.starters.includes(view.captain)) view.captain = null;
@@ -530,7 +985,7 @@ function lineupFor(model, gw) {
     const cap = view.captain;
     return { squad, starters: view.starters, captain: cap, formation: null, manual: true };
   }
-  const xi = bestXI(model, squad, gw);
+  const xi = bestXI(model, squad, gw, view.formationLock);
   if (!xi) return { squad, starters: [], captain: null, formation: null, manual: false };
   const captain = [...xi.xi].sort((a, b) => model.xp(b, gw) - model.xp(a, gw))[0];
   return { squad, starters: xi.xi, captain, formation: xi.formation, manual: false };
@@ -551,6 +1006,13 @@ function gwForecast(model, gw, ft) {
 
 /* ---------------- assistant ---------------- */
 
+// Weighted by xiWeight for ranking/threshold, same as the auto-build
+// score and bestXI's formation choice - a transfer target who's
+// really benched by his own club shouldn't outrank a smaller raw
+// upgrade into a confirmed starter. The gain shown to the user is
+// still true (unweighted) xp, so the discount never inflates it.
+const wscore = (model, id) => model.horizonTotal(id) * xiWeight(id);
+
 function upgradeSuggestions(model, gw) {
   const squad = squadAt(model, gw);
   const itb = BUDGET - cost(squad);
@@ -559,6 +1021,7 @@ function upgradeSuggestions(model, gw) {
   for (const id of squad) {
     const cur = state.playersById[id];
     const curScore = model.horizonTotal(id);
+    const curWeighted = wscore(model, id);
     let best = null;
     for (const cand of state.bootstrap.elements) {
       if (cand.element_type !== cur.element_type || squad.includes(cand.id)) continue;
@@ -566,8 +1029,10 @@ function upgradeSuggestions(model, gw) {
       if (cand.now_cost > cur.now_cost + itb) continue;
       const clubCount = (clubs[cand.team] || 0) - (cand.team === cur.team ? 1 : 0);
       if (clubCount >= MAX_PER_CLUB) continue;
-      const gain = model.horizonTotal(cand.id) - curScore;
-      if (gain > 0.5 && (!best || gain > best.gain)) best = { cand, gain };
+      const weightedGain = wscore(model, cand.id) - curWeighted;
+      if (weightedGain > 0.5 && (!best || weightedGain > best.weightedGain)) {
+        best = { cand, weightedGain, gain: model.horizonTotal(cand.id) - curScore };
+      }
     }
     if (best) out.push({ outId: id, inId: best.cand.id, gain: best.gain });
   }
@@ -578,46 +1043,84 @@ function upgradeSuggestions(model, gw) {
     .slice(0, 4);
 }
 
-// Beyond one-for-one upgrades: does moving TWO players at once beat
-// either move alone once the hit cost of a second transfer is counted?
-// A real combinatorial solver would search every pair in the squad; this
-// checks pairs among the already-ranked single-upgrade candidates, which
-// is where a genuinely worthwhile double move almost always lives.
-function bestComboSuggestion(model, gw, ft, upgrades) {
-  if (upgrades.length < 2) return null;
-  const avail = ft[gw]?.avail ?? 0;
-  const hitCost = (n) => Math.max(0, n - avail) * 4;
+// A single transfer can only ever upgrade one slot, so a squad that's
+// spent its budget on premium picks elsewhere and left one position
+// threadbare has no single move that fixes it - selling that one weak
+// player never frees enough on its own to buy a real replacement. This
+// mirrors bestCompoundSwap: pair a sell-down in a well-stocked position
+// with the buy it funds, and suggest the pair only when the combined
+// true xp gain clears a higher bar than a single transfer would (two
+// moves - and the FT/hit cost that can come with them - want a bigger
+// payoff than one).
+const DOUBLE_SWAP_MIN_GAIN = 3;
+function compoundUpgradeSuggestion(model, gw) {
+  const squad = squadAt(model, gw);
+  const curScore = squad.reduce((s, id) => s + wscore(model, id), 0);
+  const byPos = { 1: [], 2: [], 3: [], 4: [] };
+  for (const p of state.bootstrap.elements) {
+    if ((p.status !== 'a' && p.status !== 'd') || squad.includes(p.id)) continue;
+    byPos[p.element_type].push(p);
+  }
   let best = null;
-  for (let i = 0; i < upgrades.length; i++) {
-    for (let j = i + 1; j < upgrades.length; j++) {
-      const a = upgrades[i];
-      const b = upgrades[j];
-      if (a.outId === b.outId || a.inId === b.inId || a.outId === b.inId || a.inId === b.outId) continue;
-      const net = (a.gain + b.gain) - hitCost(2);
-      const bestSingleNet = Math.max(a.gain - hitCost(1), b.gain - hitCost(1));
-      if (net > bestSingleNet + 0.3 && (!best || net > best.net)) {
-        best = { a, b, net, hits: hitCost(2) };
+  for (let i = 0; i < squad.length; i++) {
+    const curI = state.playersById[squad[i]];
+    const donors = byPos[curI.element_type]
+      .filter((p) => p.now_cost < curI.now_cost)
+      .sort((a, b) => a.now_cost - b.now_cost)
+      .slice(0, COMPOUND_SHORTLIST);
+    for (const donor of donors) {
+      const trial1 = squad.map((id, k) => (k === i ? donor.id : id));
+      const trial1Cost = cost(trial1);
+      for (let j = 0; j < squad.length; j++) {
+        if (j === i) continue;
+        const curJ = state.playersById[squad[j]];
+        // Same fix as bestCompoundSwap: rank only what's actually
+        // affordable with the money this donor swap freed, so the
+        // shortlist isn't wasted on recipients the freed cash can't
+        // reach.
+        const maxAffordable = BUDGET - trial1Cost + curJ.now_cost;
+        const recipients = byPos[curJ.element_type]
+          .filter((p) => !trial1.includes(p.id) && p.now_cost <= maxAffordable)
+          .sort((a, b) => wscore(model, b.id) - wscore(model, a.id))
+          .slice(0, COMPOUND_SHORTLIST);
+        for (const rec of recipients) {
+          const trial2 = trial1.map((id, k) => (k === j ? rec.id : id));
+          if (Object.values(clubCounts(trial2)).some((c) => c > MAX_PER_CLUB)) continue;
+          const s = trial2.reduce((sum, id) => sum + wscore(model, id), 0);
+          if (s > curScore + 0.001 && (!best || s > best.s)) {
+            best = { outId1: squad[i], inId1: donor.id, outId2: squad[j], inId2: rec.id, s };
+          }
+        }
       }
     }
   }
-  return best;
+  if (!best) return null;
+  const gain = (model.horizonTotal(best.inId1) - model.horizonTotal(best.outId1))
+    + (model.horizonTotal(best.inId2) - model.horizonTotal(best.outId2));
+  return gain > DOUBLE_SWAP_MIN_GAIN ? { ...best, gain } : null;
 }
 
 function chipAdvice(model) {
   let tc = null;
   let bb = null;
+  let bbWeighted = -Infinity;
   for (const e of model.gws) {
     const { squad, starters, captain } = lineupFor(model, e);
     const capXp = captain ? model.xp(captain, e) : 0;
-    const benchXp = squad.filter((id) => !starters.includes(id))
-      .reduce((s, id) => s + model.xp(id, e), 0);
+    const bench = squad.filter((id) => !starters.includes(id));
+    const benchXp = bench.reduce((s, id) => s + model.xp(id, e), 0);
+    // Ranked by xiWeight, same reasoning as wscore: a bench full of
+    // real starters who are just squeezed out by the XI beats a bench
+    // with a higher raw total propped up by players their own club
+    // benches, since those are the ones actually likely to return it.
+    const benchWeighted = bench.reduce((s, id) => s + model.xp(id, e) * xiWeight(id), 0);
     if (!tc || capXp > tc.v) tc = { e, v: capXp };
-    if (!bb || benchXp > bb.v) bb = { e, v: benchXp };
+    if (benchWeighted > bbWeighted) { bbWeighted = benchWeighted; bb = { e, v: benchXp }; }
   }
   return { tc, bb };
 }
 
-function assistantPanel(model, gw, ft) {
+function assistantPanel(model, gw) {
   if (view.baseSquad.length < 15) {
     return `<div class="assistant-card">
       <div class="assistant-head">${t('pl.assistant')}</div>
@@ -641,24 +1144,20 @@ function assistantPanel(model, gw, ft) {
     items.push(`<div class="as-item"><span>${t('pl.asNoUpgrades')}</span></div>`);
   }
 
-  // Combos only make sense for a real transfer GW - the base squad (first
-  // GW) is edited for free, so there's no hit cost to weigh a double move
-  // against.
-  const combo = isFirst ? null : bestComboSuggestion(model, gw, ft, upgrades);
-  if (combo) {
+  const doubleSwap = compoundUpgradeSuggestion(model, gw);
+  if (doubleSwap) {
     items.push(`<div class="as-item">
-      <span>${t('pl.asCombo', {
-        inA: name(combo.a.inId), outA: name(combo.a.outId),
-        inB: name(combo.b.inId), outB: name(combo.b.outId),
-        n: combo.net.toFixed(1), pts: t('stat.xp'),
-        hitNote: combo.hits ? t('pl.asComboHit', { n: combo.hits }) : '',
-      })}</span>
-      <button class="as-apply" data-act="combo" data-out-a="${combo.a.outId}" data-in-a="${combo.a.inId}" data-out-b="${combo.b.outId}" data-in-b="${combo.b.inId}">${t('pl.asApplyBoth')}</button>
+      <span>${t('pl.asDoubleSwap', { in1: name(doubleSwap.inId1), out1: name(doubleSwap.outId1), in2: name(doubleSwap.inId2), out2: name(doubleSwap.outId2) })}
+      <span class="hi">+${doubleSwap.gain.toFixed(1)} ${t('stat.xp')}</span>
+      <span class="muted">${t('pl.asDoubleNote')}</span></span>
+      <button class="as-apply" data-act="doubletransfer"
+        data-out1="${doubleSwap.outId1}" data-in1="${doubleSwap.inId1}"
+        data-out2="${doubleSwap.outId2}" data-in2="${doubleSwap.inId2}">${t('pl.asApply')}</button>
     </div>`);
   }
 
   if (isFirst && view.starters.length) {
-    const xi = bestXI(model, view.baseSquad, gw);
+    const xi = bestXI(model, view.baseSquad, gw, view.formationLock);
     const curXi = view.starters.reduce((s, id) => s + model.xp(id, gw), 0);
     if (xi && xi.total > curXi + 0.3) {
       items.push(`<div class="as-item">
@@ -690,7 +1189,7 @@ function assistantPanel(model, gw, ft) {
   }
 
   return `<div class="assistant-card">
-    <div class="assistant-head">${t('pl.assistant')} <span class="muted" style="font-weight:500">${t('pl.asSubtitle', { n: view.horizon })}</span></div>
+    <div class="assistant-head">${t('pl.assistant')} <span class="muted" style="font-weight:500">${view.horizon === SEASON_HORIZON ? t('pl.asSubtitleSeason') : t('pl.asSubtitle', { n: view.horizon })}</span></div>
     ${items.join('')}
   </div>`;
 }
@@ -714,10 +1213,16 @@ function openDraftCompare(model, root) {
   const activeSet = new Set(active.sq);
   const names = (ids) => ids.map((id) => escapeHtml(playerName(state.playersById[id]))).join(', ');
 
+  // Editable right in the comparison table - this is the "manage all
+  // three drafts" view, so it's the natural place to name one without
+  // first having to switch to it.
+  const nameCell = (s) => `<input class="draft-name-input" data-draft="${s}"
+    value="${escapeHtml(draftNames[s] || '')}" placeholder="${escapeHtml(t(`draft.${s}`))}"
+    maxlength="24" />${s === slot ? ' ●' : ''}`;
+
   const rows = drafts.map(({ s, sq, chips, xp }) => {
-    const letter = t(`draft.${s}`);
     if (!sq.length) {
-      return `<tr><td class="team-cell">${letter}${s === slot ? ' ●' : ''}</td>
+      return `<tr><td class="team-cell">${nameCell(s)}</td>
         <td colspan="4" class="muted">${t('pl.cmpEmpty')}</td></tr>`;
     }
     const chipStr = Object.entries(chips)
@@ -733,7 +1238,7 @@ function openDraftCompare(model, root) {
         : `<span class="muted">${t('pl.cmpSame')}</span>`;
     }
     return `<tr>
-      <td class="team-cell">${letter}${s === slot ? ' ●' : ''}</td>
+      <td class="team-cell">${nameCell(s)}</td>
       <td class="num">${fmtPrice(cost(sq))}</td>
       <td class="num"><strong>${xp ?? '-'}</strong></td>
       <td>${chipStr}</td>
@@ -759,6 +1264,12 @@ function openDraftCompare(model, root) {
     </div>`;
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay || e.target.closest('#cmp-close')) overlay.remove();
+  });
+  overlay.querySelectorAll('.draft-name-input').forEach((input) => {
+    input.addEventListener('change', () => {
+      setDraftName(input.dataset.draft, input.value);
+      renderPlanner(root); // toolbar chips show the new name right away
+    });
   });
   document.body.appendChild(overlay);
 }
@@ -813,7 +1324,7 @@ function playerCard(model, id, gw, isStarter, opts) {
   const xp = model.xp(id, gw);
   const st = statusInfo(p);
   const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
-  const startFlag = lineupFlag(p);
+  const ls = lineupStatus(p);
   const opp = (state.upcomingByTeam[p.team] || [])
     .filter((f) => f.event === gw)
     .map((f) => `${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
@@ -846,8 +1357,8 @@ function playerCard(model, id, gw, isStarter, opts) {
   const pid = calm && !mobileSheet ? `class="clickable" data-pid="${id}"` : '';
   return `<div class="pp-card pc-card ${isSwapSource ? 'swap-source' : ''} ${swapTarget || transferTarget ? 'swap-target' : ''}"
        ${opts.editable ? 'draggable="true"' : ''} data-id="${id}" data-starter="${isStarter ? 1 : 0}" ${mobileSheet ? `data-sheet="${id}"` : ''}>
-    <div class="pp-photo-wrap" ${calm && !mobileSheet ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}">
-      ${playerPhoto(p, isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm')}
+    <div class="pp-photo-wrap" ${calm && !mobileSheet ? `data-pid="${id}"` : ''} style="${calm ? 'cursor:pointer' : ''}" title="${ls.title}">
+      ${playerPhoto(p, `${isStarter ? 'pp-photo' : 'pp-photo pp-photo-sm'} ${ls.cls}`)}
       <span class="pp-club">${teamBadge(p.team, 'chip-badge')}</span>
       ${opts.captain === id && isStarter
         ? (opts.chip === 'TC'
@@ -859,7 +1370,8 @@ function playerCard(model, id, gw, isStarter, opts) {
       ${opts.benchOrd ? `<span class="bench-ord">${opts.benchOrd}</span>` : ''}
       <span class="pp-sel">${fmtPrice(p.now_cost)}</span>
     </div>
-    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}${startFlag}</div>
+    <div class="pp-name" ${pid}>${escapeHtml(playerName(p))}${flag}</div>
+    <span class="lineup-pill ${ls.cls}" title="${ls.title}">${ls.label}</span>
     ${isStarter ? `<div class="pp-fix">${opp || t('common.noFixture')}</div>` : ''}
     <span class="pp-xp ${isStarter ? '' : 'pp-xp-sm'}">${xp.toFixed(1)}</span>
     ${buttons}
@@ -1043,6 +1555,12 @@ function sideList(model, gw) {
     if (p.status === 'u' || p.status === 'n') return false;
     if (pendingOut && p.element_type !== pendingOut.element_type) return false;
     if (view.filterPos !== 'all' && p.element_type !== +view.filterPos) return false;
+    if (view.filterTeam !== 'all' && p.team !== +view.filterTeam) return false;
+    if (view.filterStart !== 'all') {
+      const starting = getPredictedXI(p.team).has(p.id);
+      if (view.filterStart === 'start' && !starting) return false;
+      if (view.filterStart === 'bench' && starting) return false;
+    }
     if (view.maxPrice && p.now_cost / 10 > +view.maxPrice) return false;
     if (q && !`${p.first_name} ${p.second_name} ${p.web_name} ${playerName(p)}`.toLowerCase().includes(q)) return false;
     return true;
@@ -1067,11 +1585,11 @@ function sideList(model, gw) {
       : pendingOut ? t('pl.transferInFor', { name: playerName(pendingOut) }) : t('pl.transferInto', { gw: gwLabel(gw) });
     const st = statusInfo(p);
     const flag = st ? `<span class="status-flag ${st.cls}" title="${escapeHtml(st.label)}">${st.flag}</span>` : '';
-    const startFlag = lineupFlag(p);
+    const ls = lineupStatus(p);
     return `<div class="side-row">
-      <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')}">${playerPhoto(p, 'row-photo')}</span>
+      <span class="clickable" data-pid="${p.id}" title="${t('common.playerProfile')} · ${ls.title}">${playerPhoto(p, `row-photo ${ls.cls}`)}</span>
       <div class="side-info clickable" data-pid="${p.id}">
-        <span class="player-name">${escapeHtml(playerName(p))}${flag}${startFlag}</span>
+        <span class="player-name">${escapeHtml(playerName(p))}${flag} <span class="lineup-pill ${ls.cls}" title="${ls.title}">${ls.label}</span></span>
         <span class="player-meta">${posShort(state.positionsById[p.element_type].singular_name_short)} · ${teamBadge(p.team, 'meta-badge')} ${teamShort(state.teamsById[p.team])} · ${fmtPrice(p.now_cost)}</span>
         <span class="side-fx">${fixtureChips(p.team, 3)}</span>
       </div>
@@ -1088,6 +1606,15 @@ function sideList(model, gw) {
         <select id="sd-pos">
           <option value="all">${t('common.all')}</option>
           ${state.bootstrap.element_types.map((et) => `<option value="${et.id}" ${view.filterPos == et.id ? 'selected' : ''}>${posPlural(et.plural_name_short)}</option>`).join('')}
+        </select>
+        <select id="sd-team">
+          <option value="all">${t('common.allClubs')}</option>
+          ${[...state.bootstrap.teams].sort((a, b) => teamName(a).localeCompare(teamName(b))).map((tm) => `<option value="${tm.id}" ${view.filterTeam == tm.id ? 'selected' : ''}>${escapeHtml(teamName(tm))}</option>`).join('')}
+        </select>
+        <select id="sd-lineup">
+          <option value="all" ${view.filterStart === 'all' ? 'selected' : ''}>${t('pl.lineupAll')}</option>
+          <option value="start" ${view.filterStart === 'start' ? 'selected' : ''}>${t('common.starts')}</option>
+          <option value="bench" ${view.filterStart === 'bench' ? 'selected' : ''}>${t('common.bench')}</option>
         </select>
         <select id="sd-sort">
           <option value="xp" ${view.sortKey === 'xp' ? 'selected' : ''}>${t('pl.sortXp')}</option>
@@ -1140,7 +1667,18 @@ export async function renderPlanner(root) {
       <div class="toolbar">
         <label>${t('common.horizon')}</label>
         <select id="pl-horizon">
-          ${[3, 5, 8].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${t('common.nGws', { n })}</option>`).join('')}
+          ${[3, 5, 8, SEASON_HORIZON].map((n) => `<option value="${n}" ${view.horizon === n ? 'selected' : ''}>${horizonLabel(n)}</option>`).join('')}
+        </select>
+        <label>${t('pl.formation')}</label>
+        <select id="pl-formation" title="${t('pl.formationTitle')}">
+          <option value="" ${view.formationLock ? '' : 'selected'}>${t('pl.formationAuto')}</option>
+          ${FORMATION_STRINGS.map((f) => `<option value="${f}" ${view.formationLock === f ? 'selected' : ''}>${f}</option>`).join('')}
+        </select>
+        <label>${t('pl.buildMode')}</label>
+        <select id="pl-buildmode" title="${t('pl.buildModeTitle')}">
+          <option value="xp" ${view.buildMode === 'xp' ? 'selected' : ''}>${t('pl.buildModeXp')}</option>
+          <option value="owned" ${view.buildMode === 'owned' ? 'selected' : ''}>${t('pl.buildModeOwned')}</option>
+          <option value="differential" ${view.buildMode === 'differential' ? 'selected' : ''}>${t('pl.buildModeDiff')}</option>
         </select>
         <button class="btn" id="pl-build">${view.baseSquad.length ? t('pl.reOptimize') : t('pl.autoBuild')}</button>
         <button class="btn ghost ${view.showAssistant ? 'on' : ''}" id="pl-assist">${t('pl.assistant')}</button>
@@ -1155,6 +1693,7 @@ export async function renderPlanner(root) {
           <button class="link-btn" id="pl-tools-btn" aria-haspopup="true" aria-expanded="${view.showPlanTools ? 'true' : 'false'}">${t('pl.moreTools')} ⋯</button>
           <div class="pl-tools-menu" id="pl-tools-menu" ${view.showPlanTools ? '' : 'hidden'}>
             <button class="link-btn" id="pl-share" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareTitle')}">${t('pl.share')}</button>
+            <button class="link-btn" id="pl-share-image" ${view.baseSquad.length ? '' : 'disabled'} title="${t('pl.shareImageTitle')}">${t('pl.shareImage')}</button>
             <button class="link-btn" id="pl-copy" ${view.baseSquad.length ? '' : 'disabled'}>${t('pl.copy')}</button>
             <button class="link-btn" id="pl-drafts-cmp" title="${t('pl.cmpTitle')}">${t('pl.compareDrafts')}</button>
           </div>
@@ -1162,9 +1701,9 @@ export async function renderPlanner(root) {
         <div class="gw-chips" id="pl-drafts" title="${t('pl.draftsTitle')}">
           ${DRAFTS.map((s) => {
             const meta = s === slot ? { n: view.baseSquad.length, xp: Math.round(horizonTotal) } : draftMeta(s);
-            const letter = t(`draft.${s}`);
+            const letter = draftLabel(s);
             const label = meta && meta.n ? `${letter} · ${meta.xp ?? meta.n}` : letter;
-            return `<button class="gw-chip ${s === slot ? 'active' : ''}" data-draft="${s}">${label}</button>`;
+            return `<button class="gw-chip ${s === slot ? 'active' : ''}" data-draft="${s}" title="${escapeHtml(letter)}">${escapeHtml(label)}</button>`;
           }).join('')}
         </div>
       </div>
@@ -1175,13 +1714,13 @@ export async function renderPlanner(root) {
       </div>
       ${view.buildOptions?.length ? `<div class="toolbar build-opts">
         <span class="build-opts-label">${t('pl.buildOpts')}</span>
-        ${view.buildOptions.map((o, i) => `<button class="gw-chip ${sameSquad(o.squad, view.baseSquad) ? 'active' : ''}" data-build-opt="${i}">${t('pl.buildOptN', { n: i + 1 })} · ${o.xp}</button>`).join('')}
+        ${view.buildOptions.map((o, i) => `<button class="gw-chip ${sameSquad(o.squad, view.baseSquad) ? 'active' : ''}" data-build-opt="${i}">${o.label ?? t('pl.buildOptN', { n: i + 1 })} · ${o.xp}</button>`).join('')}
         ${infoNote('info.buildOpts')}
         <button class="link-btn" id="pl-build-opts-x" title="${t('common.close')}">✕</button>
       </div>` : ''}
       ${chipsBar(model, gw)}
       ${transfersBar(model, gw, ft)}
-      ${view.showAssistant ? assistantPanel(model, gw, ft) : ''}
+      ${view.showAssistant ? assistantPanel(model, gw) : ''}
       <div class="planner-layout">
         <div class="planner-main">${pitchHtml(model, gw)}</div>
         <aside class="planner-side">${sideList(model, gw)}</aside>
@@ -1214,6 +1753,25 @@ export async function renderPlanner(root) {
     rerender();
   });
 
+  root.querySelector('#pl-formation').addEventListener('change', (e) => {
+    view.formationLock = e.target.value || null;
+    // Re-run the auto XI for the base squad right away so locking a
+    // formation is felt immediately on the pitch, not just on the
+    // next re-optimize or future GW.
+    if (view.baseSquad.length === 15) {
+      const xi = bestXI(model, view.baseSquad, firstGw(model), view.formationLock);
+      if (xi) { view.starters = xi.xi; view.captain = null; }
+    }
+    ensureConsistency(model);
+    save();
+    rerender();
+  });
+
+  root.querySelector('#pl-buildmode').addEventListener('change', (e) => {
+    view.buildMode = e.target.value;
+    rerender();
+  });
+
   const applyBuildOption = (i) => {
     const opt = view.buildOptions?.[i];
     if (!opt) return;
@@ -1221,12 +1779,52 @@ export async function renderPlanner(root) {
     view.starters = [];
     view.captain = null;
     view.transfers = {};
+    view.chips = {};
+    // Picking a squad that was built for a specific shape should keep
+    // that shape - otherwise bestXI's own auto-pick could immediately
+    // reformat it into whatever formation happens to score highest for
+    // these particular 15 players, silently contradicting the label the
+    // user just chose.
+    if (opt.formation) view.formationLock = opt.formation;
+    // Horizon options come with their own simulated transfer/chip plan -
+    // apply it through the same recordTransfer used everywhere else, so
+    // it shows up exactly like a hand-built plan would (GW-tab badges,
+    // chip bar, Assistant panel), not a separate display to maintain.
+    if (opt.horizon) {
+      view.horizon = opt.horizon;
+      const hModel = buildModel(opt.horizon);
+      for (const tr of opt.plan || []) {
+        if (tr.wc || tr.fh) {
+          // A batch chip move (Wildcard/Free Hit) is already validated as
+          // a whole by buildOptimalSquad (budget, club limits) - pushing
+          // it straight into view.transfers skips recordTransfer's
+          // per-swap budget check, which only makes sense for one move
+          // applied to a stable squad, not an interim step of a full
+          // rebuild that could overshoot mid-sequence before landing back
+          // on a valid total.
+          (view.transfers[tr.gw] = view.transfers[tr.gw] || []).push(...tr.moves.map((m) => ({ out: m.outId, in: m.inId })));
+          view.chips[tr.gw] = tr.wc ? 'WC' : 'FH';
+        } else {
+          recordTransfer(hModel, tr.gw, tr.outId, tr.inId);
+        }
+      }
+      const tcGw = opt.chips?.tc?.gw;
+      const bbGw = opt.chips?.bb?.gw;
+      if (tcGw && !view.chips[tcGw]) view.chips[tcGw] = 'TC';
+      if (bbGw && bbGw !== tcGw && !view.chips[bbGw]) view.chips[bbGw] = 'BB';
+    }
     ensureConsistency(model);
   };
 
-  // The build makes three different strong squads (each pass mildly
-  // penalizes players the previous ones used), so "auto build" offers a
-  // choice of lineups instead of the same single answer every time.
+  // The build makes three different strong squads, so "auto build"
+  // offers a choice instead of the same single answer every time.
+  // Locked to one formation: three jittered takes on that shape (each
+  // pass mildly penalizes players the previous ones used, for variety).
+  // Unlocked: one real squad per horizon in COMPARE_HORIZONS - a
+  // genuine short/medium/long-term tradeoff, each with its own
+  // simulated transfer-and-chip plan for that horizon (see
+  // simulateTransferPlan/simulateChipAdvice), instead of three
+  // near-duplicate single-GW snapshots.
   root.querySelector('#pl-build').addEventListener('click', () => {
     if (view.building) return;
     view.building = true;
@@ -1234,18 +1832,66 @@ export async function renderPlanner(root) {
     btn.textContent = t('pl.optimizing');
     btn.disabled = true;
     setTimeout(() => {
+      // "Most owned"/"most differential" aren't a formation tradeoff -
+      // there's exactly one squad that best fits the metric, so build
+      // and apply it directly instead of offering 3 options to compare.
+      if (view.buildMode !== 'xp') {
+        const target = parseFormationLock(view.formationLock);
+        const squad = buildOptimalSquad(model, null, 0, target, view.buildMode);
+        view.buildOptions = null;
+        view.baseSquad = [...squad];
+        view.starters = [];
+        view.captain = null;
+        view.transfers = {};
+        ensureConsistency(model);
+        view.building = false;
+        rerender();
+        return;
+      }
       const options = [];
-      const used = new Set();
-      // First run: option 1 is the pure optimum. Every run after that
-      // jitters all three, so re-clicking keeps surfacing new squads.
-      const again = !!view.buildOptions;
-      for (let k = 0; k < 3; k++) {
-        const squad = buildOptimalSquad(model, k ? used : null, k || again ? 0.06 : 0);
-        options.push({ squad, xp: Math.round(squadForecast(model, squad)) });
-        squad.forEach((id) => used.add(id));
+      if (view.formationLock) {
+        const used = new Set();
+        const again = !!view.buildOptions;
+        const target = parseFormationLock(view.formationLock);
+        for (let k = 0; k < 3; k++) {
+          const squad = buildOptimalSquad(model, k ? used : null, k || again ? 0.06 : 0, target);
+          options.push({
+            squad,
+            formation: view.formationLock,
+            label: t('pl.buildOptN', { n: k + 1 }),
+            xp: Math.round(squadForecast(model, squad, view.formationLock)),
+          });
+          squad.forEach((id) => used.add(id));
+        }
+      } else {
+        for (const h of COMPARE_HORIZONS) {
+          const hModel = buildModel(h);
+          const squad = buildOptimalSquad(hModel, null, 0, null, 'xp');
+          const plan = h === SEASON_HORIZON ? simulateSeasonPlan(hModel, squad) : simulateTransferPlan(hModel, squad);
+          const timeline = squadTimelineFromPlan(hModel, squad, plan);
+          const chips = simulateChipAdvice(hModel, timeline);
+          options.push({
+            squad,
+            horizon: h,
+            label: horizonLabel(h),
+            xp: Math.round(planForecast(hModel, timeline, chips, plan)),
+            plan,
+            chips,
+          });
+        }
+        options.sort((a, b) => b.xp - a.xp);
       }
       view.buildOptions = options;
-      applyBuildOption(0);
+      // Sorted by total xp for display, but total xp isn't a fair pick
+      // for which one to auto-apply - it structurally favours whichever
+      // horizon sums the most gameweeks, so "highest score wins" would
+      // always land on the Season option regardless of what's actually
+      // best, making the comparison pointless. Auto-apply whichever
+      // option matches the Horizon dropdown's current value instead
+      // (falls back to the top-scoring one only for the formation-
+      // locked jittered squads, which don't have a horizon to match).
+      const defaultIdx = Math.max(0, options.findIndex((o) => o.horizon === view.horizon));
+      applyBuildOption(defaultIdx);
       view.building = false;
       rerender();
     }, 30);
@@ -1298,16 +1944,28 @@ export async function renderPlanner(root) {
           recordTransfer(model, gw, outId, inId);
         }
       }
+      if (act === 'doubletransfer') {
+        const out1 = +b.dataset.out1;
+        const in1 = +b.dataset.in1;
+        const out2 = +b.dataset.out2;
+        const in2 = +b.dataset.in2;
+        if (isFirst) {
+          const swap = (id) => (id === out1 ? in1 : id === out2 ? in2 : id);
+          view.baseSquad = view.baseSquad.map(swap);
+          view.starters = view.starters.map(swap);
+          if (view.captain === out1) view.captain = in1;
+          if (view.captain === out2) view.captain = in2;
+        } else {
+          recordTransfer(model, gw, out1, in1);
+          recordTransfer(model, gw, out2, in2);
+        }
+      }
       if (act === 'bestxi') {
-        const xi = bestXI(model, view.baseSquad, gw);
+        const xi = bestXI(model, view.baseSquad, gw, view.formationLock);
         if (xi) { view.starters = xi.xi; view.captain = null; }
       }
       if (act === 'captain') view.captain = +b.dataset.id;
       if (act === 'chip') view.chips[+b.dataset.gw] = b.dataset.chip;
-      if (act === 'combo') {
-        recordTransfer(model, gw, +b.dataset.outA, +b.dataset.inA);
-        recordTransfer(model, gw, +b.dataset.outB, +b.dataset.inB);
-      }
       ensureConsistency(model);
       rerender();
     })
@@ -1320,6 +1978,114 @@ export async function renderPlanner(root) {
       e.target.textContent = t('pl.linkCopied');
       setTimeout(() => { e.target.textContent = t('pl.share'); }, 1800);
     } catch { /* clipboard unavailable */ }
+  });
+
+  // Swaps the visible player photos/team badges to a CORS-safe proxy URL
+  // so html2canvas can actually read their pixels (the FotMob/PL CDNs
+  // send none), captures `.planner-main`, and always restores the
+  // originals - even the swap is aimed at whatever .planner-main exists
+  // at call time, so a caller that re-queries it after a detach is
+  // swapping a *live* element, not chasing the one it started with.
+  const captureSquadImage = async () => {
+    const pitchEl = root.querySelector('.planner-main');
+    if (!pitchEl) return null;
+    const imgs = [...pitchEl.querySelectorAll('img.face-img, img.chip-badge')];
+    const originalSrcs = imgs.map((img) => img.src);
+    const originalWatchdogFlags = imgs.map((img) => img.dataset.f);
+    // app.js's photo watchdog (setInterval, 1s) flags any img[data-shirt]
+    // as "hung" once >4s have passed since it first noticed that element
+    // still loading - but img.dataset.t is stamped from the page's very
+    // first paint, long before now. Resetting src below makes the image
+    // pending again, so on its very next 1s tick the watchdog reads that
+    // stale timestamp, decides it's been hanging for hours, and swaps the
+    // src to an initials placeholder mid-capture - the exact DOM mutation
+    // that made html2canvas's "Unable to find element in cloned iframe"
+    // bug fire reliably here. img.dataset.f = '2' is the watchdog's own
+    // "already handled, skip" flag.
+    imgs.forEach((img) => { img.dataset.f = '2'; });
+    try {
+      await Promise.all(imgs.map((img) => new Promise((resolve) => {
+        const real = img.src;
+        // These <img>s already finished loading their original (non-CORS)
+        // src once - browsers keep that request's CORS mode pinned to the
+        // element until its src is cleared, so just setting crossOrigin
+        // and a new src is silently ignored (onload never fires, image
+        // stays blank) without this reset first.
+        img.src = '';
+        img.crossOrigin = 'anonymous';
+        img.onload = resolve;
+        img.onerror = resolve; // missing/blocked photo - leave that one blank, don't hold up the rest
+        img.src = `https://images.weserv.nl/?url=${encodeURIComponent(real.replace(/^https?:\/\//, ''))}&output=png`;
+        setTimeout(resolve, 4000); // a slow/hung proxy fetch shouldn't stall the whole capture
+      })));
+      // A background data refresh (app.js revalidates on tab focus if the
+      // cache looks stale) can replace the whole Planner subtree - and
+      // thus detach pitchEl - while the image swap above was in flight.
+      // Bail out (the caller retries against a fresh element) instead of
+      // handing html2canvas a node that's no longer in the document -
+      // that's what "Unable to find element in cloned iframe" turned out
+      // to be.
+      if (!document.contains(pitchEl)) return null;
+      return await window.html2canvas(pitchEl, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true, // meaningful now - the proxied URLs above actually allow it
+        ignoreElements: (el) => el.classList?.contains('pc-actions'), // captain/swap/remove controls mean nothing in a static image
+      });
+    } finally {
+      // Back to the direct CDN URLs and the watchdog's normal monitoring -
+      // the proxy (and the pause) are only for the moment of capture, not
+      // how photos load on every other page view.
+      imgs.forEach((img, i) => {
+        img.onload = img.onerror = null;
+        img.removeAttribute('crossorigin');
+        img.src = originalSrcs[i];
+        // The restored src is pending again for a moment even though it's
+        // the same URL the browser just showed (cache makes it near-
+        // instant) - clear the watchdog's timestamp so it re-arms a fresh
+        // 4s grace period instead of judging the reload against whenever
+        // it first noticed this element, hours ago.
+        delete img.dataset.t;
+        if (originalWatchdogFlags[i] === undefined) delete img.dataset.f; else img.dataset.f = originalWatchdogFlags[i];
+      });
+    }
+  };
+
+  root.querySelector('#pl-share-image')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const reset = () => { btn.textContent = t('pl.shareImage'); btn.disabled = false; };
+    if (typeof window.html2canvas !== 'function') { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
+    // The capture takes a few seconds - without this, an impatient second
+    // tap while it's still working starts a whole second capture and
+    // downloads/shares a second file, which read as "it made 2 screenshots".
+    btn.disabled = true;
+    btn.textContent = t('pl.shareImageWorking');
+    try {
+      // A mid-capture background refresh can detach the element being
+      // swapped/shot (see captureSquadImage) - retry a couple of times
+      // against a freshly-queried .planner-main rather than settling for
+      // blank photos on the first hiccup.
+      let canvas = null;
+      for (let attempt = 0; attempt < 3 && !canvas; attempt++) canvas = await captureSquadImage();
+      if (!canvas) { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); return; }
+      const filename = `amitfpl-squad-gw${gw}.png`;
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      const file = blob && new File([blob], filename, { type: 'image/png' });
+      if (file && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = filename;
+        a.click();
+      }
+      reset();
+    } catch (err) {
+      // AbortError from a cancelled share sheet is a normal outcome, not a
+      // capture failure - don't flash an error over the user's own cancel.
+      if (err?.name === 'AbortError') reset();
+      else { btn.textContent = t('pl.shareImageError'); setTimeout(reset, 2200); }
+    }
   });
 
   root.querySelector('#pl-copy')?.addEventListener('click', async (e) => {
@@ -1394,6 +2160,8 @@ export async function renderPlanner(root) {
     });
   });
   root.querySelector('#sd-pos').addEventListener('change', (e) => { view.filterPos = e.target.value; sideScroll = 0; rerender(); });
+  root.querySelector('#sd-team').addEventListener('change', (e) => { view.filterTeam = e.target.value; sideScroll = 0; rerender(); });
+  root.querySelector('#sd-lineup').addEventListener('change', (e) => { view.filterStart = e.target.value; sideScroll = 0; rerender(); });
   root.querySelector('#sd-price').addEventListener('change', (e) => { view.maxPrice = e.target.value; sideScroll = 0; rerender(); });
   root.querySelector('#sd-sort').addEventListener('change', (e) => { view.sortKey = e.target.value; sideScroll = 0; rerender(); });
   sideEl?.addEventListener('scroll', () => { sideScroll = sideEl.scrollTop; });

@@ -186,6 +186,9 @@
       }, 25000);
     })();
   </script>
+  <!-- Vendored locally (not a CDN call) so the Planner's share-image
+       button works offline too - only loaded here, only used there. -->
+  <script defer src="js/vendor/html2canvas.min.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
