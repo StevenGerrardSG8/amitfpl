@@ -700,7 +700,11 @@ const STRINGS = {
   'auth.errExists': ['An account with this email already exists - try signing in.', 'כבר קיים חשבון עם האימייל הזה - נסו להתחבר.'],
   'auth.errCreds': ['Wrong email or password.', 'אימייל או סיסמה שגויים.'],
   'auth.errTooMany': ['Too many attempts - try again in a few minutes.', 'יותר מדי ניסיונות - נסו שוב בעוד כמה דקות.'],
-  'auth.errGeneric': ['Something went wrong - please try again.', 'משהו השתבש - נסו שוב.'],
+  'auth.errGeneric': ['Something went wrong ({code}) - please try again.', 'משהו השתבש ({code}) - נסו שוב.'],
+  'auth.errUnauthorizedDomain': ['This site isn\'t yet allowed to sign in with Google - add {domain} under Firebase Console → Authentication → Settings → Authorized domains.', 'האתר עדיין לא מורשה להתחברות עם גוגל - הוסיפו את {domain} תחת Firebase Console ← Authentication ← Settings ← Authorized domains.'],
+  'auth.errPopupBlocked': ['The sign-in popup was blocked by the browser - allow popups for this site and try again.', 'חלון ההתחברות נחסם על ידי הדפדפן - אפשרו חלונות קופצים לאתר הזה ונסו שוב.'],
+  'auth.errNotEnabled': ['Google sign-in isn\'t turned on for this project yet - enable it under Firebase Console → Authentication → Sign-in method.', 'התחברות עם גוגל עדיין לא מופעלת בפרויקט הזה - הפעילו אותה תחת Firebase Console ← Authentication ← Sign-in method.'],
+  'auth.errNetwork': ['Network error - check your connection and try again.', 'שגיאת רשת - בדקו את החיבור ונסו שוב.'],
 
   /* ---- help modal ---- */
   'help.title': ['How to use amitfpl', 'איך משתמשים ב-amitfpl'],
