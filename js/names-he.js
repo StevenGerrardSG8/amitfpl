@@ -162,6 +162,7 @@ export const PLAYER_NAMES_HE = {
   'Elliott': 'אליוט',
   'Emegha': 'אמגה',
   'Emersonn': 'אמרסון',
+  'Enciso': 'אנסיסו',
   'Endo': 'אנדו',
   'Enes Ünal': 'אנס אונאל',
   'Enzo': 'אנזו',
