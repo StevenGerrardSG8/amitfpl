@@ -162,6 +162,7 @@ export const PLAYER_NAMES_HE = {
   'Elanga': 'אלנגה',
   'Ellborg': 'אלבורג',
   'Elliott': 'אליוט',
+  'Elvedi': 'אלבדי',
   'Emegha': 'אמגה',
   'Emersonn': 'אמרסון',
   'Enciso': 'אנסיסו',
