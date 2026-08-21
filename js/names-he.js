@@ -499,6 +499,7 @@ export const PLAYER_NAMES_HE = {
   'Steur': 'סטאור',
   'Strand Larsen': 'סטרנד לארסן',
   'Struijk': 'סטרויק',
+  'Suzuki': 'סוזוקי',
   'Svoboda': 'סבובודה',
   'Szmodics': 'סמודיץ׳',
   'Szoboszlai': 'סובוסלאי',
