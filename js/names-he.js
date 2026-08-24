@@ -128,6 +128,7 @@ export const PLAYER_NAMES_HE = {
   'Davies': 'דייביס',
   'Davis': 'דייוויס',
   'De Cuyper': 'דה קאופר',
+  'De Fougerolles': 'לוק דה פוז׳רול',
   'De Ligt': 'דה ליכט',
   'Dedić': 'דדיץ׳',
   'Delap': 'דלאפ',
