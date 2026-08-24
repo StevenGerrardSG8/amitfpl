@@ -565,6 +565,7 @@ export const PLAYER_NAMES_HE = {
   'Wright': 'רייט',
   'Xavi': 'צ׳אבי',
   'Xhaka': 'ג׳אקה',
+  'Yalcouyé': 'ילקויה',
   'Yarmoliuk': 'ירמוליוק',
   'Yates': 'ייטס',
   'Yeremy': 'ירמי',
