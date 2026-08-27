@@ -74,6 +74,7 @@ export const PLAYER_NAMES_HE = {
   'Bornauw': 'בורנאו',
   'Boscagli': 'בוסקאלי',
   'Botman': 'בוטמן',
+  'Bouaddi': 'בועדי',
   'Bradley': 'בראדלי',
   'Branthwaite': 'ברנתווייט',
   'Brau': 'בראו',
