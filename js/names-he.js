@@ -107,6 +107,7 @@ export const PLAYER_NAMES_HE = {
   'Chavarria': 'צ׳בארייה',
   'Cherki': 'שרקי',
   'Chiesa': 'קייזה',
+  'Cho': 'שו',
   'Christie': 'כריסטי',
   'Clarke': 'קלארק',
   'Collins': 'קולינס',
