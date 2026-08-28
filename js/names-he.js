@@ -137,6 +137,7 @@ export const PLAYER_NAMES_HE = {
   'Destan': 'דסטן',
   'Devenny': 'דבני',
   'Dewsbury-Hall': 'דיוסברי-הול',
+  'Di Gregorio': 'מיקלה די גרגוריו',
   'Diakité': 'דיאקיטה',
   'Diarra': 'דיארה',
   'Dibling': 'דיבלינג',
