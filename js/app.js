@@ -422,8 +422,11 @@ async function main() {
     });
   }, 1000);
 
-  // Background revalidation: on load if stale, and whenever the tab
-  // comes back into focus after sitting idle.
+  // Background revalidation: on load if stale, whenever the tab comes
+  // back into focus after sitting idle, and on a standing timer so a tab
+  // that's just left open (the common case - nobody re-opens amitfpl
+  // every few minutes, they leave it running) still picks up fresh data
+  // on its own instead of only refreshing on the next explicit visit.
   const isStale = () => {
     const hits = CORE.map(readCache);
     if (hits.some((h) => !h)) return true;
@@ -433,6 +436,9 @@ async function main() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && isStale()) refresh();
   });
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && isStale()) refresh();
+  }, 60 * 1000);
 }
 
 main();
