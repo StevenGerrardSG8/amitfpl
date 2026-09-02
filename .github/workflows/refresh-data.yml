@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: refresh-data
@@ -34,12 +35,14 @@ jobs:
         run: python3 scripts/calibrate.py || echo "calibration skipped"
 
       - name: Commit if changed
+        id: commit
         run: |
           git config user.name "fpl-data-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/ js/names-he.js
           if git diff --cached --quiet; then
             echo "No data changes."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
           else
             msg="data: refresh $(date -u +'%Y-%m-%d %H:%MZ')"
             if ! git diff --cached --quiet -- js/names-he.js; then
@@ -47,4 +50,20 @@ jobs:
             fi
             git commit -m "$msg"
             git push
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # A push made with the default GITHUB_TOKEN (as the step above
+      # just did) deliberately does NOT trigger other workflows' `on:
+      # push` - a GitHub anti-recursion rule - so deploy-pages.yml's own
+      # push trigger silently never fires for these commits. Every
+      # refreshed data/*.json was landing in the repo but never actually
+      # reaching the live site, only ever going out incidentally whenever
+      # an unrelated code PR happened to get merged. Explicitly dispatch
+      # the deploy - a workflow_dispatch call is a different mechanism
+      # from the push-triggers-workflow rule, so it isn't blocked by it.
+      - name: Deploy the refreshed data
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-pages.yml --ref main
