@@ -69,11 +69,17 @@ function deadlineStrip() {
     </div>`;
 }
 
-// Scoring chances: who's most likely to find the net this gameweek.
-function scoringRows(model, gw) {
+// Scoring chances: who's most likely to find the net next - each
+// player's own next real fixture, not one shared gameweek: mid-gameweek,
+// whoever's team already played would otherwise show a flat 0%/0.0
+// (see model.js's nextEventFor()/xpNext()).
+function scoringRows(model) {
   const top = state.bootstrap.elements
     .filter((p) => p.status === 'a' || p.status === 'd')
-    .map((p) => ({ p, prob: model.goalChance(p.id, gw) }))
+    .map((p) => {
+      const e = model.nextEventFor(p.id);
+      return { p, prob: e != null ? model.goalChance(p.id, e) : 0 };
+    })
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 6);
   return widgetList(top.map(({ p, prob }) => wRow(playerCell(p), `${Math.round(prob * 100)}%`)));
@@ -165,7 +171,7 @@ export async function renderHome(root) {
 
   const captains = state.bootstrap.elements
     .filter((p) => p.status === 'a')
-    .map((p) => ({ p, xp: model.xp(p.id, gw) }))
+    .map((p) => ({ p, xp: model.xpNext(p.id) }))
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 4);
   const capRows = widgetList(captains.map(({ p, xp }, i) =>
@@ -174,14 +180,14 @@ export async function renderHome(root) {
   const watched = watchlist().map((id) => state.playersById[id]).filter(Boolean);
   const watchRows = watched.length
     ? widgetList(watched.slice(0, 6).map((p) =>
-        wRow(playerCell(p), `${fmtPrice(p.now_cost)} · ${model.xp(p.id, gw).toFixed(1)}`)))
+        wRow(playerCell(p), `${fmtPrice(p.now_cost)} · ${model.xpNext(p.id).toFixed(1)}`)))
     : `<div class="note">${t('home.watchEmpty')}</div>`;
 
   root.innerHTML = `
     ${analyzeCta()}
     ${deadlineStrip()}
     <div class="widget-grid">
-      ${widget(t('home.scoringTitle'), scoringRows(model, gw), 'scout', t('tab.scout'), 'info.goalChance')}
+      ${widget(t('home.scoringTitle'), scoringRows(model), 'scout', t('tab.scout'), 'info.goalChance')}
       ${widget(t('fx.forecastTitle'), goalsCsRows(model, gw), 'fixtures', t('tab.fixtures'), 'info.forecast')}
       ${widget(t('home.fdrTitle'), fdrRows(), 'fixtures', t('tab.fixtures'), 'info.fdr')}
       ${widget(t('home.takersTitle'), takersRows(), 'setpieces', t('tab.setpieces'))}

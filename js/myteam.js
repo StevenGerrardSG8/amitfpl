@@ -7,7 +7,11 @@ import { analyzeSquad, analysisHtml } from './analyze.js';
 import { t, haMark, gwLabel, posShort, playerName, teamShort } from './i18n.js';
 
 let model = null;
-const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
+// xpNext(), not xp(gws[0]): mid-gameweek, a squad member whose fixture
+// already kicked off has nothing left in the shared "current" event even
+// though he clearly has a real next match the following week - see
+// model.js's xpNext() for why this needs its own per-player resolution.
+const modelXp = (p) => (model ? model.xpNext(p.id) : num(p.ep_next));
 
 const STORAGE_KEY = 'amitfpl:teamId';
 const MANUAL_KEY = 'amitfpl:manualSquad';

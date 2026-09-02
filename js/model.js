@@ -182,12 +182,21 @@ export function buildModel(horizon) {
   const gws = [];
   for (let e = fromEvent; e < fromEvent + horizon && e <= 38; e++) gws.push(e);
 
+  // Fixtures are collected a couple of gameweeks past the requested
+  // horizon (not just reflected in `gws`, which stays exactly what was
+  // asked for) so xpNext() below can always resolve - mid-gameweek, some
+  // teams have already played their fixture for the "current" event
+  // while others haven't, so a player's own next real fixture can land
+  // one gameweek past whatever the shared fromEvent/horizon window
+  // nominally covers.
+  const fixtureWindow = Math.max(horizon, 2) + 2;
+
   // team id -> event id -> [{opp, isHome}]
   const fixturesByTeam = {};
   for (const t of state.bootstrap.teams) {
     const byEvent = {};
     for (const f of state.upcomingByTeam[t.id] || []) {
-      if (f.event >= fromEvent && f.event < fromEvent + horizon) {
+      if (f.event >= fromEvent && f.event < fromEvent + fixtureWindow) {
         (byEvent[f.event] = byEvent[f.event] || []).push(f);
       }
     }
@@ -290,6 +299,28 @@ export function buildModel(horizon) {
 
   const horizonTotal = (playerId) => gws.reduce((s, e) => s + xp(playerId, e), 0);
 
+  // The event id of a player's own next real fixture, which isn't always
+  // gws[0]: mid-gameweek, a team whose fixture already kicked off/
+  // finished has nothing left in the "current" event (xp()/goalChance()/
+  // assistChance() there correctly return 0, since there's genuinely no
+  // more fixture to play that week), while a team not yet kicked off
+  // still has one. state.upcomingByTeam already excludes finished
+  // fixtures and is sorted by event, so its first entry is exactly this
+  // player's next real appearance regardless of which event the shared
+  // model window nominally starts from. Null when a team has no fixture
+  // in the collected window at all (a genuine blank gameweek).
+  function nextEventFor(playerId) {
+    const p = state.playersById[playerId];
+    if (!p) return null;
+    return (state.upcomingByTeam[p.team] || [])[0]?.event ?? null;
+  }
+
+  // "Expected points, next match."
+  function xpNext(playerId) {
+    const e = nextEventFor(playerId);
+    return e != null ? xp(playerId, e) : 0;
+  }
+
   // The model's own per-match minutes estimate (ignoring availability -
   // that's applied separately per fixture) plus any active override, for
   // the drawer's editable-minutes control.
@@ -371,7 +402,7 @@ export function buildModel(horizon) {
     return 1 - Math.exp(-xa);
   }
 
-  return { xp, gws, horizonTotal, goalChance, assistChance, expectedMinutes };
+  return { xp, xpNext, nextEventFor, gws, horizonTotal, goalChance, assistChance, expectedMinutes };
 }
 
 // Per-fixture team forecast for one gameweek: expected goals scored and

@@ -5,7 +5,9 @@ import { loadBaseline, buildModel } from './model.js';
 import { t, posShort, playerName, teamName, teamShort } from './i18n.js';
 
 let model = null;
-const modelXp = (p) => (model ? model.xp(p.id, model.gws[0]) : num(p.ep_next));
+// xpNext(), not xp(gws[0]) - see model.js's xpNext() for why "next GW"
+// needs each player's own next fixture, not one shared gameweek index.
+const modelXp = (p) => (model ? model.xpNext(p.id) : num(p.ep_next));
 
 const STORAGE_KEY = 'amitfpl:compare';
 const SLOTS = 3;

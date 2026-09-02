@@ -91,7 +91,7 @@ export async function renderScout(root) {
     })
     .join('');
 
-  xpOf = (p) => model.xp(p.id, model.gws[0]);
+  xpOf = (p) => model.xpNext(p.id);
   const diffs = [...els]
     .filter((p) => available(p) && num(p.selected_by_percent) < view.diffMax)
     .sort((a, b) => xpOf(b) - xpOf(a))
@@ -102,30 +102,42 @@ export async function renderScout(root) {
     .sort((a, b) => num(b.value_season) - num(a.value_season))
     .slice(0, 20);
 
-  const nextGw = model.gws[0];
+  // "Next" here means each player's own next real fixture, not one
+  // shared gameweek index - mid-gameweek, a player whose team already
+  // played has nothing left in the current event even though he clearly
+  // has a real next match the following week. See model.js's
+  // nextEventFor()/xpNext() for why this needs per-player resolution.
+  const nextGw = model.gws[0]; // still used for the section title only
+  const fxFor = (p, e) => (state.upcomingByTeam[p.team] || []).filter((f) => f.event === e)
+    .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
+    .join(', ');
+
   const scorers = [...els]
     .filter(available)
-    .map((p) => ({ p, prob: model.goalChance(p.id, nextGw) }))
+    .map((p) => {
+      const e = model.nextEventFor(p.id);
+      return { p, e, prob: e != null ? model.goalChance(p.id, e) : 0 };
+    })
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 15);
   const creators = [...els]
     .filter(available)
-    .map((p) => ({ p, prob: model.assistChance(p.id, nextGw) }))
+    .map((p) => {
+      const e = model.nextEventFor(p.id);
+      return { p, e, prob: e != null ? model.assistChance(p.id, e) : 0 };
+    })
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 15);
 
   const creatorRows = creators
     .slice(0, limitFor('creators', creators.length))
-    .map(({ p, prob }, i) => {
-      const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
-        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
-        .join(', ');
+    .map(({ p, e, prob }, i) => {
       const pct = Math.round(prob * 100);
       return `<tr>
         <td class="num" style="font-weight:800">${i + 1}</td>
         <td>${playerCell(p)}</td>
         <td class="num">${fmtPrice(p.now_cost)}</td>
-        <td>${fx || '-'}</td>
+        <td>${fxFor(p, e) || '-'}</td>
         <td class="num"><span class="cs-pill ${pct >= 35 ? 'cs-hi' : ''}">${pct}%</span></td>
       </tr>`;
     })
@@ -133,43 +145,36 @@ export async function renderScout(root) {
 
   const scorerRows = scorers
     .slice(0, limitFor('scorers', scorers.length))
-    .map(({ p, prob }, i) => {
-      const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
-        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
-        .join(', ');
+    .map(({ p, e, prob }, i) => {
       const pct = Math.round(prob * 100);
       return `<tr>
         <td class="num" style="font-weight:800">${i + 1}</td>
         <td>${playerCell(p)}</td>
         <td class="num">${fmtPrice(p.now_cost)}</td>
-        <td>${fx || '-'}</td>
+        <td>${fxFor(p, e) || '-'}</td>
         <td class="num"><span class="cs-pill ${pct >= 45 ? 'cs-hi' : ''}">${pct}%</span></td>
       </tr>`;
     })
     .join('') + moreRow('scorers', scorers.length);
 
-  // Headline table: the model's expected points for the upcoming GW.
+  // Headline table: the model's expected points for each player's next
+  // real fixture.
   const topXp = [...els]
     .filter(available)
-    .map((p) => ({ p, xp: model.xp(p.id, nextGw) }))
+    .map((p) => ({ p, e: model.nextEventFor(p.id), xp: model.xpNext(p.id) }))
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 20);
   const topXpRows = topXp
     .slice(0, limitFor('topXp', topXp.length))
-    .map(({ p, xp }, i) => {
-      const fx = (state.upcomingByTeam[p.team] || []).filter((f) => f.event === nextGw)
-        .map((f) => `${teamBadge(f.opponent, 'meta-badge')} ${teamShort(state.teamsById[f.opponent])} (${haMark(f.isHome)})`)
-        .join(', ');
-      return `<tr>
+    .map(({ p, e, xp }, i) => `<tr>
         <td class="num" style="font-weight:800">${i + 1}</td>
         <td>${playerCell(p)}</td>
         <td>${posBadge(p)}</td>
         <td class="num">${fmtPrice(p.now_cost)}</td>
         <td class="num">${p.selected_by_percent}%</td>
-        <td>${fx || '-'}</td>
+        <td>${fxFor(p, e) || '-'}</td>
         <td class="num"><span class="pp-xp" style="margin:0">${xp.toFixed(1)}</span></td>
-      </tr>`;
-    })
+      </tr>`)
     .join('') + moreRow('topXp', topXp.length);
 
   root.innerHTML = `
