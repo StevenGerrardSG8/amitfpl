@@ -44,12 +44,21 @@ CORS headers for a fixed, read-only allowlist of team-lookup endpoints, so
 any Team ID can be checked live. It's free (no credit card, 100k requests/day
 free tier) and takes a few minutes, once:
 
+[.github/workflows/deploy-worker.yml](.github/workflows/deploy-worker.yml) deploys
+it automatically (same pattern as the data refresh) and writes its URL into
+`config.json` for you — one-time setup, nothing to run locally:
+
 1. Sign up at [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up) (free).
-2. From the repo root: `cd worker && npx wrangler login` (opens a browser to
-   authorize), then `npx wrangler deploy`.
-3. Copy the `https://amitfpl-fpl-proxy.<your-subdomain>.workers.dev` URL it
-   prints and paste it into `config.json`'s `"proxyUrl"`.
-4. Commit and push — the next deploy picks it up.
+2. In the Cloudflare dashboard: **My Profile → API Tokens → Create Token →**
+   use the **"Edit Cloudflare Workers"** template. Also note your **Account ID**
+   (right sidebar of the dashboard's Workers & Pages page).
+3. In this repo on GitHub: **Settings → Secrets and variables → Actions →
+   New repository secret** — add `CLOUDFLARE_API_TOKEN` and
+   `CLOUDFLARE_ACCOUNT_ID` with those two values.
+4. Run the **Deploy FPL proxy worker** workflow once (Actions tab → select it →
+   Run workflow). It deploys the worker, commits its URL into `config.json`'s
+   `"proxyUrl"`, and redeploys the site. From then on it redeploys automatically
+   whenever `worker/fpl-proxy.js` changes.
 
 Leave `"proxyUrl": ""` to keep the current one-team-only behavior; "Enter my
 squad by name" on My Team works either way and needs no setup.
