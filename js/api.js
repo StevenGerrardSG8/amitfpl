@@ -86,6 +86,8 @@ export async function fetchConfig() {
   }
 }
 
-// Live team endpoints (work where an /api/fpl proxy exists, e.g. local dev).
-export const getEntry = (id) => tryFetch(`/api/fpl/entry/${id}/`);
-export const getPicks = (id, gw) => tryFetch(`/api/fpl/entry/${id}/event/${gw}/picks/`);
+// Live team endpoints - base defaults to dev-server.py's local proxy;
+// pass config.json's proxyUrl (a deployed worker/fpl-proxy.js) to look
+// up any team from the hosted site. See js/myteam.js.
+export const getEntry = (id, base = '/api/fpl') => tryFetch(`${base}/entry/${id}/`);
+export const getPicks = (id, gw, base = '/api/fpl') => tryFetch(`${base}/entry/${id}/event/${gw}/picks/`);
