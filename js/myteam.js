@@ -16,11 +16,15 @@ const modelXp = (p) => (model ? model.xpNext(p.id) : num(p.ep_next));
 const STORAGE_KEY = 'amitfpl:teamId';
 const MANUAL_KEY = 'amitfpl:manualSquad';
 
-// getEntry/getPicks only resolve through dev-server.py's /api/fpl proxy,
-// which only runs locally - on the hosted site every lookup 404s
-// regardless of whether the ID is real, so a 404 there must not be
-// read as "bad ID."
+// getEntry/getPicks resolve through dev-server.py's /api/fpl proxy
+// locally, or through a deployed worker/fpl-proxy.js (config.json's
+// proxyUrl) on the hosted site. Returns null when neither is available,
+// in which case a 404 from a lookup attempt can't be trusted as "bad ID."
 const hasLiveProxy = () => ['localhost', '127.0.0.1'].includes(location.hostname);
+function liveBase(config) {
+  if (hasLiveProxy()) return '/api/fpl';
+  return config.proxyUrl ? config.proxyUrl.replace(/\/$/, '') : null;
+}
 
 const getTeamId = () => localStorage.getItem(STORAGE_KEY) || '';
 const setTeamId = (id) => localStorage.setItem(STORAGE_KEY, id);
@@ -332,11 +336,11 @@ export async function renderMyTeam(root) {
     await loadBaseline();
     model = buildModel(1);
   }
+  const config = await fetchConfig();
   let teamId = getTeamId();
   if (!teamId) {
     // Fall back to the id configured in config.json (used by the
     // GitHub Action that snapshots the team every 30 min).
-    const config = await fetchConfig();
     if (config.teamId) {
       teamId = String(config.teamId);
       setTeamId(teamId);
@@ -351,19 +355,24 @@ export async function renderMyTeam(root) {
 
   root.innerHTML = `<div class="loading"><div class="spinner"></div><p>${t('myteam.loading')}</p></div>`;
 
-  // Snapshot first (works on GitHub Pages), live API as fallback
-  // (works locally through dev-server.py's proxy).
+  // Snapshot first (works on GitHub Pages, but only for the one team
+  // config.json's teamId snapshots every 30 min) - live lookup for any
+  // other team via dev-server.py's local proxy or a deployed worker.
   let entry = null;
   let picks = null;
+  const base = liveBase(config);
   const snap = await fetchTeamSnapshot();
   if (snap?.entry && String(snap.entry.id) === teamId) {
     entry = snap.entry;
     picks = snap.picks;
+  } else if (!base) {
+    renderSetup(root, t('myteam.noLive', { id: teamId }));
+    return;
   } else {
     try {
-      entry = await getEntry(teamId);
+      entry = await getEntry(teamId, base);
     } catch (e) {
-      if (hasLiveProxy() && e.status === 404) {
+      if (e.status === 404) {
         clearTeamId();
         renderSetup(root, t('myteam.notFound', { id: teamId }));
       } else {
@@ -374,9 +383,9 @@ export async function renderMyTeam(root) {
   }
 
   const gw = entry.current_event ?? state.currentEvent?.id ?? null;
-  if (gw && picks == null) {
+  if (gw && picks == null && base) {
     try {
-      picks = await getPicks(teamId, gw);
+      picks = await getPicks(teamId, gw, base);
     } catch { /* picks not available yet (pre-season or private) */ }
   }
 

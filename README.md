@@ -10,6 +10,10 @@ A private Fantasy Premier League dashboard. Static site, no build step, no depen
   The site reads those files — same origin, no CORS, no proxy to get blocked.
 - **My Team:** set `"teamId": <your id>` in [config.json](config.json) and the
   Action snapshots your team too (`data/myteam.json`).
+- **Any other team:** set `"proxyUrl"` in [config.json](config.json) to a
+  deployed [worker/fpl-proxy.js](worker/fpl-proxy.js) and My Team can look up
+  *any* Team ID live, on demand — not just the one snapshotted team. See
+  [Live lookup for any team](#live-lookup-for-any-team-optional) below.
 
 The site itself renders instantly from a localStorage copy and revalidates in
 the background (stale-while-revalidate) — no loading spinner after first visit.
@@ -28,6 +32,27 @@ To refresh local snapshots manually:
 ```bash
 python3 scripts/fetch_data.py
 ```
+
+## Live lookup for any team (optional)
+
+Without this, My Team's live connect flow only ever works for the one team
+`config.json`'s `teamId` snapshots every 30 min — the FPL API sends no CORS
+headers, so a static GitHub Pages site can't fetch anyone else's team data
+directly from the browser. [worker/fpl-proxy.js](worker/fpl-proxy.js) is a
+small [Cloudflare Worker](https://workers.cloudflare.com) that adds those
+CORS headers for a fixed, read-only allowlist of team-lookup endpoints, so
+any Team ID can be checked live. It's free (no credit card, 100k requests/day
+free tier) and takes a few minutes, once:
+
+1. Sign up at [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up) (free).
+2. From the repo root: `cd worker && npx wrangler login` (opens a browser to
+   authorize), then `npx wrangler deploy`.
+3. Copy the `https://amitfpl-fpl-proxy.<your-subdomain>.workers.dev` URL it
+   prints and paste it into `config.json`'s `"proxyUrl"`.
+4. Commit and push — the next deploy picks it up.
+
+Leave `"proxyUrl": ""` to keep the current one-team-only behavior; "Enter my
+squad by name" on My Team works either way and needs no setup.
 
 ## Telegram alerts (optional)
 
@@ -67,6 +92,8 @@ adds amitfpl as a desktop app. Works offline with the last-loaded data.
 - `scripts/fetch_data.py` — snapshot fetcher (used by the Action and locally)
 - `.github/workflows/refresh-data.yml` — the 30-min refresh schedule
 - `dev-server.py` — local static server + live API proxy
+- `worker/fpl-proxy.js` — optional Cloudflare Worker: CORS proxy for looking
+  up any team live from the hosted site (see above)
 
 ## Roadmap
 

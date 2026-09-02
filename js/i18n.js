@@ -441,7 +441,7 @@ const STRINGS = {
   'myteam.connect': ['Connect', 'חיבור'],
   'myteam.loading': ['Loading your team…', 'טוען את הקבוצה שלך…'],
   'myteam.notFound': ['Team ID {id} was not found. Double-check the number and try again.', 'מזהה הקבוצה {id} לא נמצא. בדקו שוב את המספר ונסו שנית.'],
-  'myteam.noLive': ['Live lookup for team {id} isn\'t available on the hosted site yet - only one team is tracked live at a time. If this is your own team, ask whoever runs this site to set it as the tracked team; it\'ll refresh within 30 minutes once configured.', 'שליפה חיה לקבוצה {id} עדיין לא זמינה באתר המתארח - רק קבוצה אחת עוקבת בזמן אמת בכל רגע. אם זו הקבוצה שלכם, בקשו ממי שמריץ את האתר להגדיר אותה כקבוצה הנעקבת - היא תתעדכן תוך 30 דקות לאחר ההגדרה.'],
+  'myteam.noLive': ['Live lookup for team {id} isn\'t available right now. Double-check the number, or try again in a moment.', 'שליפה חיה לקבוצה {id} לא זמינה כרגע. בדקו שוב את המספר, או נסו שוב בעוד רגע.'],
   'myteam.overallPts': ['Overall points', 'נקודות כולל'],
   'myteam.overallRank': ['Overall rank', 'דירוג כללי'],
   'myteam.gwPts': ['{gw} points', 'נקודות {gw}'],
