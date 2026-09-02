@@ -27,7 +27,12 @@ function positionPercentiles() {
 export async function analyzeSquad({ squad, starters = [], captain = null, bank = 0 }) {
   await loadBaseline();
   const model = buildModel(5);
-  const gw = model.gws[0];
+  // The whole-squad outlook needs one shared, genuinely-upcoming
+  // gameweek - not model.gws[0], which mid-gameweek is the "current"
+  // event and could already be finished for some/most of the squad's
+  // teams, cratering the whole analysis to near-zero. state.nextEvent
+  // is always the next gameweek nothing has kicked off in yet.
+  const gw = state.nextEvent?.id ?? model.gws[0];
   const horizon = {};
   for (const id of squad) horizon[id] = model.horizonTotal(id);
 

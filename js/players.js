@@ -58,10 +58,12 @@ const view = {
   horizonCustom: false, // is the "Custom" option active (independent of the number itself)?
 };
 
-// horizonTotal() over a 1-GW model reduces to the same single xp() call
-// this used before the horizon picker existed, so no separate branch is
-// needed for the "next GW only" case.
-const modelXp = (p) => (model ? model.horizonTotal(p.id) : num(p.ep_next));
+// horizon===1 ("next GW") uses xpNext(), not horizonTotal()/xp(gws[0]):
+// mid-gameweek, a team whose fixture already kicked off has nothing left
+// in the shared "current" event even though the player clearly has a
+// real next match the following week - xpNext() resolves each player's
+// own next fixture instead of assuming one gameweek index fits everyone.
+const modelXp = (p) => (model ? (view.horizon === 1 ? model.xpNext(p.id) : model.horizonTotal(p.id)) : num(p.ep_next));
 
 function playerValue(p, key) {
   if (key === 'web_name') return p.web_name.toLowerCase();
