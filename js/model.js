@@ -284,10 +284,18 @@ export function buildModel(horizon) {
         total += pts;
       }
 
-      // Anchor the immediate GW to FPL's own projection (half-half) -
-      // but only once the season is running. Pre-season their ep_next
-      // is form-based noise (it ranked goalkeepers as captain picks).
-      if (state.currentEvent && eventId === gws[0] && num(p.ep_next) > 0) {
+      // Anchor to FPL's own projection (half-half) for whichever event is
+      // this player's actual next fixture - not always gws[0] (see
+      // xpNext()/nextEventFor(): mid-gameweek, a team whose fixture
+      // already happened rolls forward to the following gameweek).
+      // Without matching that here, every player needing the roll-
+      // forward - i.e. everyone, once the "current" gameweek is fully
+      // finished - loses this calibration anchor entirely, understating
+      // anyone whose last-season baseline undersells a since-changed
+      // role (a new signing who's now a starter, say). Only once the
+      // season is running - pre-season their ep_next is form-based
+      // noise (it ranked goalkeepers as captain picks).
+      if (state.currentEvent && eventId === (nextEventFor(playerId) ?? gws[0]) && num(p.ep_next) > 0) {
         total = 0.5 * total + 0.5 * num(p.ep_next) * fixtures.length;
       }
     }
