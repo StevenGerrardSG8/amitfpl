@@ -234,6 +234,7 @@ export const PLAYER_NAMES_HE = {
   'Hackney': 'האקני',
   'Hall': 'הול',
   'Harrison': 'הריסון',
+  'Harwood-Bellis': 'הארווד-בליס',
   'Hato': 'האטו',
   'Havertz': 'הברץ',
   'Heaton': 'היטון',
