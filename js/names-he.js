@@ -431,6 +431,7 @@ export const PLAYER_NAMES_HE = {
   'Onyeka': 'אונייקה',
   'Oriola': 'אוריולה',
   'Osman': 'עוסמאן',
+  'Osorio': 'אוסוריו',
   'Osula': 'אוסולה',
   'P.M.Sarr': 'פ.מ.סאר',
   'Palacios': 'פלאסיוס',
