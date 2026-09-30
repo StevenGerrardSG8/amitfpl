@@ -316,6 +316,7 @@ export const PLAYER_NAMES_HE = {
   'Lacey': 'לייסי',
   'Lacroix': 'לקרואה',
   'Lammens': 'לאמנס',
+  'Larsson': 'לארסון',
   'Latibeaudiere': 'לטיבודייר',
   'Lavia': 'לאביה',
   'Lecomte': 'לקומט',
