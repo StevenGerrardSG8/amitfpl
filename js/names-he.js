@@ -391,6 +391,7 @@ export const PLAYER_NAMES_HE = {
   'Morita': 'מוריטה',
   'Mosquera': 'מוסקרה',
   'Mount': 'מאונט',
+  'Mouzakitis': 'מוזאקיטיס',
   'Mudryk': 'מודריק',
   'Muharemović': 'מוחרמוביץ׳',
   'Mukasa': 'מוקאסה',
