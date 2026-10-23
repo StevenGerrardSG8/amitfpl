@@ -33,6 +33,7 @@ export const PLAYER_NAMES_HE = {
   'Anderson': 'אנדרסון',
   'Andrews': 'אנדרוז',
   'Andrey Santos': 'אנדריי סאנטוס',
+  'Andrés': 'צ׳מה אנדרס',
   'Angulo': 'אנגולו',
   'Ansah': 'אנסה',
   'Anselmino': 'אנסלמינו',
