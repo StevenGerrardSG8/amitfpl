@@ -503,6 +503,7 @@ export const PLAYER_NAMES_HE = {
   'Semenyo': 'סמניו',
   'Senesi': 'סנסי',
   'Sessegnon': 'ססניון',
+  'Sharman-Lowe': 'שרמן-לואו',
   'Shaw': 'שו',
   'Shepherd': 'שפרד',
   'Silva': 'סילבה',
