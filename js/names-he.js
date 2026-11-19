@@ -261,6 +261,7 @@ export const PLAYER_NAMES_HE = {
   'Hughes': 'יוז',
   'Hume': 'יום',
   'Hutchinson': 'האצ׳ינסון',
+  'I.Sangaré': 'אבראהים סנגארה',
   'Igor': 'איגור',
   'Igor Jesus': 'איגור ז׳סוס',
   'Iling Jr': 'איילינג ג׳וניור',
