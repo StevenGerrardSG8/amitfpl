@@ -406,6 +406,7 @@ export const PLAYER_NAMES_HE = {
   'Murillo': 'מוריו',
   'Muñoz': 'מוניוס',
   'Mykolenko': 'מיקולנקו',
+  'N.Angulo': 'נילסון אנגולו',
   'N.Gonzalez': 'נ.גונסאלס',
   'N.Jackson': 'נ.ג׳קסון',
   'N.Williams': 'נ.וויליאמס',
